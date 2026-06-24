@@ -247,72 +247,102 @@ function ChatWidget({
   const [nome, setNome] = useState("");
   const [iniciado, setIniciado] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  const [restaurando, setRestaurando] = useState(true);
   const [conversaId, setConversaId] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const meId = useRef<string | null>(null);
   const fimRef = useRef<HTMLDivElement>(null);
 
+  const tokenKey = "amchat_" + orgId; // token estável deste cliente nesta loja
+
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 
+  // garante uma sessão (reaproveita a anônima salva nos cookies ou cria uma)
+  async function garantirSessao(): Promise<string | null> {
+    let {
+      data: { user },
+    } = await sb.auth.getUser();
+    if (!user) {
+      const { data, error } = await sb.auth.signInAnonymously();
+      if (error) throw error;
+      user = data.user;
+    }
+    meId.current = user?.id ?? null;
+    const {
+      data: { session },
+    } = await sb.auth.getSession();
+    if (session) sb.realtime.setAuth(session.access_token); // realtime respeita a RLS
+    return user?.id ?? null;
+  }
+
+  function assinarRealtime(convId: string) {
+    sb.channel("conv-" + convId)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "mensagem", filter: `conversa_id=eq.${convId}` },
+        (payload) => {
+          const nova = payload.new as Msg;
+          setMsgs((prev) => (prev.some((x) => x.id === nova.id) ? prev : [...prev, nova]));
+        }
+      )
+      .subscribe();
+  }
+
+  // ao abrir, restaura automaticamente a conversa salva deste cliente (outra aba / retorno)
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = typeof localStorage !== "undefined" ? localStorage.getItem(tokenKey) : null;
+        if (!token) return; // nunca conversou neste navegador
+        await garantirSessao();
+        const { data } = await sb.rpc("recuperar_conversa", { p_org: orgId, p_token: token });
+        if (data) {
+          setConversaId(data.id);
+          if (data.cliente_nome) setNome(data.cliente_nome);
+          setMsgs((data.mensagens as Msg[]) || []);
+          assinarRealtime(data.id);
+          setIniciado(true);
+        }
+      } catch {
+        /* segue para a tela inicial */
+      } finally {
+        setRestaurando(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function iniciar() {
     setCarregando(true);
     try {
-      let {
-        data: { user },
-      } = await sb.auth.getUser();
-      if (!user) {
-        const { data, error } = await sb.auth.signInAnonymously();
-        if (error) throw error;
-        user = data.user;
+      const uid = await garantirSessao();
+      if (!uid) throw new Error("sessão");
+      let token = localStorage.getItem(tokenKey);
+      if (!token) {
+        token = crypto.randomUUID();
+        localStorage.setItem(tokenKey, token);
       }
-      meId.current = user!.id;
 
-      let { data: conv } = await sb
-        .from("conversa")
-        .select("id")
-        .eq("org_id", orgId)
-        .eq("cliente_id", user!.id)
-        .maybeSingle();
-
-      if (!conv) {
-        const id = crypto.randomUUID();
+      // reaproveita a conversa do token, se já existir
+      const { data: rec } = await sb.rpc("recuperar_conversa", { p_org: orgId, p_token: token });
+      let convId: string;
+      if (rec) {
+        convId = rec.id;
+        setMsgs((rec.mensagens as Msg[]) || []);
+        if (nome && nome !== rec.cliente_nome) await sb.from("conversa").update({ cliente_nome: nome }).eq("id", convId);
+      } else {
+        convId = crypto.randomUUID();
         const { error } = await sb
           .from("conversa")
-          .insert({ id, org_id: orgId, cliente_id: user!.id, cliente_nome: nome || null });
+          .insert({ id: convId, org_id: orgId, cliente_id: uid, cliente_token: token, cliente_nome: nome || null });
         if (error) throw error;
-        conv = { id };
-      } else if (nome) {
-        await sb.from("conversa").update({ cliente_nome: nome }).eq("id", conv.id);
+        setMsgs([]);
       }
-      setConversaId(conv.id);
-
-      const { data: m } = await sb
-        .from("mensagem")
-        .select("id, autor_tipo, texto")
-        .eq("conversa_id", conv.id)
-        .order("criada_em");
-      setMsgs((m as Msg[]) || []);
-
-      // garante que o realtime use o token do cliente (RLS)
-      const {
-        data: { session },
-      } = await sb.auth.getSession();
-      if (session) sb.realtime.setAuth(session.access_token);
-
-      sb.channel("conv-" + conv.id)
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "mensagem", filter: `conversa_id=eq.${conv.id}` },
-          (payload) => {
-            const nova = payload.new as Msg;
-            setMsgs((prev) => (prev.some((x) => x.id === nova.id) ? prev : [...prev, nova]));
-          }
-        )
-        .subscribe();
-
+      setConversaId(convId);
+      assinarRealtime(convId);
       setIniciado(true);
     } catch (e: any) {
       alert("Não foi possível iniciar o chat: " + (e?.message || e));
@@ -354,7 +384,11 @@ function ChatWidget({
           </button>
         </header>
 
-        {!iniciado ? (
+        {restaurando ? (
+          <div className="flex-1 grid place-items-center text-brand-500">
+            <Loader2 className="animate-spin" />
+          </div>
+        ) : !iniciado ? (
           <div className="flex-1 grid place-items-center p-6 text-center">
             <div className="space-y-3 w-full">
               <MessageCircle className="mx-auto text-brand-500" size={36} />
