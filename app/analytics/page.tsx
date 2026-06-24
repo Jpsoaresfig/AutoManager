@@ -1,0 +1,191 @@
+"use client";
+import { useMemo } from "react";
+import { useStore } from "@/lib/store";
+import { calcularAnalytics, brl } from "@/lib/analytics";
+import Guard from "@/components/Guard";
+import { PieChart, TrendingUp, TrendingDown, ShoppingBag, AlertTriangle } from "lucide-react";
+
+export default function AnalyticsPage() {
+  return (
+    <Guard>
+      <Analytics />
+    </Guard>
+  );
+}
+
+const CORES = ["#db2777", "#7c3aed", "#2563eb", "#0d9488", "#ea580c", "#ca8a04", "#dc2626", "#64748b"];
+
+function Analytics() {
+  const produtos = useStore((s) => s.produtos);
+  const vendas = useStore((s) => s.vendas);
+  const a = useMemo(() => calcularAnalytics(produtos, vendas), [produtos, vendas]);
+
+  return (
+    <div className="space-y-4">
+      <header className="flex items-center gap-2 pt-1">
+        <PieChart className="text-brand-600" />
+        <h1 className="text-2xl font-bold">Inteligência</h1>
+      </header>
+
+      {vendas.length === 0 ? (
+        <div className="card text-center text-muted">
+          Sem vendas ainda. Os gráficos aparecem quando você começar a vender.
+        </div>
+      ) : (
+        <>
+          {/* KPIs */}
+          <div className="grid grid-cols-3 gap-2">
+            <Kpi label="Ticket médio" valor={brl(a.ticketMedio)} />
+            <Kpi label="Itens/venda" valor={a.itensPorVenda.toFixed(1)} />
+            <Kpi
+              label="Mês vs anterior"
+              valor={`${a.tendenciaMes >= 0 ? "+" : ""}${a.tendenciaMes.toFixed(0)}%`}
+              cor={a.tendenciaMes >= 0 ? "text-green-500" : "text-red-500"}
+              icon={a.tendenciaMes >= 0 ? TrendingUp : TrendingDown}
+            />
+          </div>
+
+          {/* Vendas por produto (donut) */}
+          <section className="card space-y-3">
+            <div className="flex items-center gap-2 font-semibold">
+              <ShoppingBag size={18} className="text-brand-500" /> Receita por produto
+            </div>
+            {a.porProduto.length === 0 ? (
+              <p className="text-sm text-muted">Sem dados.</p>
+            ) : (
+              <div className="flex items-center gap-4 flex-wrap">
+                <Donut
+                  data={a.porProduto.map((p, i) => ({ valor: p.receita, cor: CORES[i % CORES.length] }))}
+                />
+                <div className="flex-1 min-w-[150px] space-y-1">
+                  {a.porProduto.map((p, i) => (
+                    <div key={p.nome} className="flex items-center gap-2 text-sm">
+                      <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: CORES[i % CORES.length] }} />
+                      <span className="truncate flex-1">{p.nome}</span>
+                      <span className="text-muted">{brl(p.receita)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Mix por canal */}
+          <section className="card space-y-3">
+            <div className="font-semibold">Mix por canal</div>
+            {a.porCanal.map((c) => (
+              <div key={c.canal}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>{c.label}</span>
+                  <span className="text-muted">
+                    {brl(c.total)} · {c.pct.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="h-2.5 rounded-full surface-alt overflow-hidden">
+                  <div className="h-full rounded-full bg-brand-600" style={{ width: `${c.pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {/* Tendência mensal */}
+          <section className="card space-y-3">
+            <div className="font-semibold">Faturamento (6 meses)</div>
+            <BarsMes data={a.porMes} />
+          </section>
+
+          {/* Oportunidades perdidas */}
+          {a.ruptura.length > 0 && (
+            <section className="card space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-amber-500">
+                <AlertTriangle size={18} /> Oportunidades perdidas
+              </div>
+              <p className="text-xs text-muted">
+                Produtos sem estoque que vendiam bem — repor pode recuperar esta receita.
+              </p>
+              {a.ruptura.map((r) => (
+                <div key={r.nome} className="flex items-center justify-between text-sm">
+                  <span className="truncate">{r.nome}</span>
+                  <span className="text-amber-500 font-semibold shrink-0">
+                    ~{brl(r.perdaEstimada)}/mês
+                  </span>
+                </div>
+              ))}
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  valor,
+  cor,
+  icon: Icon,
+}: {
+  label: string;
+  valor: string;
+  cor?: string;
+  icon?: any;
+}) {
+  return (
+    <div className="card py-3 text-center">
+      <div className={`text-lg font-bold flex items-center justify-center gap-1 ${cor || ""}`}>
+        {Icon && <Icon size={15} />} {valor}
+      </div>
+      <div className="text-[11px] text-muted">{label}</div>
+    </div>
+  );
+}
+
+// donut SVG sem dependências
+function Donut({ data }: { data: { valor: number; cor: string }[] }) {
+  const total = data.reduce((a, d) => a + d.valor, 0) || 1;
+  const R = 42;
+  const C = 2 * Math.PI * R;
+  let offset = 0;
+  return (
+    <svg viewBox="0 0 100 100" className="h-32 w-32 -rotate-90">
+      <circle cx="50" cy="50" r={R} fill="none" stroke="var(--surface-alt)" strokeWidth="14" />
+      {data.map((d, i) => {
+        const frac = d.valor / total;
+        const len = frac * C;
+        const el = (
+          <circle
+            key={i}
+            cx="50"
+            cy="50"
+            r={R}
+            fill="none"
+            stroke={d.cor}
+            strokeWidth="14"
+            strokeDasharray={`${len} ${C - len}`}
+            strokeDashoffset={-offset}
+          />
+        );
+        offset += len;
+        return el;
+      })}
+    </svg>
+  );
+}
+
+function BarsMes({ data }: { data: { mes: string; total: number }[] }) {
+  const max = Math.max(...data.map((d) => d.total), 1);
+  return (
+    <div className="flex items-end justify-between gap-2 h-32">
+      {data.map((d, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+          <div className="text-[10px] text-muted">{d.total > 0 ? brl(d.total).replace("R$", "").trim() : ""}</div>
+          <div
+            className="w-full rounded-t-lg bg-brand-600 min-h-[2px] transition-all"
+            style={{ height: `${(d.total / max) * 100}%` }}
+          />
+          <div className="text-[11px] text-muted">{d.mes}</div>
+        </div>
+      ))}
+    </div>
+  );
+}

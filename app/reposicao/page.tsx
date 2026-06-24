@@ -1,0 +1,79 @@
+"use client";
+import { useStore } from "@/lib/store";
+import { sugestoesReposicao, brl } from "@/lib/analytics";
+import Guard from "@/components/Guard";
+import { TrendingUp, PackagePlus, CheckCircle2 } from "lucide-react";
+
+export default function ReposicaoPage() {
+  return (
+    <Guard>
+      <Reposicao />
+    </Guard>
+  );
+}
+
+const MOTIVO_LABEL: Record<string, { txt: string; cls: string }> = {
+  sem_estoque: { txt: "Sem estoque", cls: "bg-red-500/15 text-red-400" },
+  estoque_baixo: { txt: "Estoque baixo", cls: "bg-amber-500/15 text-amber-400" },
+  cobertura_curta: { txt: "Vai acabar logo", cls: "bg-yellow-500/15 text-yellow-500" },
+};
+
+function Reposicao() {
+  const { produtos, vendas, entradaEstoque } = useStore();
+  const sugestoes = sugestoesReposicao(produtos, vendas);
+
+  return (
+    <div className="space-y-3">
+      <header className="flex items-center gap-2 pt-1">
+        <TrendingUp className="text-brand-600" />
+        <h1 className="text-2xl font-bold">Reposição</h1>
+      </header>
+      <p className="text-sm text-muted">
+        Sugestões baseadas no que você vendeu nos últimos 30 dias.
+      </p>
+
+      {sugestoes.length === 0 && (
+        <div className="card text-center text-muted flex flex-col items-center gap-2 py-8">
+          <CheckCircle2 className="text-green-500" size={36} />
+          Tudo certo! Nenhum produto precisa de reposição agora.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {sugestoes.map((s) => {
+          const m = MOTIVO_LABEL[s.motivo];
+          return (
+            <div key={s.produto.id} className="card space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold">{s.produto.nome}</div>
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${m.cls}`}>
+                  {m.txt}
+                </span>
+              </div>
+              <div className="text-xs text-muted grid grid-cols-3 gap-2">
+                <div>
+                  <div className="text-muted">Em estoque</div>
+                  <div className="font-bold text-sm text-strong">{s.produto.estoqueAtual}</div>
+                </div>
+                <div>
+                  <div className="text-muted">Vendeu 30d</div>
+                  <div className="font-bold text-sm text-strong">{s.vendido30d}</div>
+                </div>
+                <div>
+                  <div className="text-muted">Comprar</div>
+                  <div className="font-bold text-sm text-brand-600">{s.qtdSugerida} un</div>
+                </div>
+              </div>
+              <button
+                onClick={() => entradaEstoque(s.produto.id, s.qtdSugerida)}
+                className="btn-primary w-full py-2 text-sm"
+              >
+                <PackagePlus size={16} /> Comprei {s.qtdSugerida} un — dar entrada
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

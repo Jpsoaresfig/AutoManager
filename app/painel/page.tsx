@@ -1,0 +1,218 @@
+"use client";
+import { useStore } from "@/lib/store";
+import { calcularMetricas, brl } from "@/lib/analytics";
+import Guard from "@/components/Guard";
+import Link from "next/link";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  Tooltip,
+} from "recharts";
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Package,
+  AlertTriangle,
+  Trophy,
+  Settings,
+  BarChart3,
+  PackageX,
+} from "lucide-react";
+
+export default function PainelPage() {
+  return (
+    <Guard>
+      <Painel />
+    </Guard>
+  );
+}
+
+function Painel() {
+  const { produtos, vendas, revendedoras, config } = useStore();
+  const m = calcularMetricas(produtos, vendas, revendedoras);
+
+  const variacao =
+    m.faturamentoMesAnterior > 0
+      ? ((m.faturamentoMes - m.faturamentoMesAnterior) / m.faturamentoMesAnterior) * 100
+      : null;
+
+  const criticos = produtos
+    .filter((p) => p.ativo && p.estoqueAtual <= p.estoqueMinimo)
+    .sort((a, b) => a.estoqueAtual - b.estoqueAtual);
+
+  return (
+    <div className="space-y-4">
+      <header className="pt-1 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {config.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={config.logoUrl}
+              alt="logo"
+              className="h-11 w-11 rounded-xl object-cover shrink-0 border border-default"
+            />
+          )}
+          <div className="min-w-0">
+            <p className="text-sm text-muted">Olá 👋</p>
+            <h1 className="text-2xl font-bold truncate">{config.nomeLoja || "Minha Loja"}</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Link href="/relatorios" className="text-muted hover:opacity-70 p-1" title="Relatórios">
+            <BarChart3 size={22} />
+          </Link>
+          <Link href="/configuracoes" className="text-muted hover:opacity-70 p-1" title="Configurações">
+            <Settings size={22} />
+          </Link>
+        </div>
+      </header>
+
+      {/* cards principais */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="card">
+          <div className="flex items-center gap-2 text-muted text-xs">
+            <Wallet size={14} /> Faturamento do mês
+          </div>
+          <div className="text-xl font-bold mt-1">{brl(m.faturamentoMes)}</div>
+          {variacao !== null && (
+            <div
+              className={`text-xs mt-1 flex items-center gap-1 ${
+                variacao >= 0 ? "text-green-600" : "text-red-500"
+              }`}
+            >
+              {variacao >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+              {Math.abs(variacao).toFixed(0)}% vs mês anterior
+            </div>
+          )}
+        </div>
+        <div className="card">
+          <div className="flex items-center gap-2 text-muted text-xs">
+            <TrendingUp size={14} /> Lucro estimado
+          </div>
+          <div className="text-xl font-bold mt-1 text-green-600">{brl(m.lucroMes)}</div>
+        </div>
+        <div className="card">
+          <div className="flex items-center gap-2 text-muted text-xs">
+            <Wallet size={14} /> Comissão pendente
+          </div>
+          <div className="text-xl font-bold mt-1 text-brand-600">{brl(m.comissaoPendente)}</div>
+        </div>
+        <div className="card">
+          <div className="flex items-center gap-2 text-muted text-xs">
+            <Package size={14} /> Valor em estoque
+          </div>
+          <div className="text-xl font-bold mt-1">{brl(m.valorEstoque)}</div>
+        </div>
+      </div>
+
+      {/* estoque crítico — sempre visível */}
+      {criticos.length > 0 && (
+        <div className="card border-red-500/40 bg-red-500/5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 font-semibold text-red-500">
+              <PackageX size={18} /> Estoque Crítico
+            </div>
+            <Link href="/reposicao" className="text-xs text-brand-500">
+              repor →
+            </Link>
+          </div>
+          <div className="space-y-1.5">
+            {criticos.slice(0, 6).map((p) => (
+              <div key={p.id} className="flex items-center justify-between text-sm">
+                <span className="truncate pr-2">{p.nome}</span>
+                <span
+                  className={`shrink-0 font-bold ${
+                    p.estoqueAtual <= 0 ? "text-red-500" : "text-amber-500"
+                  }`}
+                >
+                  {p.estoqueAtual} un.
+                </span>
+              </div>
+            ))}
+            {criticos.length > 6 && (
+              <div className="text-xs text-muted pt-1">+ {criticos.length - 6} outros produtos</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* alerta reposição */}
+      {m.qtdReposicao > 0 && (
+        <a href="/reposicao" className="card flex items-center gap-3 bg-amber-500/10 border-amber-500/30">
+          <AlertTriangle className="text-amber-500 shrink-0" />
+          <div>
+            <div className="font-semibold text-amber-500">
+              {m.qtdReposicao} produto(s) para repor
+            </div>
+            <div className="text-sm text-amber-500/80">Toque para ver o que comprar →</div>
+          </div>
+        </a>
+      )}
+
+      {/* gráfico */}
+      <div className="card">
+        <div className="text-sm font-semibold mb-2">Vendas (últimos 14 dias)</div>
+        <div style={{ width: "100%", height: 140 }}>
+          <ResponsiveContainer>
+            <AreaChart data={m.vendasPorDia}>
+              <defs>
+                <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#db2777" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#db2777" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="dia" fontSize={10} tickLine={false} axisLine={false} interval={2} />
+              <Tooltip formatter={(v: number) => brl(v)} />
+              <Area type="monotone" dataKey="total" stroke="#db2777" fill="url(#g)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ranking revendedoras */}
+      {config.usaRevendedoras && m.rankingRevendedoras.length > 0 && (
+        <div className="card">
+          <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+            <Trophy size={16} className="text-amber-500" /> Ranking de revendedoras
+          </div>
+          <div className="space-y-2">
+            {m.rankingRevendedoras.map((r, i) => (
+              <div key={r.nome} className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span className="text-muted w-5">{i + 1}º</span>
+                  <span className="font-medium">{r.nome}</span>
+                </span>
+                <span className="text-sm">{brl(r.total)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* top produtos */}
+      {m.topProdutos.length > 0 && (
+        <div className="card">
+          <div className="text-sm font-semibold mb-3">🔥 Mais vendidos</div>
+          <div className="space-y-2">
+            {m.topProdutos.map((p) => (
+              <div key={p.nome} className="flex items-center justify-between text-sm">
+                <span className="font-medium">{p.nome}</span>
+                <span className="text-muted">{p.qtd} un</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {vendas.length === 0 && (
+        <a href="/vender" className="card text-center block bg-brand-500/10 border-brand-500/30">
+          <div className="font-semibold text-brand-500">Registre sua primeira venda 🎉</div>
+          <div className="text-sm text-brand-500/80 mt-1">É 1 toque. Toque aqui pra começar.</div>
+        </a>
+      )}
+    </div>
+  );
+}

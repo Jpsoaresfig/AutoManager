@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ----------------------------------------------------- tema (escuro = padrão) */
+:root {
+  /* paleta da marca (padrão rosa) — sobrescrita pela cor da loja em runtime */
+  --brand-50: 253 242 248;
+  --brand-100: 252 231 243;
+  --brand-200: 251 207 232;
+  --brand-300: 249 168 212;
+  --brand-400: 244 114 182;
+  --brand-500: 236 72 153;
+  --brand-600: 219 39 119;
+  --brand-700: 190 24 93;
+  --brand-800: 157 23 77;
+  --brand-900: 131 24 67;
+
+  --bg: #141019;
+  --surface: #1d1726;
+  --surface-alt: #2a2235;
+  --text: #f5f3f7;
+  --text-muted: #a79fb4;
+  --border: #322a3e;
+  color-scheme: dark;
+}
+
+html.light {
+  --bg: #faf7f8;
+  --surface: #ffffff;
+  --surface-alt: #f3f4f6;
+  --text: #1f2937;
+  --text-muted: #6b7280;
+  --border: #ececf1;
+  color-scheme: light;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border p-4;
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  }
+  /* superfícies / utilitários temáticos */
+  .surface {
+    background: var(--surface);
+  }
+  .surface-alt {
+    background: var(--surface-alt);
+  }
+  .text-muted {
+    color: var(--text-muted);
+  }
+  .text-strong {
+    color: var(--text);
+  }
+  .border-default {
+    border-color: var(--border);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition active:scale-[.98];
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white px-4 py-3 hover:bg-brand-700;
+  }
+  .btn-ghost {
+    @apply btn px-4 py-3;
+    background: var(--surface-alt);
+    color: var(--text);
+  }
+  .input {
+    @apply w-full rounded-xl border px-3 py-3 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .input::placeholder {
+    color: var(--text-muted);
+  }
+  .label {
+    @apply block text-sm font-medium mb-1;
+    color: var(--text-muted);
+  }
+  .chip {
+    @apply px-3 py-2 rounded-full border text-sm font-medium cursor-pointer select-none;
+    border-color: var(--border);
+    color: var(--text);
+  }
+}
+
+/* impressão / PDF: força visual claro e esconde navegação */
+@media print {
+  :root,
+  html.light {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-alt: #f3f4f6;
+    --text: #111111;
+    --text-muted: #555555;
+    --border: #cccccc;
+    color-scheme: light;
+  }
+  body {
+    background: #fff;
+  }
+  nav,
+  aside,
+  .print-hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}
