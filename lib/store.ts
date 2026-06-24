@@ -11,11 +11,11 @@ import type {
   Canal,
   FormaPagamento,
   Role,
-  Plano,
   Membro,
   Entrega,
   StatusEntrega,
 } from "./types";
+import type { Assinatura, PlanoId } from "./plans";
 
 function uid() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -63,7 +63,7 @@ const configInicial: Config = {
   onboardingCompleto: false,
   corMarca: null,
   logoUrl: null,
-  plano: "gerencia",
+  plano: "solo",
   slug: null,
   lojaAtiva: false,
   lojaDescricao: null,
@@ -180,6 +180,7 @@ interface State {
   usuarioId: string | null;
   role: Role;
   config: Config;
+  assinatura: Assinatura | null;
   produtos: Produto[];
   revendedoras: Revendedora[];
   vendas: Venda[];
@@ -190,6 +191,7 @@ interface State {
   hydrate: () => Promise<void>;
 
   setConfig: (c: Partial<Config>) => Promise<void>;
+  mudarPlano: (plano: PlanoId) => Promise<{ ok: boolean; erro?: string }>;
   definirSlug: (slug: string) => Promise<{ ok: boolean; erro?: string }>;
   completarOnboarding: () => Promise<void>;
 
@@ -243,6 +245,7 @@ export const useStore = create<State>()((set, get) => {
     usuarioId: null,
     role: "owner",
     config: configInicial,
+    assinatura: null,
     produtos: [],
     revendedoras: [],
     vendas: [],
@@ -268,6 +271,7 @@ export const useStore = create<State>()((set, get) => {
         { data: vendas },
         { data: membros },
         { data: entregas },
+        { data: assin },
       ] = await Promise.all([
         supabase.from("org").select("*").limit(1).maybeSingle(),
         supabase.from("usuario").select("role").eq("id", user.id).maybeSingle(),
@@ -279,13 +283,27 @@ export const useStore = create<State>()((set, get) => {
         supabase.from("venda").select("*, venda_item(*)").order("data", { ascending: false }),
         supabase.from("usuario").select("id, nome, email, role"),
         supabase.from("entrega").select("*").order("criada_em", { ascending: false }),
+        supabase.from("assinatura").select("*").limit(1).maybeSingle(),
       ]);
+
+      const assinatura: Assinatura | null = assin
+        ? {
+            plano: assin.plano as PlanoId,
+            status: assin.status,
+            precoCentavos: Number(assin.preco_centavos ?? 0),
+            periodo: assin.periodo ?? "mensal",
+            dataInicio: assin.data_inicio ? new Date(assin.data_inicio).getTime() : null,
+            dataFim: assin.data_fim ? new Date(assin.data_fim).getTime() : null,
+            trialAte: assin.trial_ate ? new Date(assin.trial_ate).getTime() : null,
+          }
+        : null;
 
       set({
         ready: true,
         orgId: org?.id ?? null,
         usuarioId: user.id,
         role: (eu?.role as Role) ?? "owner",
+        assinatura,
         config: org
           ? {
               nomeLoja: org.nome,
@@ -298,7 +316,7 @@ export const useStore = create<State>()((set, get) => {
               onboardingCompleto: org.onboarding_completo,
               corMarca: org.cor_marca ?? null,
               logoUrl: org.logo_url ?? null,
-              plano: (org.plano as Plano) ?? "gerencia",
+              plano: (assin?.plano as PlanoId) ?? "solo",
               slug: org.slug ?? null,
               lojaAtiva: org.loja_ativa ?? false,
               lojaDescricao: org.loja_descricao ?? null,
@@ -335,7 +353,6 @@ export const useStore = create<State>()((set, get) => {
       if (c.onboardingCompleto !== undefined) patch.onboarding_completo = c.onboardingCompleto;
       if (c.corMarca !== undefined) patch.cor_marca = c.corMarca;
       if (c.logoUrl !== undefined) patch.logo_url = c.logoUrl;
-      if (c.plano !== undefined) patch.plano = c.plano;
       if (c.slug !== undefined) patch.slug = c.slug;
       if (c.lojaAtiva !== undefined) patch.loja_ativa = c.lojaAtiva;
       if (c.lojaDescricao !== undefined) patch.loja_descricao = c.lojaDescricao;
@@ -348,6 +365,18 @@ export const useStore = create<State>()((set, get) => {
       if (c.lojaFacebook !== undefined) patch.loja_facebook = c.lojaFacebook;
       if (c.lojaTiktok !== undefined) patch.loja_tiktok = c.lojaTiktok;
       await sb().from("org").update(patch).eq("id", orgId);
+    },
+
+    mudarPlano: async (plano) => {
+      const { error } = await sb().rpc("mudar_plano", { p_plano: plano });
+      if (error) return { ok: false, erro: error.message };
+      set((s) => ({
+        assinatura: s.assinatura
+          ? { ...s.assinatura, plano, status: "active", trialAte: null }
+          : { plano, status: "active", precoCentavos: 0, periodo: "mensal", dataInicio: Date.now(), dataFim: null, trialAte: null },
+        config: { ...s.config, plano },
+      }));
+      return { ok: true };
     },
 
     definirSlug: async (slug) => {
@@ -645,7 +674,7 @@ export const useStore = create<State>()((set, get) => {
       };
       set((s) => ({ revendedoras: [...s.revendedoras, nova] }));
       if (!orgId) return;
-      await sb().from("revendedora").insert({
+      const { error } = await sb().from("revendedora").insert({
         id,
         org_id: orgId,
         nome: r.nome,
@@ -655,6 +684,8 @@ export const useStore = create<State>()((set, get) => {
         meta_mensal: r.metaMensal || 0,
         ativa: true,
       });
+      // limite do plano (trigger no banco) ou outro erro -> desfaz o otimista
+      if (error) set((s) => ({ revendedoras: s.revendedoras.filter((x) => x.id !== id) }));
     },
 
     updateRevendedora: async (id, patch) => {

@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
+import { usePlano } from "@/lib/usePlano";
 import Guard from "@/components/Guard";
 import ThemeToggle from "@/components/ThemeToggle";
 import { brl } from "@/lib/analytics";
-import { Store, Mail, Palette, LogOut, BadgeCheck } from "lucide-react";
+import { Store, Mail, Palette, LogOut, BadgeCheck, ChevronRight } from "lucide-react";
 
 export default function PerfilPage() {
   return (
@@ -72,15 +74,7 @@ function Perfil() {
       </div>
 
       {/* plano */}
-      <div className="card flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BadgeCheck size={18} className="text-brand-500" />
-          <span className="font-semibold">
-            Plano <span className="capitalize">{(config as any).plano || "free"}</span>
-          </span>
-        </div>
-        <span className="text-xs surface-alt rounded-full px-3 py-1 text-muted">Em breve: Pro</span>
-      </div>
+      <PlanoLinha />
 
       <button onClick={sair} className="btn-ghost w-full text-red-500">
         <LogOut size={18} /> Sair da conta
@@ -95,5 +89,33 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="font-bold text-sm">{value}</div>
       <div className="text-[11px] text-muted">{label}</div>
     </div>
+  );
+}
+
+function PlanoLinha() {
+  const role = useStore((s) => s.role);
+  const { defContratado, emTrial, diasTrial } = usePlano();
+  const conteudo = (
+    <>
+      <div className="flex items-center gap-2">
+        <BadgeCheck size={18} className="text-brand-500" />
+        <span className="font-semibold">Plano {defContratado.nome}</span>
+        {emTrial && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-600 text-white">Trial · {diasTrial}d</span>
+        )}
+      </div>
+      {role === "owner" ? (
+        <ChevronRight size={18} className="text-muted" />
+      ) : (
+        <span className="text-xs surface-alt rounded-full px-3 py-1 text-muted">Ativo</span>
+      )}
+    </>
+  );
+  return role === "owner" ? (
+    <Link href="/configuracoes/plano" className="card flex items-center justify-between hover:surface-alt transition">
+      {conteudo}
+    </Link>
+  ) : (
+    <div className="card flex items-center justify-between">{conteudo}</div>
   );
 }

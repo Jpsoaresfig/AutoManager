@@ -1,9 +1,13 @@
 "use client";
 import { useMemo } from "react";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { calcularAnalytics, brl } from "@/lib/analytics";
+import { usePlano } from "@/lib/usePlano";
+import { planoQueLibera } from "@/lib/plans";
+import { UpgradeBlock } from "@/components/UpgradeGate";
 import Guard from "@/components/Guard";
-import { PieChart, TrendingUp, TrendingDown, ShoppingBag, AlertTriangle } from "lucide-react";
+import { PieChart, TrendingUp, TrendingDown, ShoppingBag, AlertTriangle, Sparkles } from "lucide-react";
 
 export default function AnalyticsPage() {
   return (
@@ -18,7 +22,24 @@ const CORES = ["#db2777", "#7c3aed", "#2563eb", "#0d9488", "#ea580c", "#ca8a04",
 function Analytics() {
   const produtos = useStore((s) => s.produtos);
   const vendas = useStore((s) => s.vendas);
+  const { caps } = usePlano();
   const a = useMemo(() => calcularAnalytics(produtos, vendas), [produtos, vendas]);
+
+  if (!caps.allowAnalytics) {
+    return (
+      <div className="space-y-4">
+        <header className="flex items-center gap-2 pt-1">
+          <PieChart className="text-brand-600" />
+          <h1 className="text-2xl font-bold">Inteligência</h1>
+        </header>
+        <UpgradeBlock
+          titulo="Analytics não está no seu plano"
+          descricao="Veja receita por produto, mix de canais e tendências para vender mais. Disponível a partir do plano Equipe."
+          planoNecessario={planoQueLibera((p) => p.allowAnalytics)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -34,15 +55,17 @@ function Analytics() {
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className={`grid gap-2 ${caps.allowAdvancedAnalytics ? "grid-cols-3" : "grid-cols-2"}`}>
             <Kpi label="Ticket médio" valor={brl(a.ticketMedio)} />
             <Kpi label="Itens/venda" valor={a.itensPorVenda.toFixed(1)} />
-            <Kpi
-              label="Mês vs anterior"
-              valor={`${a.tendenciaMes >= 0 ? "+" : ""}${a.tendenciaMes.toFixed(0)}%`}
-              cor={a.tendenciaMes >= 0 ? "text-green-500" : "text-red-500"}
-              icon={a.tendenciaMes >= 0 ? TrendingUp : TrendingDown}
-            />
+            {caps.allowAdvancedAnalytics && (
+              <Kpi
+                label="Mês vs anterior"
+                valor={`${a.tendenciaMes >= 0 ? "+" : ""}${a.tendenciaMes.toFixed(0)}%`}
+                cor={a.tendenciaMes >= 0 ? "text-green-500" : "text-red-500"}
+                icon={a.tendenciaMes >= 0 ? TrendingUp : TrendingDown}
+              />
+            )}
           </div>
 
           {/* Vendas por produto (donut) */}
@@ -88,30 +111,41 @@ function Analytics() {
             ))}
           </section>
 
-          {/* Tendência mensal */}
-          <section className="card space-y-3">
-            <div className="font-semibold">Faturamento (6 meses)</div>
-            <BarsMes data={a.porMes} />
-          </section>
+          {/* AVANÇADO: tendência + ruptura (plano Expansão) */}
+          {caps.allowAdvancedAnalytics ? (
+            <>
+              <section className="card space-y-3">
+                <div className="font-semibold">Faturamento (6 meses)</div>
+                <BarsMes data={a.porMes} />
+              </section>
 
-          {/* Oportunidades perdidas */}
-          {a.ruptura.length > 0 && (
-            <section className="card space-y-2">
-              <div className="flex items-center gap-2 font-semibold text-amber-500">
-                <AlertTriangle size={18} /> Oportunidades perdidas
+              {a.ruptura.length > 0 && (
+                <section className="card space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-amber-500">
+                    <AlertTriangle size={18} /> Oportunidades perdidas
+                  </div>
+                  <p className="text-xs text-muted">
+                    Produtos sem estoque que vendiam bem — repor pode recuperar esta receita.
+                  </p>
+                  {a.ruptura.map((r) => (
+                    <div key={r.nome} className="flex items-center justify-between text-sm">
+                      <span className="truncate">{r.nome}</span>
+                      <span className="text-amber-500 font-semibold shrink-0">~{brl(r.perdaEstimada)}/mês</span>
+                    </div>
+                  ))}
+                </section>
+              )}
+            </>
+          ) : (
+            <Link href="/planos" className="card block bg-brand-500/5 border-brand-500/30">
+              <div className="flex items-center gap-2 font-semibold">
+                <Sparkles size={18} className="text-brand-500" /> Analytics avançado
               </div>
-              <p className="text-xs text-muted">
-                Produtos sem estoque que vendiam bem — repor pode recuperar esta receita.
+              <p className="text-sm text-muted mt-1">
+                Desbloqueie <b>tendência mensal</b> e <b>ruptura de estoque</b> (oportunidades perdidas) com o plano{" "}
+                <b>Expansão</b>. <span className="text-brand-500 font-semibold">Ver planos →</span>
               </p>
-              {a.ruptura.map((r) => (
-                <div key={r.nome} className="flex items-center justify-between text-sm">
-                  <span className="truncate">{r.nome}</span>
-                  <span className="text-amber-500 font-semibold shrink-0">
-                    ~{brl(r.perdaEstimada)}/mês
-                  </span>
-                </div>
-              ))}
-            </section>
+            </Link>
           )}
         </>
       )}

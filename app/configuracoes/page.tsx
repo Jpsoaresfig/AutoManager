@@ -5,7 +5,9 @@ import { useStore } from "@/lib/store";
 import { SEGMENTOS, categoriasDaLoja } from "@/lib/seed";
 import { aplicarCorMarca } from "@/lib/brand";
 import { uploadLogo } from "@/lib/uploadLogo";
-import type { Canal, Plano, Role } from "@/lib/types";
+import type { Canal, Role } from "@/lib/types";
+import { usePlano } from "@/lib/usePlano";
+import { brlPreco } from "@/lib/plans";
 import Guard from "@/components/Guard";
 import {
   Store,
@@ -45,33 +47,6 @@ const CANAIS: { id: Canal; label: string }[] = [
 
 const CORES = ["#db2777", "#7c3aed", "#2563eb", "#0d9488", "#ea580c", "#dc2626", "#ca8a04", "#111827"];
 
-const PLANOS: { id: Plano; nome: string; desc: string; perfis: string }[] = [
-  {
-    id: "gerencia",
-    nome: "Gerência",
-    desc: "Só o dono/admin. Estoque, vendas, financeiro e relatórios.",
-    perfis: "1 perfil (dono)",
-  },
-  {
-    id: "vendedor",
-    nome: "Gerência + Vendedor",
-    desc: "Dono + vendedores. O vendedor registra vendas, mas não cadastra produtos.",
-    perfis: "2 perfis (dono e vendedor)",
-  },
-  {
-    id: "entregas",
-    nome: "Entregas",
-    desc: "Tudo do anterior + perfil de motoboy com painel próprio de entregas.",
-    perfis: "3 perfis (dono, vendedor e motoboy)",
-  },
-];
-
-// papéis que cada plano permite criar
-const PAPEIS_DO_PLANO: Record<Plano, Role[]> = {
-  gerencia: [],
-  vendedor: ["vendedor"],
-  entregas: ["vendedor", "motoboy"],
-};
 const ROLE_LABEL: Record<Role, string> = {
   owner: "Dono",
   vendedor: "Vendedor",
@@ -289,39 +264,8 @@ function Configuracoes() {
         </div>
       </section>
 
-      {/* Planos */}
-      <section className="card space-y-3">
-        <div className="flex items-center gap-2 font-semibold">
-          <CreditCard size={18} className="text-brand-500" /> Planos
-        </div>
-        <div className="space-y-2">
-          {PLANOS.map((p) => {
-            const atual = config.plano === p.id;
-            return (
-              <button
-                key={p.id}
-                onClick={() => setConfig({ plano: p.id })}
-                className={`w-full text-left rounded-xl border p-3 transition ${
-                  atual ? "border-brand-500 bg-brand-500/5" : "border-default hover:surface-alt"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{p.nome}</span>
-                  {atual ? (
-                    <span className="text-xs text-brand-500 font-semibold flex items-center gap-1">
-                      <Check size={13} /> Plano atual
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted">Selecionar</span>
-                  )}
-                </div>
-                <p className="text-sm text-muted mt-1">{p.desc}</p>
-                <p className="text-xs text-muted mt-1">👤 {p.perfis}</p>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {/* Assinatura / plano */}
+      <PlanoPointer />
 
       {/* Equipe de acesso (membros) */}
       <MembrosSection />
@@ -395,6 +339,29 @@ function CategoriasSection() {
   );
 }
 
+function PlanoPointer() {
+  const { defContratado, emTrial, diasTrial } = usePlano();
+  return (
+    <Link href="/configuracoes/plano" className="card flex items-center gap-3 hover:surface-alt transition">
+      <div className="h-10 w-10 rounded-xl bg-brand-600/10 grid place-items-center shrink-0">
+        <CreditCard size={20} className="text-brand-500" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold flex items-center gap-2">
+          Plano {defContratado.nome}
+          {emTrial && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-600 text-white">Trial · {diasTrial}d</span>
+          )}
+        </div>
+        <p className="text-sm text-muted">
+          {brlPreco(defContratado.precoCentavos)}/mês · gerenciar assinatura e limites
+        </p>
+      </div>
+      <ExternalLink size={16} className="text-muted shrink-0" />
+    </Link>
+  );
+}
+
 function MiniLojaSection() {
   const { config } = useStore();
   return (
@@ -421,8 +388,12 @@ function MiniLojaSection() {
 }
 
 function MembrosSection() {
-  const { config, membros, usuarioId, criarMembro, removerMembro } = useStore();
-  const papeisDisponiveis = PAPEIS_DO_PLANO[config.plano] || [];
+  const { membros, usuarioId, criarMembro, removerMembro } = useStore();
+  const { caps } = usePlano();
+  const papeisDisponiveis: Role[] = [
+    ...(caps.allowVendedores ? ["vendedor" as Role] : []),
+    ...(caps.allowMotoboys ? ["motoboy" as Role] : []),
+  ];
   const outros = membros.filter((m) => m.id !== usuarioId);
 
   const [aberto, setAberto] = useState(false);
@@ -467,8 +438,11 @@ function MembrosSection() {
 
       {papeisDisponiveis.length === 0 && (
         <p className="text-sm text-muted">
-          Seu plano atual não inclui outros perfis. Escolha o plano <b>Gerência + Vendedor</b> ou{" "}
-          <b>Entregas</b> acima para criar logins de vendedor e motoboy.
+          Seu plano atual não inclui outros perfis.{" "}
+          <Link href="/planos" className="text-brand-500 font-semibold">
+            Faça upgrade
+          </Link>{" "}
+          para criar logins de vendedor e motoboy.
         </p>
       )}
 

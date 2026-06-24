@@ -16,15 +16,18 @@ import {
   MessageCircle,
   PieChart,
   Store,
+  Crown,
 } from "lucide-react";
-import type { Role, Plano } from "@/lib/types";
+import type { Role } from "@/lib/types";
+import { usePlano } from "@/lib/usePlano";
+import type { PlanoDef } from "@/lib/plans";
 
 type Item = {
   href: string;
   label: string;
   icon: any;
   roles: Role[];
-  plano?: Plano; // exige este plano (além do papel)
+  cap?: keyof PlanoDef; // exige esta capacidade do plano (ex.: allowEntregas)
   primary?: boolean; // destaque no mobile
   mobile?: boolean; // aparece no bottom nav
 };
@@ -33,21 +36,22 @@ const ITENS: Item[] = [
   { href: "/painel", label: "Painel", icon: LayoutDashboard, roles: ["owner"], mobile: true },
   { href: "/produtos", label: "Estoque", icon: Package, roles: ["owner", "vendedor"], mobile: true },
   { href: "/vender", label: "Vender", icon: PlusCircle, roles: ["owner", "vendedor"], primary: true, mobile: true },
-  { href: "/entregas", label: "Entregas", icon: Truck, roles: ["owner", "motoboy"], plano: "entregas", mobile: true },
+  { href: "/entregas", label: "Entregas", icon: Truck, roles: ["owner", "motoboy"], cap: "allowEntregas", mobile: true },
   { href: "/reposicao", label: "Repor", icon: TrendingUp, roles: ["owner"], mobile: true },
   { href: "/minha-loja", label: "Minha Loja", icon: Store, roles: ["owner"] },
   { href: "/revendedoras", label: "Equipe", icon: Users, roles: ["owner"] },
   { href: "/conversas", label: "Conversas", icon: MessageCircle, roles: ["owner"] },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, roles: ["owner"] },
   { href: "/analytics", label: "Inteligência", icon: PieChart, roles: ["owner"] },
+  { href: "/planos", label: "Planos", icon: Crown, roles: ["owner"] },
   { href: "/configuracoes", label: "Configurações", icon: Settings, roles: ["owner"] },
   { href: "/perfil", label: "Perfil", icon: User, roles: ["owner", "vendedor", "motoboy"], mobile: true },
 ];
 
-// motoboy só vê entregas no plano de entregas
-function visivel(it: Item, role: Role, plano: Plano) {
+// filtra por papel e por capacidade do plano (ex.: entregas só no Expansão)
+function visivel(it: Item, role: Role, caps: PlanoDef) {
   if (!it.roles.includes(role)) return false;
-  if (it.plano && plano !== it.plano) return false;
+  if (it.cap && !caps[it.cap]) return false;
   return true;
 }
 
@@ -56,10 +60,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const logoUrl = useStore((s) => s.config.logoUrl);
   const nomeLoja = useStore((s) => s.config.nomeLoja);
   const role = useStore((s) => s.role);
-  const plano = useStore((s) => s.config.plano);
+  const { caps } = usePlano();
 
-  const navDesktop = ITENS.filter((it) => visivel(it, role, plano));
-  const nav = ITENS.filter((it) => visivel(it, role, plano) && it.mobile).slice(0, 5);
+  const navDesktop = ITENS.filter((it) => visivel(it, role, caps));
+  const nav = ITENS.filter((it) => visivel(it, role, caps) && it.mobile).slice(0, 5);
 
   return (
     <div className="min-h-screen md:flex">

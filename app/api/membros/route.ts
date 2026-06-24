@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServer } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
+import { capacidades, type Assinatura, type PlanoId } from "@/lib/plans";
 
 // Cria/remove membros (vendedor, motoboy) com login+senha definidos pelo admin.
 // Usa a service_role (somente servidor) p/ criar usuários no Auth, mas SÓ depois
@@ -38,6 +39,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "E-mail e senha (mín. 6) obrigatórios" }, { status: 400 });
   if (!["vendedor", "motoboy"].includes(role))
     return NextResponse.json({ erro: "Papel inválido" }, { status: 400 });
+
+  // checagem de plano ANTES de criar o usuário (evita órfão + dá erro amigável)
+  const { data: a } = await admin()
+    .from("assinatura")
+    .select("plano, status, preco_centavos, periodo, data_inicio, data_fim, trial_ate")
+    .eq("org_id", dono.orgId)
+    .maybeSingle();
+  const assinatura: Assinatura | null = a
+    ? {
+        plano: a.plano as PlanoId,
+        status: a.status,
+        precoCentavos: a.preco_centavos ?? 0,
+        periodo: a.periodo ?? "mensal",
+        dataInicio: a.data_inicio ? new Date(a.data_inicio).getTime() : null,
+        dataFim: a.data_fim ? new Date(a.data_fim).getTime() : null,
+        trialAte: a.trial_ate ? new Date(a.trial_ate).getTime() : null,
+      }
+    : null;
+  const caps = capacidades(assinatura);
+  if ((role === "vendedor" && !caps.allowVendedores) || (role === "motoboy" && !caps.allowMotoboys))
+    return NextResponse.json(
+      { erro: `Seu plano não permite criar ${role === "vendedor" ? "vendedores" : "motoboys"}. Faça upgrade.` },
+      { status: 403 }
+    );
 
   const { data, error } = await admin().auth.admin.createUser({
     email,

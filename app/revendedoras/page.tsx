@@ -5,6 +5,9 @@ import { brl } from "@/lib/analytics";
 import Guard from "@/components/Guard";
 import { Plus, X, MessageCircle, BadgeDollarSign, Target, Pencil, KeyRound, Check, Mail } from "lucide-react";
 import type { Revendedora } from "@/lib/types";
+import { usePlano } from "@/lib/usePlano";
+import { UpgradeModal } from "@/components/UpgradeGate";
+import { planoQueLibera, fmtLimite } from "@/lib/plans";
 
 export default function RevendedorasPage() {
   return (
@@ -17,12 +20,22 @@ export default function RevendedorasPage() {
 function Revendedoras() {
   const { revendedoras, vendas, config, addRevendedora, updateRevendedora, marcarComissaoPaga } =
     useStore();
+  const { caps, uso, limiteAtingido } = usePlano();
   const [aberto, setAberto] = useState(false);
+  const [upsell, setUpsell] = useState(false);
   const [nome, setNome] = useState("");
   const [whats, setWhats] = useState("");
   const [emailNova, setEmailNova] = useState("");
   const [comissao, setComissao] = useState(String(config.comissaoPadrao));
   const [meta, setMeta] = useState("");
+
+  const noLimite = limiteAtingido("revendedoras");
+  const planoUpgrade = planoQueLibera((p) => p.maxRevendedoras > uso.revendedoras);
+
+  function novaRevendedora() {
+    if (noLimite) setUpsell(true);
+    else setAberto(true);
+  }
 
   const inicioMes = (() => {
     const d = new Date();
@@ -68,11 +81,38 @@ function Revendedoras() {
   return (
     <div className="space-y-3">
       <header className="flex items-center justify-between pt-1">
-        <h1 className="text-2xl font-bold">Revendedoras</h1>
-        <button onClick={() => setAberto(true)} className="btn-primary py-2 px-3 text-sm">
+        <div>
+          <h1 className="text-2xl font-bold">Revendedoras</h1>
+          <p className="text-xs text-muted">
+            {uso.revendedoras} / {fmtLimite(caps.maxRevendedoras)} no seu plano
+          </p>
+        </div>
+        <button onClick={novaRevendedora} className="btn-primary py-2 px-3 text-sm">
           <Plus size={18} /> Nova
         </button>
       </header>
+
+      {noLimite && (
+        <button
+          onClick={() => setUpsell(true)}
+          className="card w-full text-left bg-brand-500/5 border-brand-500/30 flex items-center justify-between"
+        >
+          <span className="text-sm">
+            Você atingiu o limite de <b>{fmtLimite(caps.maxRevendedoras)}</b> revendedoras.
+          </span>
+          <span className="text-brand-500 text-sm font-semibold">Fazer upgrade →</span>
+        </button>
+      )}
+
+      <UpgradeModal
+        aberto={upsell}
+        onClose={() => setUpsell(false)}
+        titulo="Limite de revendedoras atingido"
+        descricao={`Seu plano permite até ${fmtLimite(
+          caps.maxRevendedoras
+        )} revendedoras ativas. Faça upgrade para cadastrar mais.`}
+        planoNecessario={planoUpgrade}
+      />
 
       {revendedoras.length === 0 && (
         <div className="card text-center text-muted">

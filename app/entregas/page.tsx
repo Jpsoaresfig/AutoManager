@@ -4,6 +4,9 @@ import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import type { Entrega, StatusEntrega } from "@/lib/types";
 import Guard from "@/components/Guard";
+import { usePlano } from "@/lib/usePlano";
+import { UpgradeBlock } from "@/components/UpgradeGate";
+import { planoQueLibera } from "@/lib/plans";
 import { Truck, Plus, X, MapPin, Phone, Check, Bike } from "lucide-react";
 
 export default function EntregasPage() {
@@ -27,7 +30,26 @@ const STATUS_COR: Record<StatusEntrega, string> = {
 
 function Entregas() {
   const { entregas, membros, role, addEntrega, atribuirMotoboy, setStatusEntrega } = useStore();
+  const { caps } = usePlano();
   const dono = role === "owner";
+
+  // owner em plano sem entregas vê tela de upgrade (motoboy só existe no Expansão)
+  if (dono && !caps.allowEntregas) {
+    return (
+      <div className="space-y-4">
+        <header className="flex items-center gap-2 pt-1">
+          <Truck className="text-brand-600" />
+          <h1 className="text-2xl font-bold">Entregas</h1>
+        </header>
+        <UpgradeBlock
+          titulo="Entregas não está no seu plano"
+          descricao="Tenha motoboys com painel próprio, atribuição e acompanhamento de entregas. Disponível no plano Expansão."
+          planoNecessario={planoQueLibera((p) => p.allowEntregas)}
+        />
+      </div>
+    );
+  }
+
   const motoboys = membros.filter((m) => m.role === "motoboy");
   const [aberto, setAberto] = useState(false);
 

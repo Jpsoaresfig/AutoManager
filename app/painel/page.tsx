@@ -1,6 +1,8 @@
 "use client";
 import { useStore } from "@/lib/store";
 import { calcularMetricas, brl } from "@/lib/analytics";
+import { usePlano } from "@/lib/usePlano";
+import { fmtLimite } from "@/lib/plans";
 import Guard from "@/components/Guard";
 import Link from "next/link";
 import {
@@ -20,6 +22,8 @@ import {
   Settings,
   BarChart3,
   PackageX,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 
 export default function PainelPage() {
@@ -32,6 +36,7 @@ export default function PainelPage() {
 
 function Painel() {
   const { produtos, vendas, revendedoras, config } = useStore();
+  const { caps } = usePlano();
   const m = calcularMetricas(produtos, vendas, revendedoras);
 
   const variacao =
@@ -69,6 +74,9 @@ function Painel() {
           </Link>
         </div>
       </header>
+
+      {/* plano atual */}
+      <PlanoCard />
 
       {/* cards principais */}
       <div className="grid grid-cols-2 gap-3">
@@ -172,8 +180,8 @@ function Painel() {
         </div>
       </div>
 
-      {/* ranking revendedoras */}
-      {config.usaRevendedoras && m.rankingRevendedoras.length > 0 && (
+      {/* ranking revendedoras (plano Equipe+) */}
+      {caps.allowRanking && config.usaRevendedoras && m.rankingRevendedoras.length > 0 && (
         <div className="card">
           <div className="flex items-center gap-2 text-sm font-semibold mb-3">
             <Trophy size={16} className="text-amber-500" /> Ranking de revendedoras
@@ -214,5 +222,35 @@ function Painel() {
         </a>
       )}
     </div>
+  );
+}
+
+function PlanoCard() {
+  const { defContratado, caps, uso, emTrial, diasTrial } = usePlano();
+  const limRev = caps.maxRevendedoras;
+  const pctRev = limRev === Infinity ? 0 : Math.min(100, (uso.revendedoras / limRev) * 100);
+  return (
+    <Link href="/configuracoes/plano" className="card block hover:surface-alt transition">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 font-semibold">
+          <Crown size={18} className="text-brand-500" /> Plano {defContratado.nome}
+          {emTrial && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-600 text-white">Trial · {diasTrial}d</span>
+          )}
+        </div>
+        <span className="text-xs text-brand-500 font-semibold flex items-center gap-1">
+          Gerenciar <Sparkles size={13} />
+        </span>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-sm">
+        <span className="text-muted">Revendedoras</span>
+        <span className="font-semibold">{uso.revendedoras} / {fmtLimite(limRev)}</span>
+      </div>
+      {limRev !== Infinity && (
+        <div className="h-1.5 rounded-full surface-alt overflow-hidden mt-1">
+          <div className={`h-full rounded-full ${pctRev >= 100 ? "bg-red-500" : "bg-brand-600"}`} style={{ width: pctRev + "%" }} />
+        </div>
+      )}
+    </Link>
   );
 }
