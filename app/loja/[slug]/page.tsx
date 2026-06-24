@@ -43,6 +43,7 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
   const [chat, setChat] = useState(false);
   const [fontStack, setFontStack] = useState("");
   const [filtroCat, setFiltroCat] = useState<string | null>(null);
+  const [naoLidas, setNaoLidas] = useState(0);
 
   useEffect(() => {
     sb.current.rpc("loja_publica", { p_slug: params.slug }).then(({ data }) => {
@@ -52,6 +53,68 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
       if (d?.fonte) setFontStack(carregarFonte(d.fonte));
     });
   }, [params.slug]);
+
+  // badge de não lidas: se o cliente já conversou aqui, conta mensagens da LOJA
+  // chegadas depois da última vez que ele abriu o chat (mesmo com o chat fechado).
+  useEffect(() => {
+    if (!loja) return;
+    const orgId = loja.org_id;
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("amchat_" + orgId) : null;
+    if (!token) return;
+    const client = sb.current;
+    let canceled = false;
+    let canal: ReturnType<typeof client.channel> | null = null;
+
+    (async () => {
+      let {
+        data: { user },
+      } = await client.auth.getUser();
+      if (!user) {
+        const r = await client.auth.signInAnonymously();
+        user = r.data.user;
+      }
+      if (!user || canceled) return;
+      const {
+        data: { session },
+      } = await client.auth.getSession();
+      if (session) client.realtime.setAuth(session.access_token);
+
+      const { data } = await client.rpc("recuperar_conversa", { p_org: orgId, p_token: token });
+      if (canceled || !data) return;
+      const visto = Number(localStorage.getItem("amchat_visto_" + orgId) || 0);
+      const novas = ((data.mensagens as any[]) || []).filter(
+        (m) => m.autor_tipo === "loja" && new Date(m.criada_em).getTime() > visto
+      ).length;
+      setNaoLidas(novas);
+
+      canal = client
+        .channel("badge-" + data.id)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "mensagem", filter: `conversa_id=eq.${data.id}` },
+          (p) => {
+            if ((p.new as any).autor_tipo === "loja") setNaoLidas((n) => n + 1);
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      canceled = true;
+      if (canal) client.removeChannel(canal);
+    };
+  }, [loja]);
+
+  function abrirChat() {
+    if (loja) localStorage.setItem("amchat_visto_" + loja.org_id, String(Date.now()));
+    setNaoLidas(0);
+    setChat(true);
+  }
+  function fecharChat() {
+    if (loja) localStorage.setItem("amchat_visto_" + loja.org_id, String(Date.now()));
+    setNaoLidas(0);
+    setChat(false);
+  }
 
   if (loja === undefined)
     return (
@@ -141,13 +204,18 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
 
       {/* botão de chat */}
       <button
-        onClick={() => setChat(true)}
+        onClick={abrirChat}
         className="fixed bottom-5 right-5 z-40 bg-brand-600 text-white rounded-full shadow-lg shadow-brand-600/30 flex items-center gap-2 px-5 py-3.5 font-semibold"
       >
         <MessageCircle size={20} /> Falar com a loja
+        {naoLidas > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-red-500 text-white text-xs font-bold grid place-items-center border-2 border-[var(--bg)]">
+            {naoLidas > 9 ? "9+" : naoLidas}
+          </span>
+        )}
       </button>
 
-      {chat && <ChatWidget orgId={loja.org_id} sb={sb.current} nomeLoja={loja.nome} onClose={() => setChat(false)} />}
+      {chat && <ChatWidget orgId={loja.org_id} sb={sb.current} nomeLoja={loja.nome} onClose={fecharChat} />}
     </div>
   );
 }
@@ -253,6 +321,7 @@ function ChatWidget({
   const [texto, setTexto] = useState("");
   const meId = useRef<string | null>(null);
   const fimRef = useRef<HTMLDivElement>(null);
+  const chRef = useRef<ReturnType<typeof sb.channel> | null>(null);
 
   const tokenKey = "amchat_" + orgId; // token estável deste cliente nesta loja
 
@@ -279,7 +348,8 @@ function ChatWidget({
   }
 
   function assinarRealtime(convId: string) {
-    sb.channel("conv-" + convId)
+    chRef.current = sb
+      .channel("conv-" + convId)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "mensagem", filter: `conversa_id=eq.${convId}` },
@@ -370,7 +440,7 @@ function ChatWidget({
 
   useEffect(() => {
     return () => {
-      sb.removeAllChannels();
+      if (chRef.current) sb.removeChannel(chRef.current); // remove só o canal do widget
     };
   }, [sb]);
 
