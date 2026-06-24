@@ -163,7 +163,7 @@ function MinhaLoja() {
         </button>
       </header>
 
-      <div className="grid lg:grid-cols-2 gap-4 items-start">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-10 items-start">
         {/* ---------------- edição ---------------- */}
         <div className="space-y-4">
           {/* Link */}
@@ -365,8 +365,8 @@ function MinhaLoja() {
         </div>
 
         {/* ---------------- preview ---------------- */}
-        <div className="lg:sticky lg:top-4">
-          <div className="flex items-center gap-2 text-sm text-muted mb-2">
+        <div className="lg:sticky lg:top-8">
+          <div className="flex items-center gap-2 text-sm text-muted mb-3">
             <Smartphone size={15} /> Pré-visualização — é assim que sua cliente vê
           </div>
           <PreviewLoja
@@ -406,12 +406,12 @@ function PreviewLoja({
   const temContato = contato.whatsapp || contato.telefone || contato.email;
   const temRede = contato.instagram || contato.facebook || contato.tiktok;
   return (
-    <div className="mx-auto w-full max-w-sm rounded-[2rem] border-4 border-default surface overflow-hidden shadow-xl">
-      <div className="h-6 surface-alt flex items-center justify-center">
-        <div className="h-1.5 w-16 rounded-full bg-default/60" />
+    <div className="mx-auto w-full max-w-md rounded-[2.2rem] border-4 border-default surface overflow-hidden shadow-2xl">
+      <div className="h-7 surface-alt flex items-center justify-center">
+        <div className="h-1.5 w-20 rounded-full bg-default/60" />
       </div>
 
-      <div className="max-h-[620px] overflow-auto bg-[var(--bg)]" style={fontStack ? { fontFamily: fontStack } : undefined}>
+      <div className="max-h-[74vh] min-h-[520px] overflow-auto bg-[var(--bg)]" style={fontStack ? { fontFamily: fontStack } : undefined}>
         <header className="surface border-b border-default">
           <div className="px-4 py-4 flex items-center gap-3">
             {logoUrl ? (

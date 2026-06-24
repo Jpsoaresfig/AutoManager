@@ -98,7 +98,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* -------- conteúdo -------- */}
       <div className="flex-1 md:pl-60">
-        <main className="max-w-3xl mx-auto px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-12">
+        <main
+          className={`${
+            path === "/minha-loja" ? "max-w-7xl" : "max-w-3xl"
+          } mx-auto px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-12`}
+        >
           {children}
         </main>
       </div>
