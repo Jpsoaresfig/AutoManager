@@ -29,11 +29,15 @@ motoboy) e há um acesso externo separado para **revendedoras**.
 
 ## 2. Em que pé está (status atual)
 
-Todos os blocos abaixo estão **implementados, com build verde (22 rotas) e validados
+Todos os blocos abaixo estão **implementados, com build verde (28 rotas) e validados
 contra o banco real**.
 
 | Módulo | Status | Observação |
 |---|---|---|
+| **Planos & assinatura** (Solo/Equipe/Expansão) + trial + enforcement | ✅ Pronto | Tabela `assinatura`, limites em `lib/plans.ts`, triggers no banco |
+| **Pagamento (Mercado Pago)** — checkout + webhook | ✅ Integrado | `/planos` → checkout; `api/mercadopago/*` |
+| **Chat persistente por cliente** + badges de não lidas (loja e cliente) | ✅ Pronto | Token no localStorage + RPC de recuperação |
+| **Admin/suporte** (superadmin) — chamados | ✅ Pronto | `/admin` restrito por e-mail (ver §12) |
 | Cadastro/onboarding + multi-tenant (RLS) | ✅ Pronto | Trigger cria a org no signup |
 | Produto completo (marca, imposto, preço "de", fotos, variações/grade) | ✅ Pronto | |
 | Estoque (entrada, ajuste, mínimo, baixa na venda) | ✅ Pronto | |
@@ -76,19 +80,28 @@ Scripts: `npm run dev` · `npm run build` · `npm start` · `npm run lint`.
 
 ---
 
-## 4. Papéis e planos
+## 4. Papéis, planos e assinatura
 
-Papel mora em `public.usuario.role`; plano em `public.org.plano`.
+Papel mora em `public.usuario.role`; o plano vive em **`public.assinatura`** (fonte da
+verdade — a coluna antiga `org.plano` foi removida).
 
 **Papéis:** `owner` · `vendedor` · `motoboy` · *(revendedora é externa, ver §7)*.
+Há ainda um **superadmin** do produto (suporte), fora das lojas — ver §12.
 
-**Planos** (selecionáveis em Configurações):
-1. **Gerência** - só o dono.
-2. **Gerência + Vendedor** - dono + vendedores (registram venda, não cadastram produto).
-3. **Entregas** - tudo acima + motoboy com painel próprio.
+**Planos (assinatura):**
+1. **Solo — R$ 49/mês** — só o dono, até 3 revendedoras, loja online, relatórios básicos.
+2. **Equipe — R$ 99/mês** ⭐ — + vendedores internos, até 15 revendedoras, ranking, analytics, chat.
+3. **Expansão — R$ 199/mês** — + motoboys/entregas, revendedoras ilimitadas, analytics avançado (tendência + ruptura).
 
-Navegação e rotas se adaptam automaticamente ao papel (`lib/permissoes.ts`,
-`components/Guard.tsx`, `components/AppShell.tsx`).
+Toda org nova nasce com **trial de 14 dias com acesso Expansão**. Os limites/permissões são
+fonte única em **`lib/plans.ts`** (consumidos pelo hook `lib/usePlano.ts`) e **espelhados em
+triggers no banco** (enforcement real: bloqueia revendedora acima do limite e criação de
+vendedor/motoboy fora do plano). Troca de plano via RPC `mudar_plano` (owner); pagamento pelo
+**Mercado Pago**. Downgrade é **não destrutivo** — dados ficam, novos cadastros bloqueiam até
+regularizar.
+
+Navegação e rotas se adaptam ao papel e às **capacidades do plano**
+(`lib/permissoes.ts`, `components/Guard.tsx`, `components/AppShell.tsx`).
 
 ---
 
@@ -109,7 +122,10 @@ Navegação e rotas se adaptam automaticamente ao papel (`lib/permissoes.ts`,
 | `/analytics` | Inteligência: receita por produto, mix de canal, tendência mensal, ruptura. |
 | `/relatorios` | Relatórios + exportação. |
 | `/minha-loja` | **Construtor da loja online** (ver §6). |
-| `/configuracoes` | Loja, identidade, **categorias**, planos, equipe de acesso, atalho da loja. |
+| `/planos` | Escolha/assinatura de plano (checkout Mercado Pago). |
+| `/configuracoes` | Loja, identidade, **categorias**, aparência, equipe de acesso, atalho da loja. |
+| `/configuracoes/plano` | Assinatura: plano atual, status, **uso × limites**. |
+| `/admin` | **Superadmin** do produto: chamados de suporte de todas as lojas (ver §12). |
 | `/perfil` | Dados do usuário logado. |
 
 ### Público / externo
@@ -123,8 +139,10 @@ Navegação e rotas se adaptam automaticamente ao papel (`lib/permissoes.ts`,
 ### API (server-side, service role)
 | Rota | O que faz |
 |---|---|
-| `POST /api/membros` | Dono cria/remove login de vendedor/motoboy (valida que quem chama é owner). |
+| `POST /api/membros` | Dono cria/remove login de vendedor/motoboy (valida que quem chama é owner + plano). |
 | `POST /api/revendedora/ativar` | Revendedora ativa o acesso com o e-mail liberado + senha escolhida. |
+| `POST /api/mercadopago/assinar` | Inicia o checkout de assinatura no Mercado Pago. |
+| `POST /api/mercadopago/webhook` | Recebe notificações de pagamento (sem sessão; auto-protegido). |
 
 ---
 
@@ -175,7 +193,8 @@ Todas com `org_id` e RLS por loja, exceto onde indicado.
 
 | Tabela | Conteúdo |
 |---|---|
-| `org` | A loja: nome, segmento, **categorias[]**, cor, logo, plano, e campos da vitrine (slug, ativa, descrição, fonte, sobre, contato, redes). |
+| `org` | A loja: nome, segmento, **categorias[]**, cor/tema/fonte, logo, e campos da vitrine (slug, ativa, descrição, fonte, sobre, contato, redes). *(plano saiu daqui → `assinatura`)* |
+| `assinatura` | Plano da loja: `plano`, `status`, `trial_ate`, preço, período + ganchos de pagamento (`provider*`). Fonte da verdade do plano. |
 | `usuario` | Vínculo `auth.users` ↔ org + `role`. |
 | `produto` | Nome, categoria, marca, custo, preço, preço "de", imposto, descrição, imagens[], estoque, mínimo, ativo. |
 | `produto_variacao` | Grade (tamanho/cor) com SKU, estoque e ajuste de preço próprios. |
@@ -184,7 +203,8 @@ Todas com `org_id` e RLS por loja, exceto onde indicado.
 | `venda_item` | Item da venda (produto/variação, qtd, preços, comissão aplicada). |
 | `movimento_estoque` | Entradas/saídas/ajustes (baixa de venda referencia a venda). |
 | `entrega` | Entrega vinculada à venda + motoboy + status. |
-| `conversa` / `mensagem` | Chat cliente ↔ loja (Realtime + RLS por participante). |
+| `conversa` / `mensagem` | Chat cliente ↔ loja (Realtime + RLS por participante). `conversa` tem `cliente_token` (persistência por cliente) e `ultima_cliente_em` (badge de não lidas). |
+| `chamado` | Suporte: chamados das lojas, visíveis só ao superadmin (ver §12). |
 
 Funções auxiliares ficam no schema **`private`** (fora da Data API): `current_org_id()`,
 `current_role()`, `handle_new_user()` (bootstrap de signup, ciente de anônimo/revendedora).
@@ -207,6 +227,17 @@ Funções auxiliares ficam no schema **`private`** (fora da Data API): `current_
 | `0010_loja_completa` | Fonte, sobre, contato e redes na vitrine. |
 | `0011_revendedora_acesso` | Acesso self-service + RPCs da revendedora + parcelas. |
 | `0012_categorias_loja` | Categorias personalizadas por loja (`org.categorias[]`). |
+| `0013_assinaturas` | Tabela `assinatura` + trial + enforcement (triggers) + RPC `mudar_plano`; remove `org.plano`. |
+| `0014_aparencia` | Tema base e fonte do app (personalização da aparência). |
+| `0016_chamados` | Suporte: tabela `chamado` + RLS pelo e-mail do superadmin (ver §12). |
+| `0017_chat_token` | Chat persistente por cliente (`conversa.cliente_token` + RPC `recuperar_conversa`). |
+| `0018_chat_criada_em` | `recuperar_conversa` devolve `criada_em` (badge de não lidas no storefront). |
+| `0019_conversa_ultima_cliente` | `conversa.ultima_cliente_em` + trigger (badge de não lidas no inbox). |
+
+> **Numeração:** as migrations do chat foram renumeradas (`0017`–`0019`) para não colidir
+> com o fluxo paralelo de aparência/chamados (`0014`/`0016`). Por isso há um **gap no `0015`** —
+> inofensivo, já que o Supabase CLI ordena por nome. A ordem de dependência do chat
+> (`token → criada_em → conversa_ultima_cliente`) foi preservada. Tudo já aplicado no banco.
 
 ---
 
@@ -233,21 +264,50 @@ Build de produção: `npm run build && npm start`.
 app/
   (rotas - ver §5)             onboarding, painel, produtos, vender, revendedoras,
                                entregas, reposicao, conversas, analytics, relatorios,
-                               minha-loja, configuracoes, perfil,
+                               minha-loja, planos, configuracoes(+/plano), perfil, admin,
                                loja/[slug] (vitrine), acesso, revenda (público/externo),
-                               api/membros, api/revendedora/ativar
+                               api/membros, api/revendedora/ativar, api/mercadopago/*
 lib/
   store.ts        → estado global (Zustand) + acesso ao Supabase
   types.ts        → tipos do domínio
+  plans.ts        → fonte única de planos/limites; usePlano.ts → hook de capacidades/uso
+  admin.ts        → superadmin (e-mail), WhatsApp de suporte
   analytics.ts    → métricas, reposição, formatação (brl)
   seed.ts         → segmentos, categorias padrão, dados de exemplo
-  brand.ts        → paleta de cor da marca; fontes.ts → fontes da loja
+  brand.ts/aparencia.ts → paleta/tema/fonte; fontes.ts → fontes da loja
   contato.ts      → links de WhatsApp/Instagram/etc; slug.ts → slug da loja
   permissoes.ts   → rotas/home por papel; export.ts → exportação
+  useConversasNaoLidas.ts → contador de chat não lido (badge do menu)
+  mercadopago.ts  → integração de pagamento
   supabase/       → client.ts, server.ts, middleware.ts (sessão/proteção)
 components/
   AppShell.tsx    → navegação (sidebar desktop + bottom nav mobile)
   Guard.tsx       → hidratação, onboarding e bloqueio por papel
+  UpgradeGate.tsx → modal/bloco de upgrade de plano
   ThemeToggle.tsx → tema claro/escuro
+scripts/criar-admin.mjs → cria/reseta a conta superadmin
 supabase/migrations/  → SQL versionado (§9)
 ```
+
+---
+
+## 12. Admin / superadmin (suporte)
+
+O AutoManager tem uma área de **suporte** separada das lojas, para o time do produto atender
+chamados — não é o "admin" de uma loja (esse é o `owner`).
+
+- **Quem acessa:** uma única conta, definida em `lib/admin.ts` →
+  `SUPERADMIN_EMAIL = "admin@automanager.com"`. Só esse e-mail vê o item **"Admin"** no menu e
+  abre `/admin`.
+- **Criar a conta (uma vez):** na raiz do projeto, `node scripts/criar-admin.mjs` — cria
+  `admin@automanager.com` com senha provisória **`123mudar`** (precisa do `.env.local` com
+  `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Se já existir, **redefine a senha**.
+- **Entrar:** `/login` com esse e-mail → o item **"Admin"** aparece e `/admin` lista os
+  chamados de todas as lojas. **Troque a senha** depois (Supabase → Authentication → Users,
+  ou pelo perfil).
+- **Dados:** tabela `chamado` (migration `0016_chamados.sql`) com RLS que libera **só** o
+  e-mail do superadmin.
+- **Trocar quem é admin:** edite `SUPERADMIN_EMAIL` em `lib/admin.ts` **e** o e-mail no RLS de
+  `0016_chamados.sql` (o arquivo avisa isso no comentário).
+- **Suporte ao lojista:** `lib/admin.ts` também guarda o WhatsApp de suporte
+  (`SUPORTE_WHATSAPP`) usado nos CTAs de ajuda.
