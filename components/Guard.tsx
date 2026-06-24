@@ -1,12 +1,17 @@
 "use client";
-import { useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { aplicarAparencia } from "@/lib/aparencia";
 import { homeDe, podeAcessar } from "@/lib/permissoes";
 import AppShell from "./AppShell";
 
+// Sinaliza que já existe um Guard/AppShell montado acima (layout persistente).
+// Assim o <Guard> que cada página ainda usa vira passthrough e não remonta a shell.
+const GuardMontado = createContext(false);
+
 export default function Guard({ children }: { children: React.ReactNode }) {
+  const jaMontado = useContext(GuardMontado);
   const router = useRouter();
   const path = usePathname();
   const ready = useStore((s) => s.ready);
@@ -18,15 +23,17 @@ export default function Guard({ children }: { children: React.ReactNode }) {
   const role = useStore((s) => s.role);
 
   useEffect(() => {
+    if (jaMontado) return;
     if (!ready) hydrate();
-  }, [ready, hydrate]);
+  }, [jaMontado, ready, hydrate]);
 
   useEffect(() => {
+    if (jaMontado) return;
     aplicarAparencia({ corMarca, temaBase, appFonte });
-  }, [corMarca, temaBase, appFonte]);
+  }, [jaMontado, corMarca, temaBase, appFonte]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (jaMontado || !ready) return;
     // só o dono passa pelo onboarding; membros já entram numa loja pronta
     if (!completo && role === "owner") {
       router.replace("/onboarding");
@@ -34,7 +41,10 @@ export default function Guard({ children }: { children: React.ReactNode }) {
     }
     // bloqueia rota fora do papel
     if (!podeAcessar(role, path)) router.replace(homeDe(role));
-  }, [ready, completo, role, path, router]);
+  }, [jaMontado, ready, completo, role, path, router]);
+
+  // Já há um Guard/AppShell acima (no layout) -> não duplica, só repassa.
+  if (jaMontado) return <>{children}</>;
 
   if (!ready) {
     return (
@@ -43,5 +53,9 @@ export default function Guard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  return <AppShell>{children}</AppShell>;
+  return (
+    <GuardMontado.Provider value={true}>
+      <AppShell>{children}</AppShell>
+    </GuardMontado.Provider>
+  );
 }
