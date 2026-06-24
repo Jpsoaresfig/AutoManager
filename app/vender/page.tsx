@@ -9,8 +9,9 @@ import { Minus, Plus, Check, ShoppingBag } from "lucide-react";
 const FORMAS: { id: FormaPagamento; label: string }[] = [
   { id: "dinheiro", label: "💵 Dinheiro" },
   { id: "pix", label: "⚡ Pix" },
-  { id: "credito", label: "💳 Crédito" },
   { id: "debito", label: "🏧 Débito" },
+  { id: "credito", label: "💳 Crédito" },
+  { id: "boleto", label: "🧾 Boleto" },
 ];
 
 export default function VenderPage() {
@@ -40,6 +41,7 @@ function Vender() {
   const [canal, setCanal] = useState<Canal>(config.canais[0] || "whatsapp");
   const [revId, setRevId] = useState<string>("");
   const [forma, setForma] = useState<FormaPagamento>("dinheiro");
+  const [parcelas, setParcelas] = useState(1);
   const [descontoStr, setDescontoStr] = useState("");
   const [fiado, setFiado] = useState(false);
   const [sucesso, setSucesso] = useState<string | null>(null);
@@ -93,6 +95,7 @@ function Vender() {
       canal,
       revendedoraId: revId || null,
       formaPagamento: forma,
+      parcelas: forma === "credito" ? parcelas : 1,
       desconto,
       fiado,
     });
@@ -104,6 +107,7 @@ function Vender() {
     setCart({});
     setRevId("");
     setDescontoStr("");
+    setParcelas(1);
     setFiado(false);
     setTimeout(() => setSucesso(null), 2500);
   }
@@ -217,6 +221,24 @@ function Vender() {
               ))}
             </div>
 
+            {/* parcelas (só no crédito) */}
+            {forma === "credito" && (
+              <div>
+                <label className="label">Parcelas no cartão</label>
+                <select
+                  className="input py-2"
+                  value={parcelas}
+                  onChange={(e) => setParcelas(Number(e.target.value))}
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n}x {n === 1 ? "(à vista)" : `de ${brl(total / n)}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {config.usaRevendedoras && revendedoras.length > 0 && (
               <select
                 className="input"
@@ -263,7 +285,11 @@ function Vender() {
                 <div className="text-xl font-bold">{brl(total)}</div>
                 <div className="text-xs text-muted">
                   {comissao > 0 && <>comissão {brl(comissao)} · </>}
-                  {fiado ? "será registrada como a receber" : FORMAS.find((f) => f.id === forma)?.label}
+                  {fiado
+                    ? "será registrada como a receber"
+                    : `${FORMAS.find((f) => f.id === forma)?.label}${
+                        forma === "credito" && parcelas > 1 ? ` ${parcelas}x` : ""
+                      }`}
                 </div>
               </div>
               <button onClick={finalizar} className="btn-primary px-6">
