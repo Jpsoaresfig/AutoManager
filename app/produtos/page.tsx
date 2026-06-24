@@ -112,6 +112,8 @@ function Produtos() {
                 <img
                   src={p.imagens[0]}
                   alt={p.nome}
+                  loading="lazy"
+                  decoding="async"
                   className="h-12 w-12 rounded-lg object-cover shrink-0 border border-default"
                 />
               ) : (

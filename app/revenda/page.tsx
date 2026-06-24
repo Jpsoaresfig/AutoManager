@@ -292,7 +292,7 @@ function ProdutoCard({ p, onAdd }: { p: Prod; onAdd: (p: Prod, v: Variacao | nul
       <div className="aspect-square surface-alt relative">
         {p.imagens[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.imagens[0]} alt={p.nome} className="h-full w-full object-cover" />
+          <img src={p.imagens[0]} alt={p.nome} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full grid place-items-center text-muted"><Gem size={24} /></div>
         )}

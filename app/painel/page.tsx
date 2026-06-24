@@ -1,4 +1,6 @@
 "use client";
+import { useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useStore } from "@/lib/store";
 import { calcularMetricas, brl } from "@/lib/analytics";
 import { usePlano } from "@/lib/usePlano";
@@ -6,13 +8,11 @@ import { fmtLimite } from "@/lib/plans";
 import Guard from "@/components/Guard";
 import Reporte from "@/components/Reporte";
 import Link from "next/link";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  Tooltip,
-} from "recharts";
+// recharts é pesado: carrega só quando o painel monta, fora do bundle inicial.
+const VendasArea = dynamic(() => import("@/components/charts/VendasArea"), {
+  ssr: false,
+  loading: () => <div style={{ height: 140 }} className="grid place-items-center text-xs text-muted">carregando gráfico…</div>,
+});
 import {
   TrendingUp,
   TrendingDown,
@@ -38,7 +38,7 @@ export default function PainelPage() {
 function Painel() {
   const { produtos, vendas, revendedoras, config } = useStore();
   const { caps } = usePlano();
-  const m = calcularMetricas(produtos, vendas, revendedoras);
+  const m = useMemo(() => calcularMetricas(produtos, vendas, revendedoras), [produtos, vendas, revendedoras]);
 
   const variacao =
     m.faturamentoMesAnterior > 0
@@ -164,21 +164,7 @@ function Painel() {
       {/* gráfico */}
       <div className="card">
         <div className="text-sm font-semibold mb-2">Vendas (últimos 14 dias)</div>
-        <div style={{ width: "100%", height: 140 }}>
-          <ResponsiveContainer>
-            <AreaChart data={m.vendasPorDia}>
-              <defs>
-                <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#db2777" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#db2777" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="dia" fontSize={10} tickLine={false} axisLine={false} interval={2} />
-              <Tooltip formatter={(v: number) => brl(v)} />
-              <Area type="monotone" dataKey="total" stroke="#db2777" fill="url(#g)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <VendasArea data={m.vendasPorDia} />
       </div>
 
       {/* ranking revendedoras (plano Equipe+) */}

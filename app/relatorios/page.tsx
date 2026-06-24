@@ -1,16 +1,14 @@
 "use client";
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useStore } from "@/lib/store";
 import { calcularRelatorio, rankingRevendedoras, brl } from "@/lib/analytics";
 import { baixarCSV, dataHora } from "@/lib/export";
 import Guard from "@/components/Guard";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  Tooltip,
-} from "recharts";
+const VendasArea = dynamic(() => import("@/components/charts/VendasArea"), {
+  ssr: false,
+  loading: () => <div style={{ height: 150 }} className="grid place-items-center text-xs text-muted">carregando gráfico…</div>,
+});
 import {
   FileSpreadsheet,
   Printer,
@@ -233,21 +231,7 @@ function Relatorios() {
             up={r.tendencia >= 0}
           />
         </div>
-        <div style={{ width: "100%", height: 150 }}>
-          <ResponsiveContainer>
-            <AreaChart data={r.fluxo}>
-              <defs>
-                <linearGradient id="fx" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#db2777" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#db2777" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="dia" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <Tooltip formatter={(v: number) => brl(v)} />
-              <Area type="monotone" dataKey="valor" stroke="#db2777" fill="url(#fx)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <VendasArea data={r.fluxo} yKey="valor" gradientId="fx" interval="preserveStartEnd" height={150} />
       </div>
 
       {/* por forma de pagamento */}
