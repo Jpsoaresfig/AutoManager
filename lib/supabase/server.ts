@@ -18,7 +18,7 @@ export function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Chamado de um Server Component — ignorável quando há middleware refrescando a sessão.
+            // Chamado de um Server Component - ignorável quando há middleware refrescando a sessão.
           }
         },
       },

@@ -1,4 +1,4 @@
--- SemijóiasOS — schema de produção (multi-tenant com RLS).
+-- AutoManager - schema de produção (multi-tenant com RLS).
 -- Cada usuário (auth.users) pertence a uma org; todos os dados são isolados por org.
 
 create extension if not exists "pgcrypto";

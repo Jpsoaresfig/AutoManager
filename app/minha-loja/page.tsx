@@ -367,7 +367,7 @@ function MinhaLoja() {
         {/* ---------------- preview ---------------- */}
         <div className="lg:sticky lg:top-8">
           <div className="flex items-center gap-2 text-sm text-muted mb-3">
-            <Smartphone size={15} /> Pré-visualização — é assim que sua cliente vê
+            <Smartphone size={15} /> Pré-visualização - é assim que sua cliente vê
           </div>
           <PreviewLoja
             nome={nome || "Minha Loja"}

@@ -103,7 +103,7 @@ export default function Onboarding() {
               <label className="label">Qual o nome da sua loja?</label>
               <input
                 className="input"
-                placeholder="Ex.: Brilho & Cia"
+                placeholder="Ex.: Doces da Ana, Bijoux da Lu, Moda Bella…"
                 value={nomeLoja}
                 onChange={(e) => setNomeLoja(e.target.value)}
               />

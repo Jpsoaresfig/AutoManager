@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { aplicarCorMarca } from "@/lib/brand";
+import { aplicarAparencia } from "@/lib/aparencia";
 import { homeDe, podeAcessar } from "@/lib/permissoes";
 import AppShell from "./AppShell";
 
@@ -13,6 +13,8 @@ export default function Guard({ children }: { children: React.ReactNode }) {
   const hydrate = useStore((s) => s.hydrate);
   const completo = useStore((s) => s.config.onboardingCompleto);
   const corMarca = useStore((s) => s.config.corMarca);
+  const temaBase = useStore((s) => s.config.temaBase);
+  const appFonte = useStore((s) => s.config.appFonte);
   const role = useStore((s) => s.role);
 
   useEffect(() => {
@@ -20,8 +22,8 @@ export default function Guard({ children }: { children: React.ReactNode }) {
   }, [ready, hydrate]);
 
   useEffect(() => {
-    aplicarCorMarca(corMarca);
-  }, [corMarca]);
+    aplicarAparencia({ corMarca, temaBase, appFonte });
+  }, [corMarca, temaBase, appFonte]);
 
   useEffect(() => {
     if (!ready) return;

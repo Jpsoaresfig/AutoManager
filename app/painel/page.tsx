@@ -4,6 +4,7 @@ import { calcularMetricas, brl } from "@/lib/analytics";
 import { usePlano } from "@/lib/usePlano";
 import { fmtLimite } from "@/lib/plans";
 import Guard from "@/components/Guard";
+import Reporte from "@/components/Reporte";
 import Link from "next/link";
 import {
   ResponsiveContainer,
@@ -116,7 +117,7 @@ function Painel() {
         </div>
       </div>
 
-      {/* estoque crítico — sempre visível */}
+      {/* estoque crítico - sempre visível */}
       {criticos.length > 0 && (
         <div className="card border-red-500/40 bg-red-500/5">
           <div className="flex items-center justify-between mb-2">
@@ -221,6 +222,9 @@ function Painel() {
           <div className="text-sm text-brand-500/80 mt-1">É 1 toque. Toque aqui pra começar.</div>
         </a>
       )}
+
+      {/* suporte: reportar problema / abrir ticket */}
+      <Reporte />
     </div>
   );
 }

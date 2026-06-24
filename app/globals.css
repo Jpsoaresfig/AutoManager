@@ -4,7 +4,7 @@
 
 /* ----------------------------------------------------- tema (escuro = padrão) */
 :root {
-  /* paleta da marca (padrão rosa) — sobrescrita pela cor da loja em runtime */
+  /* paleta da marca (padrão rosa) - sobrescrita pela cor da loja em runtime */
   --brand-50: 253 242 248;
   --brand-100: 252 231 243;
   --brand-200: 251 207 232;

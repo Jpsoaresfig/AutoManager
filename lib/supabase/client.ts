@@ -1,6 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 
-// Client de navegador — usa a chave pública (anon/publishable). Seguro no browser.
+// Client de navegador - usa a chave pública (anon/publishable). Seguro no browser.
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

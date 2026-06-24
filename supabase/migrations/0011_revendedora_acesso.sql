@@ -1,6 +1,6 @@
 -- Acesso self-service das revendedoras: login próprio, catálogo e registro de venda.
 -- A revendedora NÃO recebe linha em public.usuario (logo, as policies org-wide não a
--- alcançam) — todo o acesso dela passa por RPCs SECURITY DEFINER escopadas ao auth.uid().
+-- alcançam) - todo o acesso dela passa por RPCs SECURITY DEFINER escopadas ao auth.uid().
 
 -- ----------------------------------------------------------- schema
 alter table public.revendedora

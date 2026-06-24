@@ -14,6 +14,8 @@ import type {
   Membro,
   Entrega,
   StatusEntrega,
+  Chamado,
+  TipoChamado,
 } from "./types";
 import type { Assinatura, PlanoId } from "./plans";
 
@@ -62,6 +64,8 @@ const configInicial: Config = {
   comissaoPadrao: 30,
   onboardingCompleto: false,
   corMarca: null,
+  temaBase: null,
+  appFonte: null,
   logoUrl: null,
   plano: "solo",
   slug: null,
@@ -77,6 +81,22 @@ const configInicial: Config = {
   lojaTiktok: null,
 };
 
+function mapChamado(r: any): Chamado {
+  return {
+    id: r.id,
+    orgId: r.org_id ?? null,
+    usuarioId: r.usuario_id ?? null,
+    nomeLoja: r.nome_loja ?? null,
+    emailContato: r.email_contato ?? null,
+    whatsapp: r.whatsapp ?? null,
+    tipo: (r.tipo ?? "erro") as TipoChamado,
+    assunto: r.assunto,
+    mensagem: r.mensagem,
+    status: r.status ?? "aberto",
+    criadoEm: new Date(r.created_at).getTime(),
+    resolvidoEm: r.resolved_at ? new Date(r.resolved_at).getTime() : null,
+  };
+}
 function mapMembro(r: any): Membro {
   return { id: r.id, nome: r.nome ?? null, email: r.email ?? null, role: r.role };
 }
@@ -178,6 +198,7 @@ interface State {
   ready: boolean;
   orgId: string | null;
   usuarioId: string | null;
+  email: string | null;
   role: Role;
   config: Config;
   assinatura: Assinatura | null;
@@ -234,6 +255,17 @@ interface State {
   }) => Promise<Venda | null>;
   marcarComissaoPaga: (revendedoraId: string) => Promise<void>;
   marcarVendaRecebida: (vendaId: string) => Promise<void>;
+
+  // suporte / chamados
+  abrirChamado: (args: {
+    tipo: TipoChamado;
+    assunto: string;
+    mensagem: string;
+    emailContato?: string;
+    whatsapp?: string;
+  }) => Promise<{ ok: boolean; erro?: string }>;
+  listarChamados: () => Promise<Chamado[]>;
+  resolverChamado: (id: string, resolvido: boolean) => Promise<void>;
 }
 
 export const useStore = create<State>()((set, get) => {
@@ -243,6 +275,7 @@ export const useStore = create<State>()((set, get) => {
     ready: false,
     orgId: null,
     usuarioId: null,
+    email: null,
     role: "owner",
     config: configInicial,
     assinatura: null,
@@ -302,6 +335,7 @@ export const useStore = create<State>()((set, get) => {
         ready: true,
         orgId: org?.id ?? null,
         usuarioId: user.id,
+        email: user.email ?? null,
         role: (eu?.role as Role) ?? "owner",
         assinatura,
         config: org
@@ -315,6 +349,8 @@ export const useStore = create<State>()((set, get) => {
               comissaoPadrao: Number(org.comissao_padrao),
               onboardingCompleto: org.onboarding_completo,
               corMarca: org.cor_marca ?? null,
+              temaBase: org.tema_base ?? null,
+              appFonte: org.app_fonte ?? null,
               logoUrl: org.logo_url ?? null,
               plano: (assin?.plano as PlanoId) ?? "solo",
               slug: org.slug ?? null,
@@ -352,6 +388,8 @@ export const useStore = create<State>()((set, get) => {
       if (c.comissaoPadrao !== undefined) patch.comissao_padrao = c.comissaoPadrao;
       if (c.onboardingCompleto !== undefined) patch.onboarding_completo = c.onboardingCompleto;
       if (c.corMarca !== undefined) patch.cor_marca = c.corMarca;
+      if (c.temaBase !== undefined) patch.tema_base = c.temaBase;
+      if (c.appFonte !== undefined) patch.app_fonte = c.appFonte;
       if (c.logoUrl !== undefined) patch.logo_url = c.logoUrl;
       if (c.slug !== undefined) patch.slug = c.slug;
       if (c.lojaAtiva !== undefined) patch.loja_ativa = c.lojaAtiva;
@@ -364,7 +402,15 @@ export const useStore = create<State>()((set, get) => {
       if (c.lojaInstagram !== undefined) patch.loja_instagram = c.lojaInstagram;
       if (c.lojaFacebook !== undefined) patch.loja_facebook = c.lojaFacebook;
       if (c.lojaTiktok !== undefined) patch.loja_tiktok = c.lojaTiktok;
-      await sb().from("org").update(patch).eq("id", orgId);
+
+      const { error } = await sb().from("org").update(patch).eq("id", orgId);
+      // resiliência: se as colunas de aparência ainda não existem no banco
+      // (migration 0014 não aplicada), salva o resto sem elas em vez de falhar tudo.
+      if (error && /tema_base|app_fonte|column/i.test(error.message)) {
+        delete patch.tema_base;
+        delete patch.app_fonte;
+        await sb().from("org").update(patch).eq("id", orgId);
+      }
     },
 
     mudarPlano: async (plano) => {
@@ -780,7 +826,7 @@ export const useStore = create<State>()((set, get) => {
       for (const it of itens)
         baixaPorProduto.set(it.produtoId, (baixaPorProduto.get(it.produtoId) || 0) + it.qtd);
 
-      // otimista — baixa no agregado do produto e na variação correspondente
+      // otimista - baixa no agregado do produto e na variação correspondente
       set((st) => ({
         vendas: [venda, ...st.vendas],
         produtos: st.produtos.map((p) => {
@@ -897,6 +943,44 @@ export const useStore = create<State>()((set, get) => {
         .from("venda")
         .update({ status_pagamento: "paga", data_pagamento: new Date(agora).toISOString() })
         .eq("id", vendaId);
+    },
+
+    abrirChamado: async ({ tipo, assunto, mensagem, emailContato, whatsapp }) => {
+      const { orgId, usuarioId, email, config } = get();
+      if (!usuarioId) return { ok: false, erro: "Sessão expirada. Entre novamente." };
+      if (!assunto.trim() || !mensagem.trim())
+        return { ok: false, erro: "Preencha assunto e mensagem." };
+      const { error } = await sb().from("chamado").insert({
+        org_id: orgId,
+        usuario_id: usuarioId,
+        nome_loja: config.nomeLoja || null,
+        email_contato: (emailContato || email || "").trim() || null,
+        whatsapp: (whatsapp || "").trim() || null,
+        tipo,
+        assunto: assunto.trim(),
+        mensagem: mensagem.trim(),
+      });
+      if (error) return { ok: false, erro: error.message };
+      return { ok: true };
+    },
+
+    listarChamados: async () => {
+      const { data, error } = await sb()
+        .from("chamado")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return (data || []).map(mapChamado);
+    },
+
+    resolverChamado: async (id, resolvido) => {
+      await sb()
+        .from("chamado")
+        .update({
+          status: resolvido ? "resolvido" : "aberto",
+          resolved_at: resolvido ? new Date().toISOString() : null,
+        })
+        .eq("id", id);
     },
   };
 });

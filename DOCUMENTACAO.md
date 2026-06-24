@@ -1,4 +1,4 @@
-# AutoManager — Documentação
+# AutoManager - Documentação
 
 > Estado deste documento: **2026-06-24**. Reflete o código atual no branch `main`
 > (repositório: `https://github.com/Jpsoaresfig/AutoManager.git`).
@@ -7,9 +7,12 @@
 
 ## 1. O que é a aplicação
 
-**AutoManager** é um SaaS de gestão para pequenos lojistas brasileiros (nicho inicial:
-**semijoias e revendedoras**). É um **PWA mobile-first** que controla estoque, vendas,
-comissões, entregas e ainda dá à loja uma **vitrine pública própria** com chat em tempo real.
+**AutoManager** é um SaaS de gestão **acessível para micronegócios brasileiros** - doces e
+comida caseira, bijuterias, semijoias, cosméticos, roupas, papelaria, pet shop, artesanato e
+qualquer pequena loja que hoje não pode pagar caro por um sistema. É um **PWA mobile-first** que
+controla estoque, vendas, comissões, entregas e ainda dá à loja uma **vitrine pública própria**
+com chat em tempo real. A loja é **totalmente configurável** (categorias, comissões, marca e
+cores), então o sistema se molda ao negócio - não o contrário.
 
 Cada conta é uma **loja (org)** isolada das demais por **RLS** (Row Level Security) no
 Postgres do Supabase. Vários papéis de usuário convivem na mesma loja (dono, vendedor,
@@ -63,7 +66,7 @@ contra o banco real**.
 | Frontend | **Next.js 14** (App Router) + React 18 + TypeScript |
 | Estilo | Tailwind CSS + `lucide-react` (ícones) |
 | Gráficos | `recharts` (relatórios) + SVG próprio (analytics) |
-| Estado | **Zustand** (`lib/store.ts`) — write-through: lê/grava direto no Supabase |
+| Estado | **Zustand** (`lib/store.ts`) - write-through: lê/grava direto no Supabase |
 | Auth/sessão | `@supabase/ssr` (cookies) + `middleware.ts` (refresh + proteção de rota) |
 | Banco | **Supabase Postgres** com RLS por loja |
 | Storage | Supabase Storage (logos e fotos de produto) |
@@ -80,9 +83,9 @@ Papel mora em `public.usuario.role`; plano em `public.org.plano`.
 **Papéis:** `owner` · `vendedor` · `motoboy` · *(revendedora é externa, ver §7)*.
 
 **Planos** (selecionáveis em Configurações):
-1. **Gerência** — só o dono.
-2. **Gerência + Vendedor** — dono + vendedores (registram venda, não cadastram produto).
-3. **Entregas** — tudo acima + motoboy com painel próprio.
+1. **Gerência** - só o dono.
+2. **Gerência + Vendedor** - dono + vendedores (registram venda, não cadastram produto).
+3. **Entregas** - tudo acima + motoboy com painel próprio.
 
 Navegação e rotas se adaptam automaticamente ao papel (`lib/permissoes.ts`,
 `components/Guard.tsx`, `components/AppShell.tsx`).
@@ -131,9 +134,9 @@ A loja monta a própria página pública, com **preview ao vivo** (moldura de ce
 
 - **Link** próprio: `…/loja/<slug>` (editável, copiar/abrir, ligar/desligar "No ar").
 - **Identidade:** nome, **escolha de fonte** (9 opções via Google Fonts sob demanda),
-  cor da marca (gera paleta 50–900), logo.
+  cor da marca (gera paleta 50-900), logo.
 - **Sobre**, **Contato** (WhatsApp, telefone, e-mail) e **Redes sociais** (Instagram,
-  Facebook, TikTok) — viram botões/links na vitrine.
+  Facebook, TikTok) - viram botões/links na vitrine.
 - **Vitrine:** mostra os produtos ativos com selo de estoque ("Esgotado" quando zerado),
   resumo de quantos aparecem/ocultos/sem estoque, e filtro por categoria.
 
@@ -150,16 +153,16 @@ lucros da loja. Em vez disso:
 
 - A revendedora é identificada por `revendedora.user_id = auth.uid()`.
 - Todo o acesso dela passa por **RPCs `SECURITY DEFINER` escopadas** ao próprio login:
-  - `revendedora_me()` — identidade dela + da loja (sem dados sensíveis).
-  - `revendedora_catalogo()` — produtos ativos **sem custo**.
-  - `revendedora_registrar_venda(...)` — valida estoque, calcula total/comissão, baixa estoque.
-  - `revendedora_minhas_vendas()` — só as vendas dela, **sem lucro/custo**.
+  - `revendedora_me()` - identidade dela + da loja (sem dados sensíveis).
+  - `revendedora_catalogo()` - produtos ativos **sem custo**.
+  - `revendedora_registrar_venda(...)` - valida estoque, calcula total/comissão, baixa estoque.
+  - `revendedora_minhas_vendas()` - só as vendas dela, **sem lucro/custo**.
 
 **Fluxo de ativação:** o dono cadastra o e-mail e clica em **"Liberar acesso"**. A
 revendedora vai em `/acesso`, informa o e-mail e **cria a própria senha** (1º acesso). A
 rota `/api/revendedora/ativar` só cria o login se o acesso estiver liberado e ainda não
 ativado. ⚠️ Como não há envio de e-mail, existe uma pequena janela entre liberar e ativar
-em que alguém que conheça o e-mail poderia reivindicá-lo — endurecer com código é opcional.
+em que alguém que conheça o e-mail poderia reivindicá-lo - endurecer com código é opcional.
 
 **Validação:** testes end-to-end confirmaram (10/10) que a revendedora **não lê** `venda`
 nem `produto.custo` diretamente, que o estoque baixa correto e que parcelas/comissão gravam.
@@ -216,9 +219,9 @@ npm run dev                         # http://localhost:3000
 ```
 
 **Variáveis de ambiente** (`.env.local`, fora do git):
-- `NEXT_PUBLIC_SUPABASE_URL` — URL do projeto.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — chave pública (segura no browser).
-- `SUPABASE_SERVICE_ROLE_KEY` — **secreta, só no servidor** (rotas `/api`). Nunca commitar.
+- `NEXT_PUBLIC_SUPABASE_URL` - URL do projeto.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - chave pública (segura no browser).
+- `SUPABASE_SERVICE_ROLE_KEY` - **secreta, só no servidor** (rotas `/api`). Nunca commitar.
 
 Build de produção: `npm run build && npm start`.
 
@@ -228,7 +231,7 @@ Build de produção: `npm run build && npm start`.
 
 ```
 app/
-  (rotas — ver §5)             onboarding, painel, produtos, vender, revendedoras,
+  (rotas - ver §5)             onboarding, painel, produtos, vender, revendedoras,
                                entregas, reposicao, conversas, analytics, relatorios,
                                minha-loja, configuracoes, perfil,
                                loja/[slug] (vitrine), acesso, revenda (público/externo),

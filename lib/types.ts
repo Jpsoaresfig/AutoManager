@@ -118,6 +118,8 @@ export interface Config {
   comissaoPadrao: number;
   onboardingCompleto: boolean;
   corMarca: string | null;
+  temaBase: string | null;
+  appFonte: string | null;
   logoUrl: string | null;
   plano: Plano;
   slug: string | null;
@@ -131,6 +133,24 @@ export interface Config {
   lojaInstagram: string | null;
   lojaFacebook: string | null;
   lojaTiktok: string | null;
+}
+
+export type TipoChamado = "erro" | "duvida" | "sugestao";
+export type StatusChamado = "aberto" | "resolvido";
+
+export interface Chamado {
+  id: string;
+  orgId: string | null;
+  usuarioId: string | null;
+  nomeLoja: string | null;
+  emailContato: string | null;
+  whatsapp: string | null;
+  tipo: TipoChamado;
+  assunto: string;
+  mensagem: string;
+  status: StatusChamado;
+  criadoEm: number;
+  resolvidoEm: number | null;
 }
 
 export interface Conversa {

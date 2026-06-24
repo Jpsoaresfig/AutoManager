@@ -1,4 +1,4 @@
-// Exportação de dados — CSV (abre no Excel) e impressão/PDF.
+// Exportação de dados - CSV (abre no Excel) e impressão/PDF.
 
 export function baixarCSV(nomeArquivo: string, header: string[], linhas: (string | number)[][]) {
   const esc = (v: string | number) => {

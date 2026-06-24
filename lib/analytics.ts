@@ -108,7 +108,7 @@ export function calcularMetricas(
   }
   const rankingRevendedoras = [...revMap.entries()]
     .map(([id, d]) => ({
-      nome: revendedoras.find((r) => r.id === id)?.nome || "—",
+      nome: revendedoras.find((r) => r.id === id)?.nome || "-",
       total: d.total,
       pendente: d.pendente,
     }))
@@ -232,7 +232,7 @@ export function calcularRelatorio(vendas: Venda[], deMs: number, ateMs: number):
   }
   const fluxoTotal = recebido;
   const fluxoMedia = fluxoTotal / dias;
-  const pico = fluxo.reduce((m, f) => (f.valor > m.valor ? f : m), { valor: 0, dia: "—", ts: 0 });
+  const pico = fluxo.reduce((m, f) => (f.valor > m.valor ? f : m), { valor: 0, dia: "-", ts: 0 });
   const metade = Math.floor(fluxo.length / 2);
   const p1 = fluxo.slice(0, metade).reduce((a, f) => a + f.valor, 0);
   const p2 = fluxo.slice(metade).reduce((a, f) => a + f.valor, 0);

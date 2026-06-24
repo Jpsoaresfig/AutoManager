@@ -89,7 +89,7 @@ function Relatorios() {
       .filter((v) => v.data >= deMs && v.data <= ateMs)
       .sort((a, b) => a.data - b.data);
     const nome = (id: string | null) =>
-      id ? revendedoras.find((x) => x.id === id)?.nome ?? "—" : "Loja";
+      id ? revendedoras.find((x) => x.id === id)?.nome ?? "-" : "Loja";
     const formaLabel: Record<string, string> = {
       dinheiro: "Dinheiro",
       pix: "Pix",
@@ -221,7 +221,7 @@ function Relatorios() {
       {/* fluxo de caixa */}
       <div className="card">
         <div className="flex items-center gap-2 font-semibold">
-          <Wallet size={18} className="text-brand-500" /> Fluxo de Caixa — entradas no período
+          <Wallet size={18} className="text-brand-500" /> Fluxo de Caixa - entradas no período
         </div>
         <div className="text-2xl font-bold mt-1">{brl(r.fluxoTotal)}</div>
         <div className="grid grid-cols-3 gap-2 my-3">
@@ -267,7 +267,7 @@ function Relatorios() {
       {config.usaRevendedoras && ranking.length > 0 && (
         <div className="card">
           <div className="flex items-center gap-2 font-semibold mb-3">
-            <Trophy size={18} className="text-amber-500" /> Quem vende mais — e menos
+            <Trophy size={18} className="text-amber-500" /> Quem vende mais - e menos
           </div>
           <div className="space-y-1.5">
             {ranking.map((r2, i) => {

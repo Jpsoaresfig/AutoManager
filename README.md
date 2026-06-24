@@ -1,4 +1,4 @@
-# 💎 SemijóiasOS
+# 💎 AutoManager
 
 SaaS de gestão de **semijoias e revendedoras** para pequenos lojistas brasileiros.
 Controle de estoque, vendas em 1 toque, comissão automática e reposição inteligente.
@@ -13,7 +13,7 @@ npm run dev
 # abre http://localhost:3000
 ```
 
-> `.env.local` contém apenas a **chave pública (publishable)** do Supabase — segura no browser.
+> `.env.local` contém apenas a **chave pública (publishable)** do Supabase - segura no browser.
 > Nunca coloque a `service_role`/secret aqui.
 
 ## Autenticação e multi-tenant
@@ -32,11 +32,11 @@ npm run build && npm start
 ## Como usar (fluxo de demo)
 
 0. **Criar conta** em `/login` (e-mail + senha, entra na hora).
-1. **Onboarding** (< 2 min) — escolha "começar com exemplos" para já ter catálogo + 3 revendedoras.
-2. **Vender** — toque no botão central, selecione produtos, escolha canal/revendedora, registre.
-3. **Painel** — faturamento, lucro, comissão pendente, ranking e gráfico.
-4. **Repor** — sugestões automáticas do que comprar (média de venda dos últimos 30 dias).
-5. **Equipe** — comissão pendente por revendedora + botão "pagar" e link de WhatsApp.
+1. **Onboarding** (< 2 min) - escolha "começar com exemplos" para já ter catálogo + 3 revendedoras.
+2. **Vender** - toque no botão central, selecione produtos, escolha canal/revendedora, registre.
+3. **Painel** - faturamento, lucro, comissão pendente, ranking e gráfico.
+4. **Repor** - sugestões automáticas do que comprar (média de venda dos últimos 30 dias).
+5. **Equipe** - comissão pendente por revendedora + botão "pagar" e link de WhatsApp.
 
 > Cada conta tem seus próprios dados (isolados por RLS). Para começar do zero, crie outra conta.
 
@@ -46,7 +46,7 @@ npm run build && npm start
 |---|---|
 | Frontend | Next.js 14 (App Router) + Tailwind + lucide + recharts |
 | Auth/sessão | `@supabase/ssr` (cookies) + `middleware.ts` (refresh + proteção de rotas) |
-| Dados | Supabase Postgres — `lib/store.ts` (Zustand write-through) lê/grava via `supabase-js` |
+| Dados | Supabase Postgres - `lib/store.ts` (Zustand write-through) lê/grava via `supabase-js` |
 | Lógica de negócio | `lib/store.ts` (estoque/comissão) + `lib/analytics.ts` (reposição/métricas) |
 | Schema | `supabase/migrations/0001_init.sql` (multi-tenant + RLS + trigger de bootstrap) |
 
@@ -73,7 +73,7 @@ supabase/       → migration SQL de produção
 ## Modelo de monetização (resumo)
 
 - **Free**: até 20 produtos, sem revendedoras (isca de TikTok).
-- **Pro — R$ 49/mês** ⭐: ilimitado + revendedoras + comissão + reposição.
-- **Loja+ — R$ 99/mês**: multiusuário + relatórios (ancoragem).
+- **Pro - R$ 49/mês** ⭐: ilimitado + revendedoras + comissão + reposição.
+- **Loja+ - R$ 99/mês**: multiusuário + relatórios (ancoragem).
 
 Meta: 10 clientes em 72h via DM manual no Instagram/grupos de Facebook do nicho.

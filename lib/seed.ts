@@ -1,15 +1,26 @@
-// Templates de catálogo por segmento — usados para auto-configurar o onboarding.
+// Templates de catálogo por segmento - sugestões iniciais que o lojista pode editar.
+// O AutoManager atende micronegócios em geral; estes são só pontos de partida.
 export const CATEGORIAS_POR_SEGMENTO: Record<string, string[]> = {
   semijoias: ["Anéis", "Brincos", "Colares", "Pulseiras", "Conjuntos", "Tornozeleiras"],
-  joias: ["Anéis", "Brincos", "Colares", "Pulseiras", "Alianças"],
   bijuteria: ["Brincos", "Colares", "Pulseiras", "Tiaras", "Pingentes"],
+  joias: ["Anéis", "Brincos", "Colares", "Pulseiras", "Alianças"],
+  cosmeticos: ["Maquiagem", "Skincare", "Perfumaria", "Cabelos", "Unhas"],
+  doces: ["Doces", "Salgados", "Bolos & Tortas", "Kits", "Encomendas"],
+  roupas: ["Blusas", "Calças", "Vestidos", "Calçados", "Acessórios"],
+  papelaria: ["Material escolar", "Canetas", "Cadernos", "Presentes", "Festa"],
+  petshop: ["Ração", "Petiscos", "Higiene", "Brinquedos", "Acessórios"],
   outro: ["Geral"],
 };
 
 export const SEGMENTOS = [
+  { id: "doces", label: "Doces & comida caseira" },
   { id: "semijoias", label: "Semijoias" },
-  { id: "joias", label: "Joias" },
   { id: "bijuteria", label: "Bijuteria" },
+  { id: "cosmeticos", label: "Cosméticos & perfumaria" },
+  { id: "roupas", label: "Roupas & acessórios" },
+  { id: "papelaria", label: "Papelaria & presentes" },
+  { id: "petshop", label: "Pet shop" },
+  { id: "joias", label: "Joias" },
   { id: "outro", label: "Outro" },
 ];
 
@@ -19,7 +30,7 @@ export function categoriasDaLoja(config: { categorias?: string[]; segmento: stri
   return CATEGORIAS_POR_SEGMENTO[config.segmento] || ["Geral"];
 }
 
-// Produtos de exemplo para quem escolhe "começar com exemplos" — demoável na hora.
+// Produtos de exemplo para quem escolhe "começar com exemplos" - demoável na hora.
 export function produtosExemplo(categorias: string[]) {
   const base = [
     { nome: "Anel Solitário Folheado", categoria: "Anéis", custo: 8, precoVenda: 35, estoqueAtual: 12 },

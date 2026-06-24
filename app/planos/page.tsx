@@ -74,7 +74,7 @@ function Planos() {
         <div className="card bg-brand-500/5 border-brand-500/30 flex items-center gap-3">
           <Sparkles className="text-brand-500 shrink-0" />
           <div className="text-sm">
-            <b>Teste grátis ativo</b> — você está com acesso total (Expansão) por mais{" "}
+            <b>Teste grátis ativo</b> - você está com acesso total (Expansão) por mais{" "}
             <b>{diasTrial} dia{diasTrial === 1 ? "" : "s"}</b>. Escolha um plano para continuar sem interrupção.
           </div>
         </div>
@@ -143,7 +143,7 @@ function Planos() {
       <div className="card flex items-start gap-3 text-sm text-muted">
         <ShieldCheck size={18} className="text-brand-500 shrink-0 mt-0.5" />
         <div>
-          Pagamento seguro pelo <b>Mercado Pago</b> — cartão, Pix ou boleto. A cobrança é mensal e
+          Pagamento seguro pelo <b>Mercado Pago</b> - cartão, Pix ou boleto. A cobrança é mensal e
           recorrente; você cancela quando quiser e seus dados nunca são apagados. Ao assinar, você é
           levado ao ambiente do Mercado Pago para concluir o pagamento.
         </div>

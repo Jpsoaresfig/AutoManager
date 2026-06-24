@@ -1,34 +1,42 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getTema, applyTema, type Tema } from "@/lib/theme";
+import { useStore } from "@/lib/store";
+import { aplicarAparencia, temaBaseDef } from "@/lib/aparencia";
 import { Moon, Sun } from "lucide-react";
 
+// Atalho rápido claro/escuro (preferência da sessão). Compõe com a cor da marca
+// e a fonte definidas pela loja. O tema base completo fica em Configurações.
 export default function ThemeToggle() {
-  const [tema, setTema] = useState<Tema>("escuro");
+  const config = useStore((s) => s.config);
+  const [claro, setClaro] = useState(false);
 
   useEffect(() => {
-    setTema(getTema());
-  }, []);
+    setClaro(temaBaseDef(config.temaBase).claro);
+  }, [config.temaBase]);
 
-  function escolher(t: Tema) {
-    setTema(t);
-    applyTema(t);
+  function escolher(querClaro: boolean) {
+    setClaro(querClaro);
+    aplicarAparencia({
+      corMarca: config.corMarca,
+      appFonte: config.appFonte,
+      temaBase: querClaro ? "claro" : "escuro",
+    });
   }
 
-  const opcoes: { id: Tema; label: string; icon: typeof Moon }[] = [
-    { id: "escuro", label: "Escuro", icon: Moon },
-    { id: "claro", label: "Claro", icon: Sun },
+  const opcoes = [
+    { claro: false, label: "Escuro", icon: Moon },
+    { claro: true, label: "Claro", icon: Sun },
   ];
 
   return (
     <div className="flex surface-alt rounded-xl p-1 gap-1">
       {opcoes.map((o) => {
         const Icon = o.icon;
-        const ativo = tema === o.id;
+        const ativo = claro === o.claro;
         return (
           <button
-            key={o.id}
-            onClick={() => escolher(o.id)}
+            key={o.label}
+            onClick={() => escolher(o.claro)}
             className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition ${
               ativo ? "surface shadow text-strong" : "text-muted"
             }`}

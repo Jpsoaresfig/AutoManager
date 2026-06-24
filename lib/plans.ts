@@ -161,7 +161,7 @@ export function fmtLimite(n: number): string {
   return n === Infinity ? "∞" : String(n);
 }
 
-// Menor plano que libera um recurso/feature — usado nos CTAs de upgrade.
+// Menor plano que libera um recurso/feature - usado nos CTAs de upgrade.
 export function planoQueLibera(check: (p: PlanoDef) => boolean): PlanoDef | null {
   for (const id of ORDEM_PLANOS) {
     if (check(PLANOS[id])) return PLANOS[id];

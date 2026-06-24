@@ -55,7 +55,7 @@ function Perfil() {
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted">
-          <Mail size={15} /> {email || "—"}
+          <Mail size={15} /> {email || "-"}
         </div>
         <div className="grid grid-cols-3 gap-2 pt-1">
           <Stat label="Produtos" value={String(produtos.length)} />

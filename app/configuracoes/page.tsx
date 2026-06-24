@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useState, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { SEGMENTOS, categoriasDaLoja } from "@/lib/seed";
-import { aplicarCorMarca } from "@/lib/brand";
+import { aplicarAparencia, TEMAS_BASE } from "@/lib/aparencia";
+import { FONTES } from "@/lib/fontes";
 import { uploadLogo } from "@/lib/uploadLogo";
 import type { Canal, Role } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
@@ -64,6 +65,8 @@ function Configuracoes() {
   const [margem, setMargem] = useState(String(config.margemPadrao));
   const [comissao, setComissao] = useState(String(config.comissaoPadrao));
   const [cor, setCor] = useState<string | null>(config.corMarca);
+  const [temaBase, setTemaBase] = useState<string | null>(config.temaBase);
+  const [appFonte, setAppFonte] = useState<string | null>(config.appFonte);
   const [logoUrl, setLogoUrl] = useState<string | null>(config.logoUrl);
 
   const [salvando, setSalvando] = useState(false);
@@ -74,9 +77,26 @@ function Configuracoes() {
     setCanais((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   }
 
+  // preview imediato de qualquer mudança de aparência
+  function previewAparencia(over: { cor?: string | null; tema?: string | null; fonte?: string | null }) {
+    aplicarAparencia({
+      corMarca: over.cor !== undefined ? over.cor : cor,
+      temaBase: over.tema !== undefined ? over.tema : temaBase,
+      appFonte: over.fonte !== undefined ? over.fonte : appFonte,
+    });
+  }
+
   function escolherCor(hex: string | null) {
     setCor(hex);
-    aplicarCorMarca(hex); // preview imediato
+    previewAparencia({ cor: hex });
+  }
+  function escolherTema(key: string | null) {
+    setTemaBase(key);
+    previewAparencia({ tema: key });
+  }
+  function escolherFonte(key: string | null) {
+    setAppFonte(key);
+    previewAparencia({ fonte: key });
   }
 
   async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -104,6 +124,8 @@ function Configuracoes() {
       margemPadrao: parseFloat(margem) || 0,
       comissaoPadrao: parseFloat(comissao) || 0,
       corMarca: cor,
+      temaBase,
+      appFonte,
     });
     setSalvando(false);
     setSalvo(true);
@@ -204,6 +226,54 @@ function Configuracoes() {
           </div>
           <p className="text-xs text-muted mt-1">O app inteiro adota a cor da sua loja.</p>
         </div>
+
+        {/* tema base (paleta de fundo) */}
+        <div>
+          <label className="label">Tema do painel</label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {TEMAS_BASE.map((t) => {
+              const ativo = (temaBase ?? "escuro") === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => escolherTema(t.key)}
+                  className={`rounded-xl border p-2 text-left transition ${
+                    ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default"
+                  }`}
+                  style={{ background: t.bg }}
+                >
+                  <div className="flex gap-1">
+                    <span className="h-4 w-4 rounded-full" style={{ background: t.surface, border: `1px solid ${t.border}` }} />
+                    <span className="h-4 w-4 rounded-full" style={{ background: t.surfaceAlt }} />
+                    <span className="h-4 w-4 rounded-full bg-brand-500" />
+                  </div>
+                  <span className="mt-2 block text-xs font-medium" style={{ color: t.text }}>
+                    {t.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted mt-1">Muda as cores de fundo do painel (admin) e da vitrine.</p>
+        </div>
+
+        {/* fonte do app */}
+        <div>
+          <label className="label">Fonte do app</label>
+          <select
+            className="input"
+            value={appFonte ?? "padrao"}
+            onChange={(e) => escolherFonte(e.target.value === "padrao" ? null : e.target.value)}
+            style={{ fontFamily: FONTES.find((f) => f.key === (appFonte ?? "padrao"))?.stack || undefined }}
+          >
+            {FONTES.map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted mt-1">Aplica a fonte em todo o painel. (A vitrine tem fonte própria.)</p>
+        </div>
       </section>
 
       {/* Categorias da loja */}
@@ -299,7 +369,7 @@ function CategoriasSection() {
         <Tags size={18} className="text-brand-500" /> Categorias dos produtos
       </div>
       <p className="text-sm text-muted">
-        Cada loja tem as suas. Adicione ou remova quantas quiser — elas aparecem ao cadastrar produtos.
+        Cada loja tem as suas. Adicione ou remova quantas quiser - elas aparecem ao cadastrar produtos.
       </p>
 
       <div className="flex flex-wrap gap-2">

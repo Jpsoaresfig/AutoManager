@@ -68,7 +68,7 @@ function Reposicao() {
                 onClick={() => entradaEstoque(s.produto.id, s.qtdSugerida)}
                 className="btn-primary w-full py-2 text-sm"
               >
-                <PackagePlus size={16} /> Comprei {s.qtdSugerida} un — dar entrada
+                <PackagePlus size={16} /> Comprei {s.qtdSugerida} un - dar entrada
               </button>
             </div>
           );

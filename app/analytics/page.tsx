@@ -125,7 +125,7 @@ function Analytics() {
                     <AlertTriangle size={18} /> Oportunidades perdidas
                   </div>
                   <p className="text-xs text-muted">
-                    Produtos sem estoque que vendiam bem — repor pode recuperar esta receita.
+                    Produtos sem estoque que vendiam bem - repor pode recuperar esta receita.
                   </p>
                   {a.ruptura.map((r) => (
                     <div key={r.nome} className="flex items-center justify-between text-sm">

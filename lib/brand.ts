@@ -33,21 +33,29 @@ const ESCALA: Record<number, { alvo: number[]; t: number }> = {
   900: { alvo: BLACK, t: 0.48 },
 };
 
+const TONS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+
+// Gera o mapa { 50: "r g b", ... } a partir da cor base (tom 600). null = inválido.
+export function gerarTonsMarca(hex: string | null): Record<number, string> | null {
+  const base = hex ? hexToRgb(hex) : null;
+  if (!base) return null;
+  const out: Record<number, string> = {};
+  for (const tom of TONS) {
+    const { alvo, t } = ESCALA[tom];
+    const [r, g, b] = mix(base, alvo, t);
+    out[tom] = `${r} ${g} ${b}`;
+  }
+  return out;
+}
+
 export function aplicarCorMarca(hex: string | null) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const tons = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
-
-  if (!hex) {
+  const tons = gerarTonsMarca(hex);
+  if (!tons) {
     // remove overrides -> volta ao padrão definido no globals.css
-    tons.forEach((t) => root.style.removeProperty(`--brand-${t}`));
+    TONS.forEach((t) => root.style.removeProperty(`--brand-${t}`));
     return;
   }
-  const base = hexToRgb(hex);
-  if (!base) return;
-  for (const tom of tons) {
-    const { alvo, t } = ESCALA[tom];
-    const [r, g, b] = mix(base, alvo, t);
-    root.style.setProperty(`--brand-${tom}`, `${r} ${g} ${b}`);
-  }
+  for (const tom of TONS) root.style.setProperty(`--brand-${tom}`, tons[tom]);
 }
