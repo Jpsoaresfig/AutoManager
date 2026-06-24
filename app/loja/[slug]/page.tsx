@@ -42,6 +42,7 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
   const [loja, setLoja] = useState<Loja | null | undefined>(undefined);
   const [chat, setChat] = useState(false);
   const [fontStack, setFontStack] = useState("");
+  const [filtroCat, setFiltroCat] = useState<string | null>(null);
 
   useEffect(() => {
     sb.current.rpc("loja_publica", { p_slug: params.slug }).then(({ data }) => {
@@ -94,11 +95,44 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
         {loja.produtos.length === 0 ? (
           <div className="card text-center text-muted">Catálogo em breve.</div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {loja.produtos.map((p) => (
-              <ProdutoCard key={p.id} p={p} />
-            ))}
-          </div>
+          (() => {
+            const categorias = Array.from(
+              new Set(loja.produtos.map((p) => p.categoria).filter((c): c is string => !!c))
+            );
+            const lista = filtroCat ? loja.produtos.filter((p) => p.categoria === filtroCat) : loja.produtos;
+            return (
+              <>
+                {categorias.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
+                    <button
+                      onClick={() => setFiltroCat(null)}
+                      className={`chip whitespace-nowrap ${
+                        filtroCat === null ? "bg-brand-600 text-white border-brand-600" : "border-default"
+                      }`}
+                    >
+                      Tudo
+                    </button>
+                    {categorias.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setFiltroCat(c)}
+                        className={`chip whitespace-nowrap ${
+                          filtroCat === c ? "bg-brand-600 text-white border-brand-600" : "border-default"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {lista.map((p) => (
+                    <ProdutoCard key={p.id} p={p} />
+                  ))}
+                </div>
+              </>
+            );
+          })()
         )}
       </main>
 

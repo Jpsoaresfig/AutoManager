@@ -23,7 +23,18 @@ function Produtos() {
     open: false,
     editar: null,
   });
+  const [filtroCat, setFiltroCat] = useState<string | null>(null);
   const cats = categoriasDaLoja(config);
+
+  // categorias realmente presentes nos produtos (na ordem da loja, sobras no fim)
+  const catsPresentes = (() => {
+    const usadas = new Set(produtos.map((p) => p.categoria).filter(Boolean));
+    const ordenadas = cats.filter((c) => usadas.has(c));
+    const extras = [...usadas].filter((c) => !cats.includes(c));
+    return [...ordenadas, ...extras];
+  })();
+
+  const produtosFiltrados = filtroCat ? produtos.filter((p) => p.categoria === filtroCat) : produtos;
 
   return (
     <div className="space-y-3">
@@ -62,8 +73,36 @@ function Produtos() {
           );
         })()}
 
+      {/* filtro por categoria */}
+      {catsPresentes.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          <button
+            onClick={() => setFiltroCat(null)}
+            className={`chip whitespace-nowrap ${
+              filtroCat === null ? "bg-brand-600 text-white border-brand-600" : "border-default"
+            }`}
+          >
+            Todas
+          </button>
+          {catsPresentes.map((c) => (
+            <button
+              key={c}
+              onClick={() => setFiltroCat(c)}
+              className={`chip whitespace-nowrap ${
+                filtroCat === c ? "bg-brand-600 text-white border-brand-600" : "border-default"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
-        {produtos.map((p) => {
+        {produtosFiltrados.length === 0 && filtroCat && (
+          <div className="card text-center text-muted">Nenhum produto em “{filtroCat}”.</div>
+        )}
+        {produtosFiltrados.map((p) => {
           const baixo = p.estoqueAtual <= p.estoqueMinimo;
           const temGrade = p.variacoes.length > 0;
           return (
