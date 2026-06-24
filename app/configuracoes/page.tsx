@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState, useRef } from "react";
 import { useStore } from "@/lib/store";
-import { SEGMENTOS } from "@/lib/seed";
+import { SEGMENTOS, categoriasDaLoja } from "@/lib/seed";
 import { aplicarCorMarca } from "@/lib/brand";
 import { uploadLogo } from "@/lib/uploadLogo";
 import type { Canal, Plano, Role } from "@/lib/types";
@@ -24,6 +24,8 @@ import {
   Globe,
   Copy,
   ExternalLink,
+  Tags,
+  Plus,
 } from "lucide-react";
 import { slugSugerido } from "@/lib/slug";
 
@@ -229,6 +231,9 @@ function Configuracoes() {
         </div>
       </section>
 
+      {/* Categorias da loja */}
+      <CategoriasSection />
+
       {/* Mini-loja pública */}
       <MiniLojaSection />
 
@@ -321,6 +326,72 @@ function Configuracoes() {
       {/* Equipe de acesso (membros) */}
       <MembrosSection />
     </div>
+  );
+}
+
+function CategoriasSection() {
+  const { config, setConfig } = useStore();
+  const [lista, setLista] = useState<string[]>(categoriasDaLoja(config));
+  const [nova, setNova] = useState("");
+
+  function persistir(next: string[]) {
+    setLista(next);
+    setConfig({ categorias: next });
+  }
+  function adicionar() {
+    const n = nova.trim();
+    if (!n) return;
+    if (lista.some((c) => c.toLowerCase() === n.toLowerCase())) {
+      setNova("");
+      return;
+    }
+    persistir([...lista, n]);
+    setNova("");
+  }
+
+  return (
+    <section className="card space-y-3">
+      <div className="flex items-center gap-2 font-semibold">
+        <Tags size={18} className="text-brand-500" /> Categorias dos produtos
+      </div>
+      <p className="text-sm text-muted">
+        Cada loja tem as suas. Adicione ou remova quantas quiser — elas aparecem ao cadastrar produtos.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        {lista.map((c) => (
+          <span key={c} className="chip border-default flex items-center gap-1.5">
+            {c}
+            <button
+              onClick={() => persistir(lista.filter((x) => x !== c))}
+              className="text-muted hover:text-red-500"
+              aria-label={`Remover ${c}`}
+            >
+              <X size={13} />
+            </button>
+          </span>
+        ))}
+        {lista.length === 0 && <span className="text-sm text-muted">Nenhuma categoria ainda.</span>}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          className="input flex-1"
+          placeholder="Nova categoria (ex.: Relógios)"
+          value={nova}
+          onChange={(e) => setNova(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              adicionar();
+            }
+          }}
+        />
+        <button onClick={adicionar} className="btn-primary px-4">
+          <Plus size={16} /> Adicionar
+        </button>
+      </div>
+    </section>
   );
 }
 

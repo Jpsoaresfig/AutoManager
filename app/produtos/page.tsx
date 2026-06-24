@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { useStore } from "@/lib/store";
-import { CATEGORIAS_POR_SEGMENTO } from "@/lib/seed";
+import { categoriasDaLoja } from "@/lib/seed";
 import { brl } from "@/lib/analytics";
 import { uploadProdutoImagem } from "@/lib/uploadProdutoImagem";
 import type { Produto, Variacao } from "@/lib/types";
@@ -23,7 +23,7 @@ function Produtos() {
     open: false,
     editar: null,
   });
-  const cats = CATEGORIAS_POR_SEGMENTO[config.segmento] || ["Geral"];
+  const cats = categoriasDaLoja(config);
 
   return (
     <div className="space-y-3">
@@ -311,7 +311,7 @@ function ProdutoForm({
           <div>
             <label className="label">Categoria</label>
             <select className="input" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-              {categorias.map((c) => (
+              {(categoria && !categorias.includes(categoria) ? [categoria, ...categorias] : categorias).map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>

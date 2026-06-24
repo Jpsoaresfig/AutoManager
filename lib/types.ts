@@ -111,6 +111,7 @@ export interface Entrega {
 export interface Config {
   nomeLoja: string;
   segmento: string;
+  categorias: string[];
   canais: Canal[];
   usaRevendedoras: boolean;
   margemPadrao: number;

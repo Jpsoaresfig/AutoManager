@@ -55,6 +55,7 @@ function estoqueEfetivo(base: number, variacoes?: { estoqueAtual: number }[]) {
 const configInicial: Config = {
   nomeLoja: "",
   segmento: "semijoias",
+  categorias: [],
   canais: ["whatsapp"],
   usaRevendedoras: true,
   margemPadrao: 100,
@@ -289,6 +290,7 @@ export const useStore = create<State>()((set, get) => {
           ? {
               nomeLoja: org.nome,
               segmento: org.segmento,
+              categorias: org.categorias ?? [],
               canais: org.canais,
               usaRevendedoras: org.usa_revendedoras,
               margemPadrao: Number(org.margem_padrao),
@@ -325,6 +327,7 @@ export const useStore = create<State>()((set, get) => {
       const patch: any = {};
       if (c.nomeLoja !== undefined) patch.nome = c.nomeLoja;
       if (c.segmento !== undefined) patch.segmento = c.segmento;
+      if (c.categorias !== undefined) patch.categorias = c.categorias;
       if (c.canais !== undefined) patch.canais = c.canais;
       if (c.usaRevendedoras !== undefined) patch.usa_revendedoras = c.usaRevendedoras;
       if (c.margemPadrao !== undefined) patch.margem_padrao = c.margemPadrao;

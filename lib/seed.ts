@@ -13,6 +13,12 @@ export const SEGMENTOS = [
   { id: "outro", label: "Outro" },
 ];
 
+// Lista efetiva de categorias da loja: as personalizadas; senão, as sugestões do segmento.
+export function categoriasDaLoja(config: { categorias?: string[]; segmento: string }): string[] {
+  if (config.categorias && config.categorias.length) return config.categorias;
+  return CATEGORIAS_POR_SEGMENTO[config.segmento] || ["Geral"];
+}
+
 // Produtos de exemplo para quem escolhe "começar com exemplos" — demoável na hora.
 export function produtosExemplo(categorias: string[]) {
   const base = [
