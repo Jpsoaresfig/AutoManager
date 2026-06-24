@@ -35,13 +35,16 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/auth") ||
     path.startsWith("/acesso") || // ativação/login self-service da revendedora
     path.startsWith("/loja"); // vitrine pública da loja
+  // rotas de API se auto-protegem (retornam JSON 403); não devem ser redirecionadas
+  // para /login. Em especial, o webhook do Mercado Pago chega sem sessão.
+  const isApi = path.startsWith("/api");
   const isAsset =
     path.startsWith("/_next") ||
     path.startsWith("/manifest") ||
     path.startsWith("/icon") ||
     path === "/favicon.ico";
 
-  if (!user && !rotaPublica && !isAsset) {
+  if (!user && !rotaPublica && !isApi && !isAsset) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
