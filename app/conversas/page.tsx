@@ -37,6 +37,7 @@ function Conversas() {
     const agora = Date.now();
     if (typeof localStorage !== "undefined") localStorage.setItem(vistoKey(id), String(agora));
     setVistos((v) => ({ ...v, [id]: agora }));
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("aminbox-visto")); // atualiza o badge do menu
   }
   function abrir(id: string) {
     marcarVisto(id);

@@ -17,10 +17,13 @@ import {
   PieChart,
   Store,
   Crown,
+  ShieldCheck,
 } from "lucide-react";
 import type { Role } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
+import { useConversasNaoLidas } from "@/lib/useConversasNaoLidas";
 import type { PlanoDef } from "@/lib/plans";
+import { ehSuperadmin } from "@/lib/admin";
 
 type Item = {
   href: string;
@@ -30,6 +33,7 @@ type Item = {
   cap?: keyof PlanoDef; // exige esta capacidade do plano (ex.: allowEntregas)
   primary?: boolean; // destaque no mobile
   mobile?: boolean; // aparece no bottom nav
+  adminOnly?: boolean; // só o superadmin do AutoManager
 };
 
 const ITENS: Item[] = [
@@ -45,11 +49,13 @@ const ITENS: Item[] = [
   { href: "/analytics", label: "Inteligência", icon: PieChart, roles: ["owner"] },
   { href: "/planos", label: "Planos", icon: Crown, roles: ["owner"] },
   { href: "/configuracoes", label: "Configurações", icon: Settings, roles: ["owner"] },
+  { href: "/admin", label: "Admin", icon: ShieldCheck, roles: ["owner"], adminOnly: true },
   { href: "/perfil", label: "Perfil", icon: User, roles: ["owner", "vendedor", "motoboy"], mobile: true },
 ];
 
-// filtra por papel e por capacidade do plano (ex.: entregas só no Expansão)
-function visivel(it: Item, role: Role, caps: PlanoDef) {
+// filtra por papel, capacidade do plano (ex.: entregas só no Expansão) e superadmin
+function visivel(it: Item, role: Role, caps: PlanoDef, admin: boolean) {
+  if (it.adminOnly && !admin) return false;
   if (!it.roles.includes(role)) return false;
   if (it.cap && !caps[it.cap]) return false;
   return true;
@@ -60,10 +66,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const logoUrl = useStore((s) => s.config.logoUrl);
   const nomeLoja = useStore((s) => s.config.nomeLoja);
   const role = useStore((s) => s.role);
+  const email = useStore((s) => s.email);
   const { caps } = usePlano();
+  const admin = ehSuperadmin(email);
+  const conversasNaoLidas = useConversasNaoLidas();
 
-  const navDesktop = ITENS.filter((it) => visivel(it, role, caps));
-  const nav = ITENS.filter((it) => visivel(it, role, caps) && it.mobile).slice(0, 5);
+  const navDesktop = ITENS.filter((it) => visivel(it, role, caps, admin));
+  const nav = ITENS.filter((it) => visivel(it, role, caps, admin) && it.mobile).slice(0, 5);
 
   return (
     <div className="min-h-screen md:flex">
@@ -93,7 +102,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   active ? "bg-brand-600 text-white" : "text-muted hover:surface-alt"
                 }`}
               >
-                <Icon size={20} /> {n.label}
+                <Icon size={20} />
+                <span className="flex-1">{n.label}</span>
+                {n.href === "/conversas" && conversasNaoLidas > 0 && (
+                  <span
+                    className={`text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 grid place-items-center ${
+                      active ? "bg-white text-brand-600" : "bg-red-500 text-white"
+                    }`}
+                  >
+                    {conversasNaoLidas > 99 ? "99+" : conversasNaoLidas}
+                  </span>
+                )}
               </Link>
             );
           })}
