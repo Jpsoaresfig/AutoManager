@@ -19,6 +19,7 @@ export default function ThemeToggle() {
     aplicarAparencia({
       corMarca: config.corMarca,
       appFonte: config.appFonte,
+      appRaio: config.appRaio,
       temaBase: querClaro ? "claro" : "escuro",
     });
   }

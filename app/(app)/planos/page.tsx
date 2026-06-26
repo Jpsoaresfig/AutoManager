@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useStore } from "@/lib/store";
 import { usePlano } from "@/lib/usePlano";
 import { ORDEM_PLANOS, PLANOS, brlPreco, type PlanoId } from "@/lib/plans";
 import Guard from "@/components/Guard";
@@ -17,7 +16,6 @@ export default function PlanosPage() {
 
 function Planos() {
   const router = useRouter();
-  const mudarPlano = useStore((s) => s.mudarPlano);
   const { planoContratado, emTrial, diasTrial, uso } = usePlano();
   const [salvando, setSalvando] = useState<PlanoId | null>(null);
 

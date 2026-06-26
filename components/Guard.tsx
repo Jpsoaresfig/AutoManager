@@ -20,6 +20,7 @@ export default function Guard({ children }: { children: React.ReactNode }) {
   const corMarca = useStore((s) => s.config.corMarca);
   const temaBase = useStore((s) => s.config.temaBase);
   const appFonte = useStore((s) => s.config.appFonte);
+  const appRaio = useStore((s) => s.config.appRaio);
   const role = useStore((s) => s.role);
 
   useEffect(() => {
@@ -29,8 +30,8 @@ export default function Guard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (jaMontado) return;
-    aplicarAparencia({ corMarca, temaBase, appFonte });
-  }, [jaMontado, corMarca, temaBase, appFonte]);
+    aplicarAparencia({ corMarca, temaBase, appFonte, appRaio });
+  }, [jaMontado, corMarca, temaBase, appFonte, appRaio]);
 
   useEffect(() => {
     if (jaMontado || !ready) return;

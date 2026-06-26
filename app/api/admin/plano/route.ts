@@ -1,0 +1,64 @@
+import { NextResponse } from "next/server";
+import { createClient as createServer } from "@/lib/supabase/server";
+import { createClient as createAdmin } from "@supabase/supabase-js";
+import { SUPERADMIN_EMAIL } from "@/lib/admin";
+import { PLANOS, type PlanoId } from "@/lib/plans";
+
+// Troca MANUAL de plano de uma loja pelo super-admin (cortesia / suporte).
+// Altera direto a tabela `assinatura` via service_role (ignora RLS), SÓ depois
+// de confirmar que quem chama é o super-admin. Não cria cobrança no Mercado Pago.
+
+function admin() {
+  return createAdmin(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
+
+async function exigirSuperadmin() {
+  const sb = createServer();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return null;
+  if ((user.email ?? "").trim().toLowerCase() !== SUPERADMIN_EMAIL) return null;
+  return user;
+}
+
+export async function POST(req: Request) {
+  const su = await exigirSuperadmin();
+  if (!su) return NextResponse.json({ erro: "Sem permissão" }, { status: 403 });
+
+  const { orgId, plano } = (await req.json().catch(() => ({}))) as {
+    orgId?: string;
+    plano?: PlanoId;
+  };
+  if (!orgId || !plano || !["solo", "equipe", "expansao"].includes(plano))
+    return NextResponse.json({ erro: "Dados inválidos" }, { status: 400 });
+
+  const inicio = new Date();
+  const fim = new Date(inicio);
+  fim.setMonth(fim.getMonth() + 1); // ciclo mensal a partir de agora
+
+  const { data, error } = await admin()
+    .from("assinatura")
+    .update({
+      plano,
+      status: "active",
+      preco_centavos: PLANOS[plano].precoCentavos,
+      periodo: "mensal",
+      trial_ate: null, // encerra o trial ao definir um plano manualmente
+      data_inicio: inicio.toISOString(),
+      data_fim: fim.toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("org_id", orgId)
+    .select("org_id")
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ erro: "Loja não encontrada" }, { status: 404 });
+
+  return NextResponse.json({ ok: true, plano });
+}

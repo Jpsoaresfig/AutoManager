@@ -132,7 +132,7 @@ Navegação e rotas se adaptam ao papel e às **capacidades do plano**
 | Rota | O que faz |
 |---|---|
 | `/` | Landing. |
-| `/loja/[slug]` | **Vitrine pública** da loja: catálogo, filtro por categoria, sobre, contato, chat. |
+| `/loja/[slug]` | **Vitrine pública** da loja: capa, navegação por abas (Início/Sobre/Contato), catálogo, filtro por categoria, chat. |
 | `/acesso` | Ativação/login self-service da **revendedora** (1º acesso cria a senha). |
 | `/revenda` | Painel da revendedora: catálogo + registrar venda + "minhas vendas". |
 
@@ -151,12 +151,13 @@ Navegação e rotas se adaptam ao papel e às **capacidades do plano**
 A loja monta a própria página pública, com **preview ao vivo** (moldura de celular) ao lado:
 
 - **Link** próprio: `…/loja/<slug>` (editável, copiar/abrir, ligar/desligar "No ar").
-- **Identidade:** nome, **escolha de fonte** (9 opções via Google Fonts sob demanda),
-  cor da marca (gera paleta 50-900), logo.
+- **Identidade:** nome, **escolha de fonte** (via Google Fonts sob demanda),
+  cor da marca (gera paleta 50-900), logo e **imagem de capa/banner** (topo da vitrine).
 - **Sobre**, **Contato** (WhatsApp, telefone, e-mail) e **Redes sociais** (Instagram,
-  Facebook, TikTok) - viram botões/links na vitrine.
-- **Vitrine:** mostra os produtos ativos com selo de estoque ("Esgotado" quando zerado),
-  resumo de quantos aparecem/ocultos/sem estoque, e filtro por categoria.
+  Facebook, TikTok) - viram abas/links na vitrine.
+- **Vitrine:** header com **navegação por abas** (Início · Sobre · Contato); o Início
+  mostra a descrição curta no topo e os produtos ativos com selo de estoque ("Esgotado"
+  quando zerado), resumo de quantos aparecem/ocultos/sem estoque, e filtro por categoria.
 
 A vitrine pública (`/loja/[slug]`) consome tudo isso via uma **RPC `loja_publica`**
 `SECURITY DEFINER` que devolve só campos seguros (nunca expõe a tabela `org` nem o custo).
@@ -193,7 +194,7 @@ Todas com `org_id` e RLS por loja, exceto onde indicado.
 
 | Tabela | Conteúdo |
 |---|---|
-| `org` | A loja: nome, segmento, **categorias[]**, cor/tema/fonte, logo, e campos da vitrine (slug, ativa, descrição, fonte, sobre, contato, redes). *(plano saiu daqui → `assinatura`)* |
+| `org` | A loja: nome, segmento, **categorias[]**, cor/tema/fonte/**raio**, logo, e campos da vitrine (slug, ativa, descrição, **capa**, fonte, sobre, contato, redes). *(plano saiu daqui → `assinatura`)* |
 | `assinatura` | Plano da loja: `plano`, `status`, `trial_ate`, preço, período + ganchos de pagamento (`provider*`). Fonte da verdade do plano. |
 | `usuario` | Vínculo `auth.users` ↔ org + `role`. |
 | `produto` | Nome, categoria, marca, custo, preço, preço "de", imposto, descrição, imagens[], estoque, mínimo, ativo. |
@@ -233,6 +234,8 @@ Funções auxiliares ficam no schema **`private`** (fora da Data API): `current_
 | `0017_chat_token` | Chat persistente por cliente (`conversa.cliente_token` + RPC `recuperar_conversa`). |
 | `0018_chat_criada_em` | `recuperar_conversa` devolve `criada_em` (badge de não lidas no storefront). |
 | `0019_conversa_ultima_cliente` | `conversa.ultima_cliente_em` + trigger (badge de não lidas no inbox). |
+| `0020_loja_capa_raio` | Imagem de capa da vitrine (`loja_capa_url`) + arredondamento do painel (`app_raio`); `loja_publica` passa a devolver `capa_url`. |
+| `0021_planos_seguranca` | Revoga `execute` de `mudar_plano` do cliente: plano só muda via pagamento (webhook MP) ou super-admin. |
 
 > **Numeração:** as migrations do chat foram renumeradas (`0017`–`0019`) para não colidir
 > com o fluxo paralelo de aparência/chamados (`0014`/`0016`). Por isso há um **gap no `0015`** —

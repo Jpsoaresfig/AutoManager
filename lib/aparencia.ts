@@ -100,16 +100,84 @@ export const TEMAS_BASE: TemaBase[] = [
     textMuted: "#8a6f7c",
     border: "#f3dce6",
   },
+  {
+    key: "carvao",
+    label: "Carvão (preto)",
+    claro: false,
+    bg: "#08090b",
+    surface: "#121316",
+    surfaceAlt: "#1c1e22",
+    text: "#f4f5f7",
+    textMuted: "#969aa3",
+    border: "#26282d",
+  },
+  {
+    key: "vinho",
+    label: "Vinho",
+    claro: false,
+    bg: "#1a0e13",
+    surface: "#26141c",
+    surfaceAlt: "#341d28",
+    text: "#f8eef2",
+    textMuted: "#bd97a6",
+    border: "#43222f",
+  },
+  {
+    key: "oceano",
+    label: "Oceano",
+    claro: false,
+    bg: "#06141a",
+    surface: "#0c2129",
+    surfaceAlt: "#143039",
+    text: "#e9f6fa",
+    textMuted: "#8fb3bf",
+    border: "#1d404c",
+  },
+  {
+    key: "lavanda",
+    label: "Lavanda",
+    claro: true,
+    bg: "#f6f4fc",
+    surface: "#ffffff",
+    surfaceAlt: "#efeafb",
+    text: "#241f33",
+    textMuted: "#7a7194",
+    border: "#e6def5",
+  },
 ];
 
 export function temaBaseDef(key: string | null | undefined): TemaBase {
   return TEMAS_BASE.find((t) => t.key === key) || TEMAS_BASE[0];
 }
 
+// ----------------------------------------------------------------------------
+// Arredondamento dos cantos do painel (cards, botões, inputs). Aplicado via
+// variáveis CSS que as classes .card/.btn/.input consomem no globals.css.
+// ----------------------------------------------------------------------------
+export interface RaioPreset {
+  key: string;
+  label: string;
+  card: string;
+  btn: string;
+  input: string;
+}
+
+export const RAIOS: RaioPreset[] = [
+  { key: "reto", label: "Retos", card: "0.375rem", btn: "0.25rem", input: "0.25rem" },
+  { key: "suave", label: "Suaves", card: "0.625rem", btn: "0.5rem", input: "0.5rem" },
+  { key: "padrao", label: "Padrão", card: "1rem", btn: "0.75rem", input: "0.75rem" },
+  { key: "redondo", label: "Bem arredondados", card: "1.5rem", btn: "1.25rem", input: "1.25rem" },
+];
+
+export function raioDef(key: string | null | undefined): RaioPreset {
+  return RAIOS.find((r) => r.key === key) || RAIOS[2]; // padrão = atual
+}
+
 export interface Aparencia {
   corMarca: string | null;
   temaBase: string | null;
   appFonte: string | null;
+  appRaio?: string | null;
 }
 
 const CHAVE_CACHE = "aparencia";
@@ -124,6 +192,7 @@ interface AparenciaCache {
 
 function montarCache(a: Aparencia): AparenciaCache {
   const base = temaBaseDef(a.temaBase);
+  const raio = raioDef(a.appRaio);
   return {
     light: base.claro,
     tokens: {
@@ -133,6 +202,9 @@ function montarCache(a: Aparencia): AparenciaCache {
       "--text": base.text,
       "--text-muted": base.textMuted,
       "--border": base.border,
+      "--r-card": raio.card,
+      "--r-btn": raio.btn,
+      "--r-input": raio.input,
     },
     brand: gerarTonsMarca(a.corMarca),
     font: a.appFonte ? carregarFonte(a.appFonte) : "",

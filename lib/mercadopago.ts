@@ -96,6 +96,29 @@ export async function buscarPreapproval(id: string): Promise<Preapproval> {
   return json as Preapproval;
 }
 
+// ---- cancela uma assinatura no MP (usado ao trocar de plano p/ não cobrar duas vezes) ----
+export async function cancelarPreapproval(id: string): Promise<void> {
+  const res = await fetch(`${MP_BASE}/preapproval/${id}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${mpToken()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json?.message || `Mercado Pago retornou ${res.status}`);
+  }
+}
+
+// soma 1 mês mantendo o dia (fim do ciclo mensal pago)
+function umMesDepois(de: Date): Date {
+  const d = new Date(de);
+  d.setMonth(d.getMonth() + 1);
+  return d;
+}
+
 // ---- aplica o resultado de uma preapproval na tabela `assinatura` (service role) ----
 // Retorna o plano aplicado (ou null se nada foi alterado).
 export async function aplicarPreapproval(p: Preapproval): Promise<PlanoId | null> {
@@ -111,6 +134,14 @@ export async function aplicarPreapproval(p: Preapproval): Promise<PlanoId | null
   // mapeia status do MP -> status interno
   const st = p.status;
   if (st === "authorized") {
+    // assinatura que estava ativa antes desta (p/ não cobrar dois planos ao trocar)
+    const { data: atual } = await admin
+      .from("assinatura")
+      .select("provider_assinatura_id")
+      .eq("org_id", ref.orgId)
+      .maybeSingle();
+
+    const inicio = new Date();
     await admin
       .from("assinatura")
       .update({
@@ -119,12 +150,25 @@ export async function aplicarPreapproval(p: Preapproval): Promise<PlanoId | null
         preco_centavos: PLANOS[ref.plano].precoCentavos,
         periodo: "mensal",
         trial_ate: null,
-        data_inicio: new Date().toISOString(),
+        data_inicio: inicio.toISOString(),
+        data_fim: umMesDepois(inicio).toISOString(), // fim do ciclo pago (próxima cobrança)
         provider: "mercadopago",
         provider_assinatura_id: p.id,
         updated_at: new Date().toISOString(),
       })
       .eq("org_id", ref.orgId);
+
+    // cancela a assinatura ANTERIOR no MP, se houver outra diferente desta.
+    // Em try/catch: conceder o plano novo é prioridade; falha aqui não pode
+    // derrubar a ativação (no pior caso o cancelamento é refeito num retry/manual).
+    const antiga = atual?.provider_assinatura_id;
+    if (antiga && antiga !== p.id) {
+      try {
+        await cancelarPreapproval(antiga);
+      } catch (e) {
+        console.error("Falha ao cancelar assinatura MP anterior", antiga, e);
+      }
+    }
     return ref.plano;
   }
 

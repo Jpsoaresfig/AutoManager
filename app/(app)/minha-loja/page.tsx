@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { aplicarCorMarca } from "@/lib/brand";
-import { uploadLogo } from "@/lib/uploadLogo";
+import { uploadLogo, uploadCapa } from "@/lib/uploadLogo";
 import { brl } from "@/lib/analytics";
 import { slugSugerido } from "@/lib/slug";
 import { FONTES, carregarFonte } from "@/lib/fontes";
@@ -31,6 +31,8 @@ import {
   Music2,
   Info,
   AtSign,
+  ImagePlus,
+  Trash2,
 } from "lucide-react";
 
 export default function MinhaLojaPage() {
@@ -46,12 +48,15 @@ const CORES = ["#db2777", "#7c3aed", "#2563eb", "#0d9488", "#ea580c", "#dc2626",
 function MinhaLoja() {
   const { config, orgId, produtos, setConfig, definirSlug } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const capaRef = useRef<HTMLInputElement>(null);
 
   const [nome, setNome] = useState(config.nomeLoja);
   const [descricao, setDescricao] = useState(config.lojaDescricao ?? "");
   const [slug, setSlug] = useState(config.slug ?? "");
   const [cor, setCor] = useState<string | null>(config.corMarca);
   const [logoUrl, setLogoUrl] = useState<string | null>(config.logoUrl);
+  const [capaUrl, setCapaUrl] = useState<string | null>(config.lojaCapaUrl);
+  const [enviandoCapa, setEnviandoCapa] = useState(false);
   const [fonte, setFonte] = useState(config.lojaFonte ?? "padrao");
   const [sobre, setSobre] = useState(config.lojaSobre ?? "");
 
@@ -136,6 +141,26 @@ function MinhaLoja() {
     }
   }
 
+  async function onCapa(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !orgId) return;
+    setEnviandoCapa(true);
+    try {
+      const u = await uploadCapa(orgId, file);
+      setCapaUrl(u);
+      await setConfig({ lojaCapaUrl: u });
+    } catch (err: any) {
+      alert("Não foi possível enviar a capa: " + (err?.message || "erro"));
+    } finally {
+      setEnviandoCapa(false);
+    }
+  }
+
+  async function removerCapa() {
+    setCapaUrl(null);
+    await setConfig({ lojaCapaUrl: null });
+  }
+
   function copiar() {
     if (!url) return;
     navigator.clipboard?.writeText(url);
@@ -216,6 +241,35 @@ function MinhaLoja() {
                 onBlur={() => setConfig({ lojaDescricao: descricao || null })}
                 placeholder="Ex.: Semijoias folheadas com garantia. Entrega para toda a cidade."
               />
+            </div>
+
+            {/* capa / banner */}
+            <div>
+              <label className="label">Imagem de capa (banner)</label>
+              <div className="rounded-xl overflow-hidden border border-default surface-alt aspect-[16/6] relative grid place-items-center">
+                {capaUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={capaUrl} alt="capa" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="text-muted flex flex-col items-center gap-1 text-xs">
+                    <ImagePlus size={22} />
+                    Aparece no topo da sua vitrine
+                  </div>
+                )}
+              </div>
+              <input ref={capaRef} type="file" accept="image/*" hidden onChange={onCapa} />
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => capaRef.current?.click()} disabled={enviandoCapa} className="btn-ghost py-2 px-3 text-sm">
+                  {enviandoCapa ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+                  {capaUrl ? "Trocar capa" : "Enviar capa"}
+                </button>
+                {capaUrl && (
+                  <button onClick={removerCapa} className="btn-ghost py-2 px-3 text-sm text-red-500">
+                    <Trash2 size={16} /> Remover
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-muted mt-1">Foto larga (paisagem). Fica atrás do nome no topo da loja.</p>
             </div>
 
             {/* logo */}
@@ -374,6 +428,7 @@ function MinhaLoja() {
             descricao={descricao}
             sobre={sobre}
             logoUrl={logoUrl}
+            capaUrl={capaUrl}
             produtos={visiveis}
             fontStack={fontStack}
             contato={{ whatsapp, telefone, email, instagram, facebook, tiktok }}
@@ -391,6 +446,7 @@ function PreviewLoja({
   descricao,
   sobre,
   logoUrl,
+  capaUrl,
   produtos,
   fontStack,
   contato,
@@ -399,12 +455,20 @@ function PreviewLoja({
   descricao: string;
   sobre: string;
   logoUrl: string | null;
+  capaUrl: string | null;
   produtos: Produto[];
   fontStack: string;
   contato: Contato;
 }) {
-  const temContato = contato.whatsapp || contato.telefone || contato.email;
-  const temRede = contato.instagram || contato.facebook || contato.tiktok;
+  const temContato = !!(contato.whatsapp || contato.telefone || contato.email || contato.instagram || contato.facebook || contato.tiktok);
+  const abas: { key: string; label: string }[] = [
+    { key: "inicio", label: "Início" },
+    ...(sobre ? [{ key: "sobre", label: "Sobre" }] : []),
+    ...(temContato ? [{ key: "contato", label: "Contato" }] : []),
+  ];
+  const [aba, setAba] = useState("inicio");
+  const atual = abas.some((a) => a.key === aba) ? aba : "inicio";
+
   return (
     <div className="mx-auto w-full max-w-md rounded-[2.2rem] border-4 border-default surface overflow-hidden shadow-2xl">
       <div className="h-7 surface-alt flex items-center justify-center">
@@ -413,43 +477,63 @@ function PreviewLoja({
 
       <div className="max-h-[74vh] min-h-[520px] overflow-auto bg-[var(--bg)]" style={fontStack ? { fontFamily: fontStack } : undefined}>
         <header className="surface border-b border-default">
-          <div className="px-4 py-4 flex items-center gap-3">
+          {capaUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={capaUrl} alt="" className="h-24 w-full object-cover" />
+          )}
+          <div className={`px-4 flex items-center gap-3 ${capaUrl ? "-mt-6 pb-3" : "py-4"}`}>
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={nome} className="h-12 w-12 rounded-2xl object-cover border border-default" />
+              <img src={logoUrl} alt={nome} className="h-12 w-12 rounded-2xl object-cover border-2 border-[var(--surface)]" />
             ) : (
-              <div className="h-12 w-12 rounded-2xl bg-brand-600 grid place-items-center text-white">
+              <div className="h-12 w-12 rounded-2xl bg-brand-600 grid place-items-center text-white border-2 border-[var(--surface)]">
                 <Gem size={22} />
               </div>
             )}
             <div className="min-w-0">
               <h2 className="text-lg font-bold truncate">{nome}</h2>
-              {descricao && <p className="text-xs text-muted line-clamp-2">{descricao}</p>}
             </div>
+          </div>
+          {/* navegação por abas */}
+          <div className="flex gap-1 px-3 pb-2">
+            {abas.map((a) => (
+              <button
+                key={a.key}
+                onClick={() => setAba(a.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                  atual === a.key ? "bg-brand-600 text-white" : "surface-alt text-muted"
+                }`}
+              >
+                {a.label}
+              </button>
+            ))}
           </div>
         </header>
 
-        <main className="px-3 py-3">
-          {produtos.length === 0 ? (
-            <div className="card text-center text-muted text-sm">Cadastre produtos para preencher sua vitrine.</div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2.5">
-              {produtos.map((p) => (
-                <PreviewCard key={p.id} p={p} />
-              ))}
-            </div>
-          )}
-        </main>
+        {atual === "inicio" && (
+          <main className="px-3 py-3">
+            {descricao && <p className="text-xs text-muted mb-3 px-1">{descricao}</p>}
+            {produtos.length === 0 ? (
+              <div className="card text-center text-muted text-sm">Cadastre produtos para preencher sua vitrine.</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                {produtos.map((p) => (
+                  <PreviewCard key={p.id} p={p} />
+                ))}
+              </div>
+            )}
+          </main>
+        )}
 
-        {sobre && (
-          <section className="px-4 py-3 border-t border-default">
-            <div className="text-sm font-semibold mb-1">Sobre</div>
+        {atual === "sobre" && sobre && (
+          <section className="px-4 py-4">
+            <div className="text-sm font-semibold mb-1">Sobre a loja</div>
             <p className="text-xs text-muted whitespace-pre-line">{sobre}</p>
           </section>
         )}
 
-        {(temContato || temRede) && (
-          <section className="px-4 py-4 border-t border-default space-y-2">
+        {atual === "contato" && temContato && (
+          <section className="px-4 py-4 space-y-2">
             <div className="text-sm font-semibold">Fale com a gente</div>
             <div className="flex flex-wrap gap-2">
               {contato.whatsapp && <Pill icon={<MessageCircle size={13} />} txt="WhatsApp" />}

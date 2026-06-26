@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { SEGMENTOS, categoriasDaLoja } from "@/lib/seed";
-import { aplicarAparencia, TEMAS_BASE } from "@/lib/aparencia";
+import { aplicarAparencia, TEMAS_BASE, RAIOS } from "@/lib/aparencia";
 import { FONTES } from "@/lib/fontes";
 import { uploadLogo } from "@/lib/uploadLogo";
 import type { Canal, Role } from "@/lib/types";
@@ -67,6 +67,7 @@ function Configuracoes() {
   const [cor, setCor] = useState<string | null>(config.corMarca);
   const [temaBase, setTemaBase] = useState<string | null>(config.temaBase);
   const [appFonte, setAppFonte] = useState<string | null>(config.appFonte);
+  const [appRaio, setAppRaio] = useState<string | null>(config.appRaio);
   const [logoUrl, setLogoUrl] = useState<string | null>(config.logoUrl);
 
   const [salvando, setSalvando] = useState(false);
@@ -78,11 +79,12 @@ function Configuracoes() {
   }
 
   // preview imediato de qualquer mudança de aparência
-  function previewAparencia(over: { cor?: string | null; tema?: string | null; fonte?: string | null }) {
+  function previewAparencia(over: { cor?: string | null; tema?: string | null; fonte?: string | null; raio?: string | null }) {
     aplicarAparencia({
       corMarca: over.cor !== undefined ? over.cor : cor,
       temaBase: over.tema !== undefined ? over.tema : temaBase,
       appFonte: over.fonte !== undefined ? over.fonte : appFonte,
+      appRaio: over.raio !== undefined ? over.raio : appRaio,
     });
   }
 
@@ -97,6 +99,10 @@ function Configuracoes() {
   function escolherFonte(key: string | null) {
     setAppFonte(key);
     previewAparencia({ fonte: key });
+  }
+  function escolherRaio(key: string | null) {
+    setAppRaio(key);
+    previewAparencia({ raio: key });
   }
 
   async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -126,6 +132,7 @@ function Configuracoes() {
       corMarca: cor,
       temaBase,
       appFonte,
+      appRaio,
     });
     setSalvando(false);
     setSalvo(true);
@@ -273,6 +280,33 @@ function Configuracoes() {
             ))}
           </select>
           <p className="text-xs text-muted mt-1">Aplica a fonte em todo o painel. (A vitrine tem fonte própria.)</p>
+        </div>
+
+        {/* arredondamento dos cantos */}
+        <div>
+          <label className="label">Arredondamento dos cantos</label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {RAIOS.map((r) => {
+              const ativo = (appRaio ?? "padrao") === r.key;
+              return (
+                <button
+                  key={r.key}
+                  onClick={() => escolherRaio(r.key === "padrao" ? null : r.key)}
+                  className={`border p-2 transition flex flex-col items-center gap-2 ${
+                    ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default"
+                  }`}
+                  style={{ borderRadius: r.card }}
+                >
+                  <span
+                    className="h-8 w-12 surface-alt border border-default"
+                    style={{ borderRadius: r.btn }}
+                  />
+                  <span className="text-xs font-medium">{r.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted mt-1">Deixa os cards e botões do painel mais retos ou mais arredondados.</p>
         </div>
       </section>
 

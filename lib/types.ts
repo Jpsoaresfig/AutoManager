@@ -120,11 +120,13 @@ export interface Config {
   corMarca: string | null;
   temaBase: string | null;
   appFonte: string | null;
+  appRaio: string | null;
   logoUrl: string | null;
   plano: Plano;
   slug: string | null;
   lojaAtiva: boolean;
   lojaDescricao: string | null;
+  lojaCapaUrl: string | null;
   lojaFonte: string | null;
   lojaSobre: string | null;
   lojaEmail: string | null;

@@ -25,6 +25,7 @@ type Loja = {
   nome: string;
   descricao: string | null;
   logo_url: string | null;
+  capa_url: string | null;
   cor_marca: string | null;
   fonte: string | null;
   sobre: string | null;
@@ -44,6 +45,7 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
   const [fontStack, setFontStack] = useState("");
   const [filtroCat, setFiltroCat] = useState<string | null>(null);
   const [naoLidas, setNaoLidas] = useState(0);
+  const [aba, setAba] = useState<"inicio" | "sobre" | "contato">("inicio");
 
   useEffect(() => {
     sb.current.rpc("loja_publica", { p_slug: params.slug }).then(({ data }) => {
@@ -133,74 +135,122 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
       </div>
     );
 
+  const temSobre = !!loja.sobre;
+  const temContato = !!(loja.whatsapp || loja.telefone || loja.email || loja.instagram || loja.facebook || loja.tiktok);
+  const abas: { key: "inicio" | "sobre" | "contato"; label: string }[] = [
+    { key: "inicio", label: "Início" },
+    ...(temSobre ? [{ key: "sobre" as const, label: "Sobre" }] : []),
+    ...(temContato ? [{ key: "contato" as const, label: "Contato" }] : []),
+  ];
+  const abaAtual = abas.some((a) => a.key === aba) ? aba : "inicio";
+
   return (
     <div className="min-h-screen bg-[var(--bg)] pb-24" style={fontStack ? { fontFamily: fontStack } : undefined}>
       {/* cabeçalho da loja */}
       <header className="surface border-b border-default">
-        <div className="max-w-3xl mx-auto px-5 py-6 flex items-center gap-4">
-          {loja.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={loja.logo_url} alt={loja.nome} className="h-16 w-16 rounded-2xl object-cover border border-default" />
-          ) : (
-            <div className="h-16 w-16 rounded-2xl bg-brand-600 grid place-items-center text-white">
-              <Gem size={28} />
+        {loja.capa_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={loja.capa_url} alt="" className="h-36 md:h-52 w-full object-cover" />
+        )}
+        <div className="max-w-3xl mx-auto px-5">
+          <div className={`flex items-center gap-4 ${loja.capa_url ? "-mt-10" : "py-6"}`}>
+            {loja.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={loja.logo_url} alt={loja.nome} className="h-20 w-20 rounded-2xl object-cover border-4 border-[var(--surface)]" />
+            ) : (
+              <div className="h-20 w-20 rounded-2xl bg-brand-600 grid place-items-center text-white border-4 border-[var(--surface)]">
+                <Gem size={30} />
+              </div>
+            )}
+            <div className={`min-w-0 ${loja.capa_url ? "pt-10" : ""}`}>
+              <h1 className="text-2xl font-bold truncate">{loja.nome}</h1>
             </div>
-          )}
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold truncate">{loja.nome}</h1>
-            {loja.descricao && <p className="text-sm text-muted">{loja.descricao}</p>}
           </div>
+
+          {/* navegação */}
+          {abas.length > 1 && (
+            <nav className="flex gap-2 pb-3 pt-1">
+              {abas.map((a) => (
+                <button
+                  key={a.key}
+                  onClick={() => setAba(a.key)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                    abaAtual === a.key ? "bg-brand-600 text-white" : "surface-alt text-muted hover:text-strong"
+                  }`}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </header>
 
-      {/* catálogo */}
-      <main className="max-w-3xl mx-auto px-5 py-5">
-        {loja.produtos.length === 0 ? (
-          <div className="card text-center text-muted">Catálogo em breve.</div>
-        ) : (
-          (() => {
-            const categorias = Array.from(
-              new Set(loja.produtos.map((p) => p.categoria).filter((c): c is string => !!c))
-            );
-            const lista = filtroCat ? loja.produtos.filter((p) => p.categoria === filtroCat) : loja.produtos;
-            return (
-              <>
-                {categorias.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
-                    <button
-                      onClick={() => setFiltroCat(null)}
-                      className={`chip whitespace-nowrap ${
-                        filtroCat === null ? "bg-brand-600 text-white border-brand-600" : "border-default"
-                      }`}
-                    >
-                      Tudo
-                    </button>
-                    {categorias.map((c) => (
+      {/* INÍCIO: descrição + catálogo */}
+      {abaAtual === "inicio" && (
+        <main className="max-w-3xl mx-auto px-5 py-5">
+          {loja.descricao && <p className="text-muted mb-4">{loja.descricao}</p>}
+          {loja.produtos.length === 0 ? (
+            <div className="card text-center text-muted">Catálogo em breve.</div>
+          ) : (
+            (() => {
+              const categorias = Array.from(
+                new Set(loja.produtos.map((p) => p.categoria).filter((c): c is string => !!c))
+              );
+              const lista = filtroCat ? loja.produtos.filter((p) => p.categoria === filtroCat) : loja.produtos;
+              return (
+                <>
+                  {categorias.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
                       <button
-                        key={c}
-                        onClick={() => setFiltroCat(c)}
+                        onClick={() => setFiltroCat(null)}
                         className={`chip whitespace-nowrap ${
-                          filtroCat === c ? "bg-brand-600 text-white border-brand-600" : "border-default"
+                          filtroCat === null ? "bg-brand-600 text-white border-brand-600" : "border-default"
                         }`}
                       >
-                        {c}
+                        Tudo
                       </button>
+                      {categorias.map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => setFiltroCat(c)}
+                          className={`chip whitespace-nowrap ${
+                            filtroCat === c ? "bg-brand-600 text-white border-brand-600" : "border-default"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {lista.map((p) => (
+                      <ProdutoCard key={p.id} p={p} />
                     ))}
                   </div>
-                )}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {lista.map((p) => (
-                    <ProdutoCard key={p.id} p={p} />
-                  ))}
-                </div>
-              </>
-            );
-          })()
-        )}
-      </main>
+                </>
+              );
+            })()
+          )}
+        </main>
+      )}
 
-      {/* sobre + contato */}
-      <LojaRodape loja={loja} />
+      {/* SOBRE */}
+      {abaAtual === "sobre" && temSobre && (
+        <main className="max-w-3xl mx-auto px-5 py-5">
+          <div className="card">
+            <div className="font-semibold mb-2 text-lg">Sobre {loja.nome}</div>
+            <p className="text-muted whitespace-pre-line">{loja.sobre}</p>
+          </div>
+        </main>
+      )}
+
+      {/* CONTATO */}
+      {abaAtual === "contato" && temContato && (
+        <main className="max-w-3xl mx-auto px-5 py-5">
+          <LojaContato loja={loja} />
+        </main>
+      )}
 
       {/* botão de chat */}
       <button
@@ -257,7 +307,7 @@ function ProdutoCard({ p }: { p: ProdutoPub }) {
   );
 }
 
-function LojaRodape({ loja }: { loja: Loja }) {
+function LojaContato({ loja }: { loja: Loja }) {
   const links = [
     loja.whatsapp && { href: waLink(loja.whatsapp), icon: <MessageCircle size={18} />, label: "WhatsApp" },
     loja.telefone && { href: `tel:${loja.telefone.replace(/[^\d+]/g, "")}`, icon: <Phone size={18} />, label: "Telefone" },
@@ -267,35 +317,25 @@ function LojaRodape({ loja }: { loja: Loja }) {
     loja.tiktok && { href: ttLink(loja.tiktok), icon: <Music2 size={18} />, label: "TikTok" },
   ].filter(Boolean) as { href: string; icon: React.ReactNode; label: string }[];
 
-  if (!loja.sobre && links.length === 0) return null;
+  if (links.length === 0) return null;
 
   return (
-    <section className="max-w-3xl mx-auto px-5 pb-6 space-y-5">
-      {loja.sobre && (
-        <div className="card">
-          <div className="font-semibold mb-1">Sobre</div>
-          <p className="text-sm text-muted whitespace-pre-line">{loja.sobre}</p>
-        </div>
-      )}
-      {links.length > 0 && (
-        <div className="card">
-          <div className="font-semibold mb-3">Fale com a gente</div>
-          <div className="flex flex-wrap gap-2">
-            {links.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full surface-alt hover:bg-brand-600 hover:text-white px-4 py-2 text-sm font-medium transition"
-              >
-                {l.icon} {l.label}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
+    <div className="card">
+      <div className="font-semibold mb-3 text-lg">Fale com a gente</div>
+      <div className="flex flex-wrap gap-2">
+        {links.map((l) => (
+          <a
+            key={l.label}
+            href={l.href}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full surface-alt hover:bg-brand-600 hover:text-white px-4 py-2 text-sm font-medium transition"
+          >
+            {l.icon} {l.label}
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 
