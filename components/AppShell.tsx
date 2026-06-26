@@ -40,7 +40,8 @@ const ITENS: Item[] = [
   { href: "/painel", label: "Painel", icon: LayoutDashboard, roles: ["owner"], mobile: true },
   { href: "/produtos", label: "Estoque", icon: Package, roles: ["owner", "vendedor"], mobile: true },
   { href: "/vender", label: "Vender", icon: PlusCircle, roles: ["owner", "vendedor"], primary: true, mobile: true },
-  { href: "/entregas", label: "Entregas", icon: Truck, roles: ["owner", "motoboy"], cap: "allowEntregas", mobile: true },
+  // sem `cap`: a aba aparece sempre p/ o dono — sem o plano, a página mostra o pitch de upgrade
+  { href: "/entregas", label: "Entregas", icon: Truck, roles: ["owner", "motoboy"], mobile: true },
   { href: "/reposicao", label: "Repor", icon: TrendingUp, roles: ["owner"], mobile: true },
   { href: "/minha-loja", label: "Minha Loja", icon: Store, roles: ["owner"] },
   { href: "/revendedoras", label: "Equipe", icon: Users, roles: ["owner"] },

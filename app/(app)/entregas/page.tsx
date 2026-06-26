@@ -1,13 +1,29 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import type { Entrega, StatusEntrega } from "@/lib/types";
 import Guard from "@/components/Guard";
 import { usePlano } from "@/lib/usePlano";
-import { UpgradeBlock } from "@/components/UpgradeGate";
-import { planoQueLibera } from "@/lib/plans";
-import { Truck, Plus, X, MapPin, Phone, Check, Bike } from "lucide-react";
+import { planoQueLibera, brlPreco } from "@/lib/plans";
+import {
+  Truck,
+  Plus,
+  X,
+  MapPin,
+  Phone,
+  Check,
+  Bike,
+  Sparkles,
+  Route,
+  Clock,
+  DollarSign,
+  Users,
+  BadgeCheck,
+  Zap,
+  ArrowRight,
+} from "lucide-react";
 
 export default function EntregasPage() {
   return (
@@ -33,21 +49,9 @@ function Entregas() {
   const { caps } = usePlano();
   const dono = role === "owner";
 
-  // owner em plano sem entregas vê tela de upgrade (motoboy só existe no Expansão)
+  // owner em plano sem entregas vê o pitch de upgrade (motoboy só existe no Expansão)
   if (dono && !caps.allowEntregas) {
-    return (
-      <div className="space-y-4">
-        <header className="flex items-center gap-2 pt-1">
-          <Truck className="text-brand-600" />
-          <h1 className="text-2xl font-bold">Entregas</h1>
-        </header>
-        <UpgradeBlock
-          titulo="Entregas não está no seu plano"
-          descricao="Tenha motoboys com painel próprio, atribuição e acompanhamento de entregas. Disponível no plano Expansão."
-          planoNecessario={planoQueLibera((p) => p.allowEntregas)}
-        />
-      </div>
-    );
+    return <PitchEntregas />;
   }
 
   const motoboys = membros.filter((m) => m.role === "motoboy");
@@ -115,11 +119,149 @@ function Entregas() {
           motoboys={motoboys}
           onClose={() => setAberto(false)}
           onSalvar={async (dados) => {
-            await addEntrega(dados);
-            setAberto(false);
+            const r = await addEntrega(dados);
+            if (r.ok) setAberto(false);
+            return r;
           }}
         />
       )}
+    </div>
+  );
+}
+
+// Tela de venda do módulo de entregas para quem ainda não tem o plano.
+function PitchEntregas() {
+  const plano = planoQueLibera((p) => p.allowEntregas);
+  const preco = plano ? brlPreco(plano.precoCentavos) : null;
+
+  const recursos = [
+    {
+      icon: Users,
+      titulo: "Motoboys com painel próprio",
+      desc: "Cada entregador acessa só as entregas dele, com endereço, telefone e taxa. Sem grupo de WhatsApp, sem print, sem confusão.",
+    },
+    {
+      icon: Route,
+      titulo: "Atribuição em 1 toque",
+      desc: "Distribua as entregas para o motoboy certo direto da tela. Quem está livre, quem está na rua — tudo organizado.",
+    },
+    {
+      icon: Clock,
+      titulo: "Acompanhamento em tempo real",
+      desc: "Pendente → A caminho → Entregue. Você sabe o status de cada pedido sem precisar ligar e perguntar “já saiu?”.",
+    },
+    {
+      icon: DollarSign,
+      titulo: "Taxa de entrega no caixa",
+      desc: "Cada entrega registra a taxa cobrada. No fim do dia você sabe exatamente quanto entrou de frete.",
+    },
+  ];
+
+  const fluxo = [
+    { cor: "text-amber-500", label: "Pendente", desc: "Pedido criado, aguardando saída" },
+    { cor: "text-blue-500", label: "A caminho", desc: "Motoboy saiu para entregar" },
+    { cor: "text-green-500", label: "Entregue", desc: "Confirmado e fechado" },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <header className="flex items-center gap-2 pt-1">
+        <Truck className="text-brand-600" />
+        <h1 className="text-2xl font-bold">Entregas</h1>
+      </header>
+
+      {/* HERO */}
+      <section className="card relative overflow-hidden text-center py-10 px-6 space-y-4">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-brand-500/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-brand-500/10 blur-2xl" />
+        <div className="relative space-y-4">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 text-brand-500 text-xs font-bold px-3 py-1">
+            <Sparkles size={13} /> Disponível no plano {plano?.nome ?? "Expansão"}
+          </span>
+          <h2 className="text-2xl md:text-3xl font-extrabold leading-tight max-w-xl mx-auto">
+            Pare de gerenciar entrega no grito.
+            <br />
+            <span className="text-brand-500">Tenha uma operação de verdade.</span>
+          </h2>
+          <p className="text-sm md:text-base text-muted max-w-lg mx-auto">
+            Print no grupo, áudio de 3 minutos, “qual era mesmo o endereço?”. Cada entrega bagunçada é
+            cliente irritado e dinheiro escapando. Coloque seus motoboys, suas rotas e suas taxas dentro
+            da plataforma — e durma tranquilo sabendo onde está cada pedido.
+          </p>
+          <Link href="/planos" className="btn-primary inline-flex w-auto px-7 mx-auto">
+            <Zap size={16} />
+            {preco ? `Liberar entregas por ${preco}/mês` : "Ver planos"}
+          </Link>
+          <p className="text-xs text-muted flex items-center justify-center gap-1.5">
+            <BadgeCheck size={13} className="text-brand-500" /> Ativa na hora · cancele quando quiser
+          </p>
+        </div>
+      </section>
+
+      {/* RECURSOS */}
+      <section className="grid gap-3 sm:grid-cols-2">
+        {recursos.map((r) => {
+          const Icon = r.icon;
+          return (
+            <div key={r.titulo} className="card space-y-2">
+              <div className="h-10 w-10 rounded-xl bg-brand-500/10 grid place-items-center">
+                <Icon size={20} className="text-brand-500" />
+              </div>
+              <div className="font-semibold">{r.titulo}</div>
+              <p className="text-sm text-muted">{r.desc}</p>
+            </div>
+          );
+        })}
+      </section>
+
+      {/* FLUXO */}
+      <section className="card space-y-3">
+        <div className="flex items-center gap-2 font-semibold">
+          <Route size={18} className="text-brand-500" /> Do pedido à porta do cliente
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {fluxo.map((f, i) => (
+            <div key={f.label} className="surface-alt rounded-xl p-3 flex items-start gap-2">
+              <span className="text-xs font-bold text-muted shrink-0">{i + 1}</span>
+              <div>
+                <div className={`text-sm font-semibold ${f.cor}`}>{f.label}</div>
+                <div className="text-xs text-muted">{f.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* PROVA DE VALOR + CTA FINAL */}
+      <section className="card space-y-4">
+        <div className="space-y-1">
+          <div className="text-lg font-bold">Quanto custa NÃO ter isso?</div>
+          <p className="text-sm text-muted">
+            Uma única entrega trocada de endereço já paga o plano. Some o tempo que você perde no
+            WhatsApp coordenando motoboy e o cliente que não compra de novo porque “demorou e ninguém
+            soube dizer onde estava”. {preco ? `Por ${preco}/mês` : "Por menos do que um delivery atrasado"}, você
+            transforma a parte mais caótica da sua loja na mais organizada.
+          </p>
+        </div>
+        {plano && (
+          <div className="rounded-2xl border border-brand-500/30 bg-brand-500/5 p-4">
+            <div className="flex items-center justify-between">
+              <span className="font-bold">Plano {plano.nome}</span>
+              <span className="text-brand-500 font-bold">{brlPreco(plano.precoCentavos)}/mês</span>
+            </div>
+            <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+              {plano.beneficios.map((b) => (
+                <li key={b} className="text-xs text-muted flex items-center gap-1.5">
+                  <ArrowRight size={12} className="text-brand-500 shrink-0" /> {b}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <Link href="/planos" className="btn-primary w-full">
+          <Sparkles size={16} /> Quero gerenciar minhas entregas
+        </Link>
+      </section>
     </div>
   );
 }
@@ -220,7 +362,7 @@ function NovaEntrega({
     taxa?: number;
     motoboyId?: string | null;
     observacao?: string;
-  }) => void;
+  }) => Promise<{ ok: boolean; erro?: string }>;
 }) {
   const [cliente, setCliente] = useState("");
   const [endereco, setEndereco] = useState("");
@@ -228,6 +370,8 @@ function NovaEntrega({
   const [taxa, setTaxa] = useState("");
   const [motoboyId, setMotoboyId] = useState("");
   const [obs, setObs] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-40 flex items-end md:items-center justify-center">
@@ -273,10 +417,16 @@ function NovaEntrega({
           <label className="label">Observação</label>
           <input className="input" value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex.: ponto de referência" />
         </div>
+        {erro && (
+          <p className="text-sm text-red-500 bg-red-500/10 rounded-xl px-3 py-2">{erro}</p>
+        )}
         <button
-          onClick={() => {
+          disabled={salvando}
+          onClick={async () => {
             if (!cliente && !endereco) return;
-            onSalvar({
+            setErro(null);
+            setSalvando(true);
+            const r = await onSalvar({
               clienteNome: cliente,
               endereco,
               telefone: telefone || undefined,
@@ -284,10 +434,12 @@ function NovaEntrega({
               motoboyId: motoboyId || null,
               observacao: obs || undefined,
             });
+            setSalvando(false);
+            if (!r.ok) setErro(r.erro || "Não foi possível criar a entrega.");
           }}
-          className="btn-primary w-full"
+          className="btn-primary w-full disabled:opacity-60"
         >
-          Criar entrega
+          {salvando ? "Criando…" : "Criar entrega"}
         </button>
       </div>
     </div>

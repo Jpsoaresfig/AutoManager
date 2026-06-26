@@ -66,11 +66,13 @@ const configInicial: Config = {
   corMarca: null,
   temaBase: null,
   appFonte: null,
+  appRaio: null,
   logoUrl: null,
   plano: "solo",
   slug: null,
   lojaAtiva: false,
   lojaDescricao: null,
+  lojaCapaUrl: null,
   lojaFonte: null,
   lojaSobre: null,
   lojaEmail: null,
@@ -212,7 +214,6 @@ interface State {
   hydrate: () => Promise<void>;
 
   setConfig: (c: Partial<Config>) => Promise<void>;
-  mudarPlano: (plano: PlanoId) => Promise<{ ok: boolean; erro?: string }>;
   definirSlug: (slug: string) => Promise<{ ok: boolean; erro?: string }>;
   completarOnboarding: () => Promise<void>;
 
@@ -232,7 +233,7 @@ interface State {
     motoboyId?: string | null;
     vendaId?: string | null;
     observacao?: string;
-  }) => Promise<void>;
+  }) => Promise<{ ok: boolean; erro?: string }>;
   atribuirMotoboy: (entregaId: string, motoboyId: string | null) => Promise<void>;
   setStatusEntrega: (entregaId: string, status: StatusEntrega) => Promise<void>;
 
@@ -268,6 +269,11 @@ interface State {
   resolverChamado: (id: string, resolvido: boolean) => Promise<void>;
 }
 
+// Janela inicial de vendas carregada na hydrate (cobre painel + analytics de 6 meses).
+// O histórico mais antigo é buscado em segundo plano, paginado, e mesclado.
+const JANELA_VENDAS_DIAS = 180;
+const PAGINA_VENDAS = 500;
+
 export const useStore = create<State>()((set, get) => {
   const sb = () => createClient();
 
@@ -296,6 +302,9 @@ export const useStore = create<State>()((set, get) => {
         return;
       }
 
+      // só a janela recente entra na carga inicial (resto vem em 2º plano, abaixo)
+      const corteISO = new Date(Date.now() - JANELA_VENDAS_DIAS * 86_400_000).toISOString();
+
       const [
         { data: org },
         { data: eu },
@@ -313,7 +322,7 @@ export const useStore = create<State>()((set, get) => {
           .select("*, produto_variacao(*)")
           .order("criado_em", { ascending: true }),
         supabase.from("revendedora").select("*").order("criada_em", { ascending: true }),
-        supabase.from("venda").select("*, venda_item(*)").order("data", { ascending: false }),
+        supabase.from("venda").select("*, venda_item(*)").gte("data", corteISO).order("data", { ascending: false }),
         supabase.from("usuario").select("id, nome, email, role"),
         supabase.from("entrega").select("*").order("criada_em", { ascending: false }),
         supabase.from("assinatura").select("*").limit(1).maybeSingle(),
@@ -351,11 +360,13 @@ export const useStore = create<State>()((set, get) => {
               corMarca: org.cor_marca ?? null,
               temaBase: org.tema_base ?? null,
               appFonte: org.app_fonte ?? null,
+              appRaio: org.app_raio ?? null,
               logoUrl: org.logo_url ?? null,
               plano: (assin?.plano as PlanoId) ?? "solo",
               slug: org.slug ?? null,
               lojaAtiva: org.loja_ativa ?? false,
               lojaDescricao: org.loja_descricao ?? null,
+              lojaCapaUrl: org.loja_capa_url ?? null,
               lojaFonte: org.loja_fonte ?? null,
               lojaSobre: org.loja_sobre ?? null,
               lojaEmail: org.loja_email ?? null,
@@ -372,6 +383,27 @@ export const useStore = create<State>()((set, get) => {
         membros: (membros || []).map(mapMembro),
         entregas: (entregas || []).map(mapEntrega),
       });
+
+      // 2ª fase: histórico anterior à janela, paginado e mesclado em segundo plano.
+      // O app já está utilizável; relatórios de períodos longos vão se completando.
+      void (async () => {
+        for (let offset = 0; ; offset += PAGINA_VENDAS) {
+          const { data: antigas, error } = await supabase
+            .from("venda")
+            .select("*, venda_item(*)")
+            .lt("data", corteISO)
+            .order("data", { ascending: false })
+            .range(offset, offset + PAGINA_VENDAS - 1);
+          if (error || !antigas || antigas.length === 0) break;
+          const mapeadas = antigas.map(mapVenda);
+          set((s) => {
+            const ids = new Set(s.vendas.map((v) => v.id));
+            const novas = mapeadas.filter((v) => !ids.has(v.id));
+            return novas.length ? { vendas: [...s.vendas, ...novas] } : s;
+          });
+          if (antigas.length < PAGINA_VENDAS) break;
+        }
+      })();
     },
 
     setConfig: async (c) => {
@@ -390,10 +422,12 @@ export const useStore = create<State>()((set, get) => {
       if (c.corMarca !== undefined) patch.cor_marca = c.corMarca;
       if (c.temaBase !== undefined) patch.tema_base = c.temaBase;
       if (c.appFonte !== undefined) patch.app_fonte = c.appFonte;
+      if (c.appRaio !== undefined) patch.app_raio = c.appRaio;
       if (c.logoUrl !== undefined) patch.logo_url = c.logoUrl;
       if (c.slug !== undefined) patch.slug = c.slug;
       if (c.lojaAtiva !== undefined) patch.loja_ativa = c.lojaAtiva;
       if (c.lojaDescricao !== undefined) patch.loja_descricao = c.lojaDescricao;
+      if (c.lojaCapaUrl !== undefined) patch.loja_capa_url = c.lojaCapaUrl;
       if (c.lojaFonte !== undefined) patch.loja_fonte = c.lojaFonte;
       if (c.lojaSobre !== undefined) patch.loja_sobre = c.lojaSobre;
       if (c.lojaEmail !== undefined) patch.loja_email = c.lojaEmail;
@@ -405,24 +439,14 @@ export const useStore = create<State>()((set, get) => {
 
       const { error } = await sb().from("org").update(patch).eq("id", orgId);
       // resiliência: se as colunas de aparência ainda não existem no banco
-      // (migration 0014 não aplicada), salva o resto sem elas em vez de falhar tudo.
-      if (error && /tema_base|app_fonte|column/i.test(error.message)) {
+      // (migrations 0014/0020 não aplicadas), salva o resto sem elas em vez de falhar tudo.
+      if (error && /tema_base|app_fonte|app_raio|loja_capa_url|column/i.test(error.message)) {
         delete patch.tema_base;
         delete patch.app_fonte;
+        delete patch.app_raio;
+        delete patch.loja_capa_url;
         await sb().from("org").update(patch).eq("id", orgId);
       }
-    },
-
-    mudarPlano: async (plano) => {
-      const { error } = await sb().rpc("mudar_plano", { p_plano: plano });
-      if (error) return { ok: false, erro: error.message };
-      set((s) => ({
-        assinatura: s.assinatura
-          ? { ...s.assinatura, plano, status: "active", trialAte: null }
-          : { plano, status: "active", precoCentavos: 0, periodo: "mensal", dataInicio: Date.now(), dataFim: null, trialAte: null },
-        config: { ...s.config, plano },
-      }));
-      return { ok: true };
     },
 
     definirSlug: async (slug) => {
@@ -478,8 +502,8 @@ export const useStore = create<State>()((set, get) => {
         entregueEm: null,
       };
       set((s) => ({ entregas: [nova, ...s.entregas] }));
-      if (!orgId) return;
-      await sb().from("entrega").insert({
+      if (!orgId) return { ok: true };
+      const { error } = await sb().from("entrega").insert({
         id,
         org_id: orgId,
         venda_id: e.vendaId ?? null,
@@ -491,6 +515,15 @@ export const useStore = create<State>()((set, get) => {
         observacao: e.observacao ?? null,
         status: "pendente",
       });
+      // plano não libera entregas (trigger 0022) ou outro erro -> desfaz o otimista
+      if (error) {
+        set((s) => ({ entregas: s.entregas.filter((x) => x.id !== id) }));
+        const erro = /entregas_nao_permitidas/.test(error.message)
+          ? "Entregas estão disponíveis só no plano Expansão. Faça upgrade para registrar entregas."
+          : error.message;
+        return { ok: false, erro };
+      }
+      return { ok: true };
     },
 
     atribuirMotoboy: async (entregaId, motoboyId) => {
