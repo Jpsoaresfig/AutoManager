@@ -172,8 +172,9 @@ export type Recurso = "revendedoras" | "vendedores" | "motoboys";
 
 export function limiteDoRecurso(caps: PlanoDef, r: Recurso): number {
   if (r === "revendedoras") return caps.maxRevendedoras;
-  // vendedores/motoboys são booleanos: 0 = bloqueado, Infinity = liberado
-  if (r === "vendedores") return caps.allowVendedores ? Infinity : 0;
+  // vendedores: Equipe tem teto de 3; Expansão ilimitado; demais bloqueado
+  if (r === "vendedores") return caps.allowVendedores ? (caps.id === "equipe" ? 3 : Infinity) : 0;
+  // motoboys: booleano (0 = bloqueado, Infinity = liberado)
   return caps.allowMotoboys ? Infinity : 0;
 }
 

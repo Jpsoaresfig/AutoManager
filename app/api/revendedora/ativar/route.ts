@@ -20,6 +20,13 @@ export async function POST(req: Request) {
 
   const sb = admin();
 
+  // Mensagem única para os casos de "não elegível" (não cadastrada, não liberada,
+  // plano sem revendedoras): evita que se descubra quais e-mails estão cadastrados.
+  const naoElegivel = NextResponse.json(
+    { erro: "Não foi possível liberar o acesso com esse e-mail. Confirme com a loja se o acesso foi liberado." },
+    { status: 403 }
+  );
+
   // revendedora liberada e ainda não ativada
   const { data: rev } = await sb
     .from("revendedora")
@@ -31,11 +38,7 @@ export async function POST(req: Request) {
     .limit(1)
     .maybeSingle();
 
-  if (!rev)
-    return NextResponse.json(
-      { erro: "Este e-mail não está liberado para acesso. Fale com a loja." },
-      { status: 403 }
-    );
+  if (!rev) return naoElegivel;
 
   // o plano atual da loja inclui revendedoras? (Ambulante = 0 -> bloqueia o acesso).
   // espelha private.permite_revendedoras; evita criar login que não vai conseguir entrar.
@@ -55,11 +58,7 @@ export async function POST(req: Request) {
         trialAte: assin.trial_ate ? new Date(assin.trial_ate).getTime() : null,
       }
     : null;
-  if (capacidades(assinatura).maxRevendedoras === 0)
-    return NextResponse.json(
-      { erro: "O plano atual da loja não inclui revendedoras. Fale com a loja." },
-      { status: 403 }
-    );
+  if (capacidades(assinatura).maxRevendedoras === 0) return naoElegivel;
 
   // cria o login (role 'revendedora' -> trigger NÃO cria org/usuario)
   const { data: created, error: errCreate } = await sb.auth.admin.createUser({
@@ -70,8 +69,10 @@ export async function POST(req: Request) {
   });
   if (errCreate) {
     const dup = /already|exists|registered/i.test(errCreate.message);
+    // genérico: não confirma que o e-mail é de uma revendedora cadastrada,
+    // mas ainda orienta quem já ativou a usar "Entrar".
     return NextResponse.json(
-      { erro: dup ? "Esse e-mail já tem acesso. Use a opção Entrar." : errCreate.message },
+      { erro: dup ? "Se você já ativou antes, use a opção Entrar." : "Não foi possível concluir a ativação. Tente novamente." },
       { status: 400 }
     );
   }

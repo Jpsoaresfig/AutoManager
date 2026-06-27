@@ -2,12 +2,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { aplicarCorMarca } from "@/lib/brand";
+import { aplicarFavicon } from "@/lib/aparencia";
 import { carregarFonte } from "@/lib/fontes";
 import { waLink, igLink, fbLink, ttLink } from "@/lib/contato";
 import { brl } from "@/lib/analytics";
 import { MessageCircle, X, Send, Gem, Loader2, Phone, Mail, Instagram, Facebook, Music2 } from "lucide-react";
 
-type Variacao = { id: string; nome: string; preco_ajuste: number; estoque_atual: number };
+type Variacao = { id: string; nome: string; preco_ajuste: number; esgotado: boolean };
 type ProdutoPub = {
   id: string;
   nome: string;
@@ -17,7 +18,7 @@ type ProdutoPub = {
   preco_comparativo: number | null;
   descricao: string | null;
   imagens: string[];
-  estoque_atual: number;
+  esgotado: boolean;
   variacoes: Variacao[];
 };
 type Loja = {
@@ -53,6 +54,7 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
       setLoja(d);
       if (d?.cor_marca) aplicarCorMarca(d.cor_marca);
       if (d?.fonte) setFontStack(carregarFonte(d.fonte));
+      if (d) aplicarFavicon(d.logo_url, d.nome); // ícone/título da aba = logo e nome da loja
     });
   }, [params.slug]);
 
@@ -272,7 +274,7 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
 
 function ProdutoCard({ p }: { p: ProdutoPub }) {
   const temDesconto = p.preco_comparativo != null && p.preco_comparativo > p.preco_venda;
-  const esgotado = p.estoque_atual <= 0;
+  const esgotado = p.esgotado;
   return (
     <div className={`surface rounded-2xl border border-default overflow-hidden flex flex-col ${esgotado ? "opacity-70" : ""}`}>
       <div className="aspect-square surface-alt relative">

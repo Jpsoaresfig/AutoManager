@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Check, X, ArrowRight, Star } from "lucide-react";
 
 const COMECAR = "/login";
@@ -72,34 +71,12 @@ function Celula({ v }: { v: boolean | string }) {
 }
 
 export default function Pricing() {
-  const [anual, setAnual] = useState(false);
-
   return (
     <div>
-      {/* toggle mensal / anual */}
-      <div className="flex items-center justify-center gap-3">
-        <span className={!anual ? "font-semibold text-strong" : "text-muted"}>Mensal</span>
-        <button
-          type="button"
-          onClick={() => setAnual((a) => !a)}
-          className="relative h-7 w-12 rounded-full bg-brand-600 transition"
-          aria-label="Alternar cobrança anual"
-        >
-          <span
-            className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${
-              anual ? "left-6" : "left-1"
-            }`}
-          />
-        </button>
-        <span className={anual ? "font-semibold text-strong" : "text-muted"}>
-          Anual <span className="text-brand-500">(2 meses grátis)</span>
-        </span>
-      </div>
-
       {/* cards de plano */}
       <div className="mt-10 grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {PLANOS.map((p) => {
-          const mensal = anual ? Math.round(p.preco * 10 / 12) : p.preco;
+          const mensal = p.preco;
           return (
             <div
               key={p.nome}
@@ -122,11 +99,6 @@ export default function Pricing() {
                 <span className="text-4xl font-extrabold text-strong">{mensal}</span>
                 <span className="mb-1 text-sm text-muted">/mês</span>
               </div>
-              {anual && (
-                <p className="text-xs text-brand-500">
-                  cobrado R$ {p.preco * 10} por ano · economize R$ {p.preco * 2}
-                </p>
-              )}
 
               <p className="mt-4 text-sm text-muted">{p.resumo}</p>
 
