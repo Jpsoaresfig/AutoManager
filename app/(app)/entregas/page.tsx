@@ -62,12 +62,14 @@ function Entregas() {
     pegarEntrega,
     devolverEntrega,
     recarregarEntregas,
+    orgId,
   } = useStore();
   const { caps } = usePlano();
   const dono = role === "owner";
 
   // realtime: o balcão e os status ficam vivos (nova entrega, alguém pegou, mudou status)
   useEffect(() => {
+    if (!orgId) return;
     const client = createClient();
     let ch: ReturnType<typeof client.channel> | null = null;
     let cancelado = false;
@@ -77,7 +79,8 @@ function Entregas() {
       if (data.session) client.realtime.setAuth(data.session.access_token);
       ch = client
         .channel("entregas-live")
-        .on("postgres_changes", { event: "*", schema: "public", table: "entrega" }, () => {
+        // filtra por org: o realtime não avalia/entrega eventos de outras lojas (A-6)
+        .on("postgres_changes", { event: "*", schema: "public", table: "entrega", filter: `org_id=eq.${orgId}` }, () => {
           recarregarEntregas();
         })
         .subscribe();
@@ -86,7 +89,7 @@ function Entregas() {
       cancelado = true;
       if (ch) client.removeChannel(ch);
     };
-  }, [recarregarEntregas]);
+  }, [recarregarEntregas, orgId]);
 
   // owner em plano sem entregas vê o pitch de upgrade (entregas só no Expansão)
   if (dono && !caps.allowEntregas) {

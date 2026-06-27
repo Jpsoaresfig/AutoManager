@@ -12,6 +12,19 @@ export function vendidoUltimosDias(vendas: Venda[], produtoId: string, dias: num
   return qtd;
 }
 
+// Índice "qtd vendida nos últimos N dias por produto" construído em UMA passada
+// sobre as vendas. Evita o O(produtos × vendas × itens) de chamar
+// vendidoUltimosDias dentro de um loop de produtos (gargalo em lojas grandes).
+export function vendidoPorProdutoUltimosDias(vendas: Venda[], dias: number): Map<string, number> {
+  const corte = Date.now() - dias * DIA;
+  const m = new Map<string, number>();
+  for (const v of vendas) {
+    if (v.data < corte) continue;
+    for (const it of v.itens) m.set(it.produtoId, (m.get(it.produtoId) || 0) + it.qtd);
+  }
+  return m;
+}
+
 export interface SugestaoReposicao {
   produto: Produto;
   vendido30d: number;
@@ -27,12 +40,13 @@ export function sugestoesReposicao(
   vendas: Venda[]
 ): SugestaoReposicao[] {
   const out: SugestaoReposicao[] = [];
+  const vendido30dMap = vendidoPorProdutoUltimosDias(vendas, 30);
   for (const p of produtos) {
     if (!p.ativo) continue;
     // produto com grade tem estoque por variação: reposição é feita na tela do
     // produto (dar entrada no agregado corromperia a soma das variações).
     if (p.variacoes.length > 0) continue;
-    const vendido30d = vendidoUltimosDias(vendas, p.id, 30);
+    const vendido30d = vendido30dMap.get(p.id) ?? 0;
     const velocidadeDia = vendido30d / 30;
     const diasCobertura = velocidadeDia > 0 ? p.estoqueAtual / velocidadeDia : Infinity;
 
@@ -383,10 +397,11 @@ export function calcularAnalytics(produtos: Produto[], vendas: Venda[]): Analyti
   const tendenciaMes = mesAnt > 0 ? ((mesAtual - mesAnt) / mesAnt) * 100 : 0;
 
   // ruptura: produtos sem estoque que vendem (oportunidade perdida)
+  const vendido30dMapRup = vendidoPorProdutoUltimosDias(vendas, 30);
   const ruptura = produtos
     .filter((p) => p.ativo && p.estoqueAtual <= 0)
     .map((p) => {
-      const vendido30d = vendidoUltimosDias(vendas, p.id, 30);
+      const vendido30d = vendido30dMapRup.get(p.id) ?? 0;
       return { nome: p.nome, vendido30d, perdaEstimada: vendido30d * p.precoVenda };
     })
     .filter((r) => r.vendido30d > 0)

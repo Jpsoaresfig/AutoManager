@@ -251,7 +251,7 @@ interface State {
 
   hydrate: () => Promise<void>;
 
-  setConfig: (c: Partial<Config>) => Promise<void>;
+  setConfig: (c: Partial<Config>) => Promise<{ ok: boolean; erro?: string }>;
   definirSlug: (slug: string) => Promise<{ ok: boolean; erro?: string }>;
   completarOnboarding: () => Promise<void>;
 
@@ -279,13 +279,13 @@ interface State {
   devolverEntrega: (entregaId: string) => Promise<void>;
   recarregarEntregas: () => Promise<void>;
 
-  addProduto: (p: NovoProduto) => Promise<void>;
+  addProduto: (p: NovoProduto) => Promise<{ ok: boolean; erro?: string }>;
   importarProdutos: (linhas: NovoProduto[]) => Promise<{ ok: boolean; inseridos: number; erro?: string }>;
   updateProduto: (id: string, patch: EditarProduto) => Promise<void>;
-  entradaEstoque: (id: string, qtd: number) => Promise<void>;
-  ajustarEstoque: (id: string, novaQtd: number, motivo: string) => Promise<void>;
+  entradaEstoque: (id: string, qtd: number) => Promise<{ ok: boolean; erro?: string }>;
+  ajustarEstoque: (id: string, novaQtd: number, motivo: string) => Promise<{ ok: boolean; erro?: string }>;
 
-  addRevendedora: (r: Omit<Revendedora, "id" | "criadaEm" | "ativa" | "acessoLiberado" | "temAcesso">) => Promise<void>;
+  addRevendedora: (r: Omit<Revendedora, "id" | "criadaEm" | "ativa" | "acessoLiberado" | "temAcesso">) => Promise<{ ok: boolean; erro?: string }>;
   updateRevendedora: (id: string, patch: Partial<Revendedora>) => Promise<void>;
   removerRevendedora: (id: string) => Promise<{ ok: boolean; erro?: string }>;
   // libera o 1º acesso e devolve o código de convite (uso único) p/ o dono compartilhar
@@ -314,7 +314,7 @@ interface State {
     recorrente?: boolean;
     observacao?: string | null;
   }) => Promise<{ ok: boolean; erro?: string }>;
-  marcarContaPaga: (id: string, paga: boolean) => Promise<void>;
+  marcarContaPaga: (id: string, paga: boolean) => Promise<{ ok: boolean; erro?: string }>;
   removerContaPagar: (id: string) => Promise<void>;
 
   // caixa de entrada de recebimentos
@@ -338,6 +338,9 @@ interface State {
 // O histórico mais antigo é buscado em segundo plano, paginado, e mesclado.
 const JANELA_VENDAS_DIAS = 180;
 const PAGINA_VENDAS = 500;
+// teto do histórico carregado no cliente (2ª fase). Períodos além disso devem ser
+// agregados no servidor — o navegador nunca baixa o histórico inteiro (A-5).
+const HISTORICO_MAX_DIAS = 540;
 
 export const useStore = create<State>()((set, get) => {
   const sb = () => createClient();
@@ -465,13 +468,17 @@ export const useStore = create<State>()((set, get) => {
       });
 
       // 2ª fase: histórico anterior à janela, paginado e mesclado em segundo plano.
-      // Só o owner tem leitura de venda; demais papéis não entram aqui.
+      // Só o owner tem leitura de venda; demais papéis não entram aqui. A janela é
+      // LIMITADA (HISTORICO_MAX_DIAS) para o navegador nunca baixar histórico
+      // ilimitado — relatórios além disso devem ser agregados no servidor (A-5).
+      const limiteHistoricoISO = new Date(Date.now() - HISTORICO_MAX_DIAS * 86_400_000).toISOString();
       if (isOwner) void (async () => {
         for (let offset = 0; ; offset += PAGINA_VENDAS) {
           const { data: antigas, error } = await supabase
             .from("venda")
             .select("*, venda_item(*)")
             .lt("data", corteISO)
+            .gte("data", limiteHistoricoISO)
             .order("data", { ascending: false })
             .range(offset, offset + PAGINA_VENDAS - 1);
           if (error || !antigas || antigas.length === 0) break;
@@ -487,9 +494,10 @@ export const useStore = create<State>()((set, get) => {
     },
 
     setConfig: async (c) => {
+      const anterior = get().config;
       set((s) => ({ config: { ...s.config, ...c } }));
       const { orgId } = get();
-      if (!orgId) return;
+      if (!orgId) return { ok: true };
       const patch: any = {};
       if (c.nomeLoja !== undefined) patch.nome = c.nomeLoja;
       if (c.segmento !== undefined) patch.segmento = c.segmento;
@@ -517,7 +525,7 @@ export const useStore = create<State>()((set, get) => {
       if (c.lojaFacebook !== undefined) patch.loja_facebook = c.lojaFacebook;
       if (c.lojaTiktok !== undefined) patch.loja_tiktok = c.lojaTiktok;
 
-      const { error } = await sb().from("org").update(patch).eq("id", orgId);
+      let { error } = await sb().from("org").update(patch).eq("id", orgId);
       // resiliência: se as colunas de aparência ainda não existem no banco
       // (migrations 0014/0020 não aplicadas), salva o resto sem elas em vez de falhar tudo.
       if (error && /tema_base|app_fonte|app_raio|loja_capa_url|column/i.test(error.message)) {
@@ -525,8 +533,13 @@ export const useStore = create<State>()((set, get) => {
         delete patch.app_fonte;
         delete patch.app_raio;
         delete patch.loja_capa_url;
-        await sb().from("org").update(patch).eq("id", orgId);
+        ({ error } = await sb().from("org").update(patch).eq("id", orgId));
       }
+      if (error) {
+        set({ config: anterior }); // desfaz o otimista — sem falso "Salvo"
+        return { ok: false, erro: error.message };
+      }
+      return { ok: true };
     },
 
     definirSlug: async (slug) => {
@@ -700,9 +713,9 @@ export const useStore = create<State>()((set, get) => {
         criadoEm: Date.now(),
       };
       set((s) => ({ produtos: [...s.produtos, novo] }));
-      if (!orgId) return;
+      if (!orgId) return { ok: true };
       const supabase = sb();
-      await supabase.from("produto").insert({
+      const { error } = await supabase.from("produto").insert({
         id,
         org_id: orgId,
         nome: p.nome,
@@ -719,6 +732,10 @@ export const useStore = create<State>()((set, get) => {
         estoque_minimo: p.estoqueMinimo,
         ativo: true,
       });
+      if (error) {
+        set((s) => ({ produtos: s.produtos.filter((x) => x.id !== id) }));
+        return { ok: false, erro: error.message };
+      }
       if (variacoes.length > 0) {
         await supabase.from("produto_variacao").insert(
           variacoes.map((v) => ({
@@ -742,6 +759,7 @@ export const useStore = create<State>()((set, get) => {
           motivo: "Estoque inicial",
         });
       }
+      return { ok: true };
     },
 
     // Importação em lote (CSV): grava todos os produtos numa tacada só, sem
@@ -893,16 +911,22 @@ export const useStore = create<State>()((set, get) => {
     entradaEstoque: async (id, qtd) => {
       const { orgId } = get();
       const prod = get().produtos.find((x) => x.id === id);
-      if (!prod) return;
+      if (!prod) return { ok: false, erro: "Produto não encontrado." };
       // grade: o estoque é a soma das variações; dar entrada no agregado
       // criaria estoque "fantasma" invendável. Reposição vai na tela do produto.
-      if (prod.variacoes.length > 0) return;
-      const novoEstoque = prod.estoqueAtual + qtd;
+      if (prod.variacoes.length > 0)
+        return { ok: false, erro: "Produto com grade: ajuste o estoque por variação." };
+      const anterior = prod.estoqueAtual;
+      const novoEstoque = anterior + qtd;
       set((s) => ({
         produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: novoEstoque } : x)),
       }));
-      if (!orgId) return;
-      await sb().from("produto").update({ estoque_atual: novoEstoque }).eq("id", id);
+      if (!orgId) return { ok: true };
+      const { error } = await sb().from("produto").update({ estoque_atual: novoEstoque }).eq("id", id);
+      if (error) {
+        set((s) => ({ produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: anterior } : x)) }));
+        return { ok: false, erro: error.message };
+      }
       await sb().from("movimento_estoque").insert({
         org_id: orgId,
         produto_id: id,
@@ -910,20 +934,27 @@ export const useStore = create<State>()((set, get) => {
         qtd,
         motivo: "Reposição de estoque",
       });
+      return { ok: true };
     },
 
     ajustarEstoque: async (id, novaQtd, motivo) => {
       const { orgId } = get();
       const prod = get().produtos.find((x) => x.id === id);
-      if (!prod) return;
+      if (!prod) return { ok: false, erro: "Produto não encontrado." };
       // grade: ajuste é por variação (na tela do produto); não mexe no agregado.
-      if (prod.variacoes.length > 0) return;
-      const delta = novaQtd - prod.estoqueAtual;
+      if (prod.variacoes.length > 0)
+        return { ok: false, erro: "Produto com grade: ajuste o estoque por variação." };
+      const anterior = prod.estoqueAtual;
+      const delta = novaQtd - anterior;
       set((s) => ({
         produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: novaQtd } : x)),
       }));
-      if (!orgId) return;
-      await sb().from("produto").update({ estoque_atual: novaQtd }).eq("id", id);
+      if (!orgId) return { ok: true };
+      const { error } = await sb().from("produto").update({ estoque_atual: novaQtd }).eq("id", id);
+      if (error) {
+        set((s) => ({ produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: anterior } : x)) }));
+        return { ok: false, erro: error.message };
+      }
       await sb().from("movimento_estoque").insert({
         org_id: orgId,
         produto_id: id,
@@ -931,6 +962,7 @@ export const useStore = create<State>()((set, get) => {
         qtd: delta,
         motivo,
       });
+      return { ok: true };
     },
 
     addRevendedora: async (r) => {
@@ -945,7 +977,7 @@ export const useStore = create<State>()((set, get) => {
         temAcesso: false,
       };
       set((s) => ({ revendedoras: [...s.revendedoras, nova] }));
-      if (!orgId) return;
+      if (!orgId) return { ok: true };
       const { error } = await sb().from("revendedora").insert({
         id,
         org_id: orgId,
@@ -957,7 +989,16 @@ export const useStore = create<State>()((set, get) => {
         ativa: true,
       });
       // limite do plano (trigger no banco) ou outro erro -> desfaz o otimista
-      if (error) set((s) => ({ revendedoras: s.revendedoras.filter((x) => x.id !== id) }));
+      if (error) {
+        set((s) => ({ revendedoras: s.revendedoras.filter((x) => x.id !== id) }));
+        return {
+          ok: false,
+          erro: /limite_revendedoras/.test(error.message)
+            ? "Limite de revendedoras do seu plano atingido. Faça upgrade para adicionar mais."
+            : error.message,
+        };
+      }
+      return { ok: true };
     },
 
     updateRevendedora: async (id, patch) => {
@@ -1218,6 +1259,7 @@ export const useStore = create<State>()((set, get) => {
     },
 
     marcarContaPaga: async (id, paga) => {
+      const anterior = get().contasPagar.find((c) => c.id === id);
       const pagoEm = paga ? Date.now() : null;
       set((s) => ({
         contasPagar: s.contasPagar.map((c) =>
@@ -1225,14 +1267,19 @@ export const useStore = create<State>()((set, get) => {
         ),
       }));
       const { orgId } = get();
-      if (!orgId) return;
-      await sb()
+      if (!orgId) return { ok: true };
+      const { error } = await sb()
         .from("conta_pagar")
         .update({
           status: paga ? "paga" : "pendente",
           pago_em: pagoEm ? new Date(pagoEm).toISOString() : null,
         })
         .eq("id", id);
+      if (error && anterior) {
+        set((s) => ({ contasPagar: s.contasPagar.map((c) => (c.id === id ? anterior : c)) }));
+        return { ok: false, erro: error.message };
+      }
+      return { ok: true };
     },
 
     removerContaPagar: async (id) => {

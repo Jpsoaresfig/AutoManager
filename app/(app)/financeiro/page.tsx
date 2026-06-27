@@ -47,7 +47,11 @@ function fmtData(ymd: string): string {
 
 function Financeiro() {
   const { contasPagar, vendas, role, marcarContaPaga, removerContaPagar } = useStore();
-  const { confirm } = useDialog();
+  const { confirm, alerta } = useDialog();
+  async function alternarContaPaga(id: string, paga: boolean) {
+    const r = await marcarContaPaga(id, paga);
+    if (!r.ok) alerta({ titulo: "Não foi possível atualizar a conta", mensagem: r.erro || "Tente novamente." });
+  }
   const [aberto, setAberto] = useState(false);
   const [filtro, setFiltro] = useState<"pendentes" | "pagas" | "todas">("pendentes");
 
@@ -204,14 +208,14 @@ function Financeiro() {
                 <div className="flex gap-2">
                   {c.status === "pendente" ? (
                     <button
-                      onClick={() => marcarContaPaga(c.id, true)}
+                      onClick={() => alternarContaPaga(c.id, true)}
                       className="btn-primary flex-1 py-1.5 text-sm"
                     >
                       <Check size={15} /> Marcar paga
                     </button>
                   ) : (
                     <button
-                      onClick={() => marcarContaPaga(c.id, false)}
+                      onClick={() => alternarContaPaga(c.id, false)}
                       className="btn-ghost flex-1 py-1.5 text-sm"
                     >
                       <RotateCcw size={15} /> Reabrir

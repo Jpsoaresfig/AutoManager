@@ -109,15 +109,19 @@ function RevendedoresTab() {
       .reduce((a, v) => a + v.total, 0);
   }
 
-  function salvar() {
+  async function salvar() {
     if (!nome) return;
-    addRevendedora({
+    const r = await addRevendedora({
       nome,
       whatsapp: whats,
       email: emailNova.trim().toLowerCase() || null,
       comissaoPercent: parseFloat(comissao) || config.comissaoPadrao,
       metaMensal: parseFloat(meta) || 0,
     });
+    if (!r.ok) {
+      alerta({ titulo: "Não foi possível cadastrar", mensagem: r.erro || "Tente novamente." });
+      return; // mantém o formulário aberto
+    }
     setNome("");
     setWhats("");
     setEmailNova("");

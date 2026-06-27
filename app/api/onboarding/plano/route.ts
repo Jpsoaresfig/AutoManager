@@ -39,9 +39,38 @@ export async function POST(req: Request) {
   if (!plano || !["ambulante", "solo", "equipe", "expansao"].includes(plano))
     return NextResponse.json({ erro: "Plano inválido" }, { status: 400 });
 
+  const sb = admin();
+
+  // A-3: o período gratuito é concedido UMA vez. Se já foi consumido, não reabre
+  // nem estende — durante o trial vigente permite só trocar o plano escolhido.
+  const { data: cur } = await sb
+    .from("assinatura")
+    .select("status, trial_consumido")
+    .eq("org_id", dono.orgId)
+    .maybeSingle();
+
+  if (cur?.trial_consumido) {
+    if (cur.status === "trialing") {
+      const { error } = await sb
+        .from("assinatura")
+        .update({
+          plano,
+          preco_centavos: PLANOS[plano].precoCentavos,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("org_id", dono.orgId);
+      if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true, plano });
+    }
+    return NextResponse.json(
+      { erro: "Seu período gratuito já foi utilizado. Escolha um plano na página de Assinatura." },
+      { status: 409 }
+    );
+  }
+
   const agora = new Date();
   const trialAte = new Date(agora);
-  trialAte.setMonth(trialAte.getMonth() + 1); // 1 mês grátis
+  trialAte.setMonth(trialAte.getMonth() + 1); // 1 mês grátis (única concessão)
 
   const dados = {
     plano,
@@ -51,11 +80,12 @@ export async function POST(req: Request) {
     trial_ate: trialAte.toISOString(),
     data_inicio: agora.toISOString(),
     data_fim: null as string | null,
+    trial_consumido: true,
     updated_at: new Date().toISOString(),
   };
 
   // tenta atualizar a linha existente da org; se não houver, cria uma.
-  const { data, error } = await admin()
+  const { data, error } = await sb
     .from("assinatura")
     .update(dados)
     .eq("org_id", dono.orgId)
@@ -65,9 +95,7 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
 
   if (!data) {
-    const { error: e2 } = await admin()
-      .from("assinatura")
-      .insert({ org_id: dono.orgId, ...dados });
+    const { error: e2 } = await sb.from("assinatura").insert({ org_id: dono.orgId, ...dados });
     if (e2) return NextResponse.json({ erro: e2.message }, { status: 500 });
   }
 

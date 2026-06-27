@@ -22,7 +22,7 @@ export default function ProdutosPage() {
 
 function Produtos() {
   const { produtos, config, entradaEstoque, ajustarEstoque, role } = useStore();
-  const { prompt } = useDialog();
+  const { prompt, alerta } = useDialog();
   const podeEditar = role === "owner";
 
   async function reporEstoque(p: Produto) {
@@ -35,7 +35,10 @@ function Produtos() {
       confirmar: "Dar entrada",
     });
     const n = parseInt(q || "");
-    if (n > 0) entradaEstoque(p.id, n);
+    if (n > 0) {
+      const r = await entradaEstoque(p.id, n);
+      if (!r.ok) alerta({ titulo: "Não foi possível repor o estoque", mensagem: r.erro || "Tente novamente." });
+    }
   }
 
   async function ajustar(p: Produto) {
@@ -48,7 +51,10 @@ function Produtos() {
       confirmar: "Salvar",
     });
     const n = parseInt(q || "");
-    if (!isNaN(n) && n >= 0) ajustarEstoque(p.id, n, "Ajuste manual");
+    if (!isNaN(n) && n >= 0) {
+      const r = await ajustarEstoque(p.id, n, "Ajuste manual");
+      if (!r.ok) alerta({ titulo: "Não foi possível ajustar o estoque", mensagem: r.erro || "Tente novamente." });
+    }
   }
   const [form, setForm] = useState<{ open: boolean; editar: Produto | null }>({
     open: false,
@@ -501,11 +507,15 @@ function ProdutoForm({
           variacoes: vars,
         });
       } else {
-        await addProduto({
+        const r = await addProduto({
           ...base,
           estoqueAtual: usaGrade ? 0 : parseInt(estoque) || 0,
           variacoes: vars.map(({ id, ...rest }) => rest),
         });
+        if (!r.ok) {
+          alerta({ titulo: "Não foi possível salvar o produto", mensagem: r.erro || "Tente novamente." });
+          return; // mantém o formulário aberto com os dados
+        }
       }
       onClose();
     } finally {

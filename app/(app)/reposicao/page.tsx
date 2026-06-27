@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { sugestoesReposicao } from "@/lib/analytics";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import { TrendingUp, PackagePlus, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function ReposicaoPage() {
@@ -21,6 +22,7 @@ const MOTIVO_LABEL: Record<string, { txt: string; cls: string }> = {
 
 function Reposicao() {
   const { produtos, vendas, entradaEstoque } = useStore();
+  const { alerta } = useDialog();
   const sugestoes = sugestoesReposicao(produtos, vendas);
   const [processando, setProcessando] = useState<Set<string>>(new Set());
 
@@ -28,7 +30,8 @@ function Reposicao() {
     if (processando.has(id)) return; // trava duplo clique
     setProcessando((s) => new Set(s).add(id));
     try {
-      await entradaEstoque(id, qtd);
+      const r = await entradaEstoque(id, qtd);
+      if (!r.ok) alerta({ titulo: "Não foi possível repor o estoque", mensagem: r.erro || "Tente novamente." });
     } finally {
       setProcessando((s) => {
         const n = new Set(s);

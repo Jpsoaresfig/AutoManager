@@ -118,7 +118,7 @@ function Configuracoes() {
 
   async function salvar() {
     setSalvando(true);
-    await setConfig({
+    const r = await setConfig({
       nomeLoja: nomeLoja || "Minha Loja",
       segmento,
       canais: canais.length ? canais : ["whatsapp"],
@@ -131,6 +131,10 @@ function Configuracoes() {
       appRaio,
     });
     setSalvando(false);
+    if (!r.ok) {
+      alerta({ titulo: "Não foi possível salvar", mensagem: r.erro || "Tente novamente." });
+      return;
+    }
     setSalvo(true);
     setTimeout(() => setSalvo(false), 2000);
   }
