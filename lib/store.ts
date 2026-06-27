@@ -373,37 +373,35 @@ export const useStore = create<State>()((set, get) => {
       // só a janela recente entra na carga inicial (resto vem em 2º plano, abaixo)
       const corteISO = new Date(Date.now() - JANELA_VENDAS_DIAS * 86_400_000).toISOString();
 
-      const [
-        { data: org },
-        { data: eu },
-        { data: produtos },
-        { data: revendedoras },
-        { data: vendas },
-        { data: membros },
-        { data: entregas },
-        { data: entradas },
-        { data: contas },
-        { data: assin },
-      ] = await Promise.all([
+      // papel + org + assinatura primeiro; a carga seguinte é POR PAPEL (A-1):
+      // vendedor/motoboy não baixam tabelas financeiras (custo/lucro/comissão).
+      const [{ data: org }, { data: eu }, { data: assin }] = await Promise.all([
         supabase.from("org").select("*").limit(1).maybeSingle(),
         supabase.from("usuario").select("role").eq("id", user.id).maybeSingle(),
-        supabase
-          .from("produto")
-          .select("*, produto_variacao(*)")
-          .order("criado_em", { ascending: true }),
-        supabase.from("revendedora").select("*").order("criada_em", { ascending: true }),
-        supabase.from("venda").select("*, venda_item(*)").gte("data", corteISO).order("data", { ascending: false }),
-        supabase.from("usuario").select("id, nome, email, role"),
-        supabase.from("entrega").select("*").order("criada_em", { ascending: false }),
-        // recebimentos pendentes de confirmação (tabela pode não existir se 0024 não rodou)
-        supabase
-          .from("entrada_pendente")
-          .select("*")
-          .eq("status", "pendente")
-          .order("recebido_em", { ascending: false }),
-        // contas a pagar (tabela pode não existir se 0033 não rodou)
-        supabase.from("conta_pagar").select("*").order("vencimento", { ascending: true }),
         supabase.from("assinatura").select("*").limit(1).maybeSingle(),
+      ]);
+
+      const role: Role = (eu?.role as Role) ?? "owner";
+      const isOwner = role === "owner";
+      const isMotoboy = role === "motoboy";
+      const vazio = Promise.resolve([] as any[]);
+
+      const [produtos, revendedoras, vendas, membros, entregas, entradas, contas] = await Promise.all([
+        // produtos: owner lê a tabela (com custo, p/ analytics); vendedor recebe o
+        // catálogo SEM custo via RPC produtos_para_venda; motoboy não precisa.
+        isOwner
+          ? supabase.from("produto").select("*, produto_variacao(*)").order("criado_em", { ascending: true }).then((r) => r.data ?? [])
+          : role === "vendedor"
+          ? supabase.rpc("produtos_para_venda").then((r) => (r.data as any[]) ?? [])
+          : vazio,
+        isOwner ? supabase.from("revendedora").select("*").order("criada_em", { ascending: true }).then((r) => r.data ?? []) : vazio,
+        isOwner ? supabase.from("venda").select("*, venda_item(*)").gte("data", corteISO).order("data", { ascending: false }).then((r) => r.data ?? []) : vazio,
+        isOwner ? supabase.from("usuario").select("id, nome, email, role").then((r) => r.data ?? []) : vazio,
+        // entregas: owner vê todas; motoboy vê as suas + o pool (RLS cuida do escopo).
+        isOwner || isMotoboy ? supabase.from("entrega").select("*").order("criada_em", { ascending: false }).then((r) => r.data ?? []) : vazio,
+        // recebimentos / contas a pagar: só o owner (tabelas de 0024/0033).
+        isOwner ? supabase.from("entrada_pendente").select("*").eq("status", "pendente").order("recebido_em", { ascending: false }).then((r) => r.data ?? []) : vazio,
+        isOwner ? supabase.from("conta_pagar").select("*").order("vencimento", { ascending: true }).then((r) => r.data ?? []) : vazio,
       ]);
 
       const assinatura: Assinatura | null = assin
@@ -467,8 +465,8 @@ export const useStore = create<State>()((set, get) => {
       });
 
       // 2ª fase: histórico anterior à janela, paginado e mesclado em segundo plano.
-      // O app já está utilizável; relatórios de períodos longos vão se completando.
-      void (async () => {
+      // Só o owner tem leitura de venda; demais papéis não entram aqui.
+      if (isOwner) void (async () => {
         for (let offset = 0; ; offset += PAGINA_VENDAS) {
           const { data: antigas, error } = await supabase
             .from("venda")
