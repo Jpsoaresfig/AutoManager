@@ -3,6 +3,13 @@
 > Documento de estratégia + copy + especificação de implementação.
 > Página implementada em `app/page.tsx` (Next.js 14 / App Router / Tailwind / lucide-react).
 
+> **Estado da implementação (2026-06-27):** a landing foi reconstruída em padrão premium
+> (dark **auto-contido**, hero **vivo**, scroll storytelling). Componentes atuais em
+> `components/landing/`: **`LiveDashboard`** (demonstração viva — substitui o `DashboardMock`
+> estático, que segue no repo como legado), **`Reveal`** (scroll-reveal por IntersectionObserver),
+> `Pricing`, `Faq` (aceita lista curada de objeções) e `StickyCta`. A estratégia/copy abaixo
+> continua válida. Resumo técnico em `DOCUMENTACAO.md` §15.
+
 ---
 
 ## 0. Princípio que guia tudo

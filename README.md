@@ -1,8 +1,10 @@
 # 💎 AutoManager
 
-SaaS de gestão de **semijoias e revendedoras** para pequenos lojistas brasileiros.
-Controle de estoque, vendas em 1 toque, comissão automática e reposição inteligente.
-PWA mobile-first com **autenticação e dados na nuvem (Supabase)**, isolados por loja via RLS.
+SaaS de gestão para **micronegócios brasileiros** (doces, bijuterias, semijoias, cosméticos,
+roupas, papelaria, artesanato e qualquer pequena loja). Estoque, vendas em 1 toque, comissão
+automática de revendedoras, financeiro (a receber/a pagar), vitrine pública com chat e
+relatórios de lucro real. PWA mobile-first com **dados na nuvem (Supabase)**, isolados por loja
+via RLS. Documentação completa do sistema em **`DOCUMENTACAO.md`**.
 
 ## Rodar localmente
 
