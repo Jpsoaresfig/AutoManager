@@ -166,7 +166,7 @@ function Produtos() {
                             String(p.estoqueAtual)
                           );
                           const n = parseInt(q || "");
-                          if (!isNaN(n)) ajustarEstoque(p.id, n, "Ajuste manual");
+                          if (!isNaN(n) && n >= 0) ajustarEstoque(p.id, n, "Ajuste manual");
                         }}
                         className="text-muted"
                         title="Ajustar"
