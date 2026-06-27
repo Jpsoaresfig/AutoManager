@@ -1153,7 +1153,7 @@ export const useStore = create<State>()((set, get) => {
 
       // Tudo numa transação atômica no banco (valida estoque, grava venda+itens,
       // baixa estoque relativo e movimentos). O id vem do cliente p/ casar com o otimista.
-      const { error } = await sb().rpc("registrar_venda", {
+      const { data: rpcRes, error } = await sb().rpc("registrar_venda", {
         p_venda_id: vendaId,
         p_itens: itens.map((it) => ({
           produto_id: it.produtoId,
@@ -1168,9 +1168,13 @@ export const useStore = create<State>()((set, get) => {
         p_fiado: fiado,
       });
 
-      // erro no banco (estoque, RLS, rede) -> desfaz o otimista: remove a venda
+      // M-6: se o id já existe (reenvio após timeout onde o RPC tinha sucedido),
+      // a venda já está gravada — trata como sucesso em vez de duplicar.
+      const jaGravada = !!error && /duplicate key|already exists|venda_pkey/i.test(error.message);
+
+      // erro real no banco (estoque, RLS, rede) -> desfaz o otimista: remove a venda
       // e restaura o estoque dos produtos afetados ao valor anterior à venda.
-      if (error) {
+      if (error && !jaGravada) {
         const afetados = new Set(baixaPorProduto.keys());
         set((st) => ({
           vendas: st.vendas.filter((v) => v.id !== vendaId),
@@ -1181,6 +1185,21 @@ export const useStore = create<State>()((set, get) => {
           }),
         }));
         return null;
+      }
+
+      // M-8: aplica os valores AUTORITATIVOS do servidor (caso preço/custo tenham
+      // mudado entre o render e o submit). O banco é a fonte da verdade.
+      const r = rpcRes as { total?: number; custo_total?: number; comissao_total?: number; lucro?: number } | null;
+      if (r && typeof r.total === "number") {
+        const vendaServidor: Venda = {
+          ...venda,
+          total: Number(r.total),
+          custoTotal: Number(r.custo_total ?? venda.custoTotal),
+          comissaoTotal: Number(r.comissao_total ?? venda.comissaoTotal),
+          lucro: Number(r.lucro ?? venda.lucro),
+        };
+        set((st) => ({ vendas: st.vendas.map((v) => (v.id === vendaId ? vendaServidor : v)) }));
+        return vendaServidor;
       }
 
       return venda;

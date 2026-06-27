@@ -48,6 +48,12 @@ function Conversas() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const deveColar = useRef(true); // só auto-scrolla se o usuário está perto do fim
   const primeira = useRef(true); // primeiro render da conversa = pula direto pro fim
+  // ref de "conversa aberta" lido dentro do handler do realtime, p/ que o canal
+  // NÃO seja recriado a cada conversa aberta (M-12).
+  const selRef = useRef<string | null>(null);
+  useEffect(() => {
+    selRef.current = sel;
+  }, [sel]);
 
   function naoLida(c: Conversa) {
     if (!c.ultima_cliente_em) return false;
@@ -75,7 +81,9 @@ function Conversas() {
 
   // carrega conversas + realtime de novas mensagens da org
   useEffect(() => {
+    if (!orgId) return;
     const client = sb.current;
+    const orgFiltro = `org_id=eq.${orgId}`;
     let ch: ReturnType<typeof client.channel> | null = null;
 
     client
@@ -100,11 +108,11 @@ function Conversas() {
 
     ch = client
       .channel("inbox")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversa" }, (p) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversa", filter: orgFiltro }, (p) => {
         const c = p.new as Conversa;
         setConversas((prev) => (prev.some((x) => x.id === c.id) ? prev : [c, ...prev]));
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagem" }, (p) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagem", filter: orgFiltro }, (p) => {
         const m = p.new as any;
         const doCliente = m.autor_tipo === "cliente";
         // reordena pro topo e atualiza a hora da última msg do cliente
@@ -118,17 +126,18 @@ function Conversas() {
           };
           return [atualizada, ...prev.filter((c) => c.id !== m.conversa_id)];
         });
-        if (sel && m.conversa_id === sel) {
+        const aberta = selRef.current;
+        if (aberta && m.conversa_id === aberta) {
           setMsgs((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m as Msg]));
-          if (doCliente) marcarVisto(sel); // já está vendo -> não conta como não lida
+          if (doCliente) marcarVisto(aberta); // já está vendo -> não conta como não lida
         }
       })
       .subscribe();
 
     return () => {
-      client.removeChannel(ch);
+      if (ch) client.removeChannel(ch);
     };
-  }, [sel]);
+  }, [orgId]);
 
   useEffect(() => {
     if (!sel) return;
