@@ -80,10 +80,10 @@ export default function Pricing() {
           return (
             <div
               key={p.nome}
-              className={`card relative flex flex-col ${
+              className={`card relative flex flex-col transition-all duration-200 hover:-translate-y-1.5 ${
                 p.destaque
-                  ? "border-brand-500 ring-2 ring-brand-500/30 lg:-mt-3 lg:mb-3"
-                  : ""
+                  ? "border-brand-500 ring-2 ring-brand-500/40 shadow-pop lg:-mt-3 lg:mb-3 lg:scale-[1.03]"
+                  : "hover:border-brand-500/30"
               }`}
             >
               {p.badge && (
