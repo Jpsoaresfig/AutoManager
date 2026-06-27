@@ -12,7 +12,7 @@ import Link from "next/link";
 // recharts é pesado: carrega só quando o painel monta, fora do bundle inicial.
 const VendasArea = dynamic(() => import("@/components/charts/VendasArea"), {
   ssr: false,
-  loading: () => <div style={{ height: 140 }} className="grid place-items-center text-xs text-muted">carregando gráfico…</div>,
+  loading: () => <div style={{ height: 140 }} className="skeleton rounded-xl" />,
 });
 import {
   TrendingUp,

@@ -7,6 +7,7 @@ import { brl } from "@/lib/analytics";
 import { slugSugerido } from "@/lib/slug";
 import { FONTES, carregarFonte } from "@/lib/fontes";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import type { Produto } from "@/lib/types";
 import {
   Globe,
@@ -48,6 +49,7 @@ const CORES = ["#db2777", "#7c3aed", "#2563eb", "#0d9488", "#ea580c", "#dc2626",
 
 function MinhaLoja() {
   const { config, orgId, produtos, setConfig, definirSlug } = useStore();
+  const { alerta } = useDialog();
   const fileRef = useRef<HTMLInputElement>(null);
   const capaRef = useRef<HTMLInputElement>(null);
 
@@ -132,30 +134,30 @@ function MinhaLoja() {
   function escolherCor(hex: string | null) {
     setCor(hex);
     previewAparencia({ cor: hex });
-    setConfig({ corMarca: hex });
+    persistir({ corMarca: hex });
   }
 
   function escolherTema(key: string | null) {
     setTemaBase(key);
     previewAparencia({ tema: key });
-    setConfig({ temaBase: key });
+    persistir({ temaBase: key });
   }
 
   function escolherFonteApp(key: string | null) {
     setAppFonte(key);
     previewAparencia({ fonte: key });
-    setConfig({ appFonte: key });
+    persistir({ appFonte: key });
   }
 
   function escolherRaio(key: string | null) {
     setAppRaio(key);
     previewAparencia({ raio: key });
-    setConfig({ appRaio: key });
+    persistir({ appRaio: key });
   }
 
   function escolherFonte(k: string) {
     setFonte(k);
-    setConfig({ lojaFonte: k === "padrao" ? null : k });
+    persistir({ lojaFonte: k === "padrao" ? null : k });
   }
 
   async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -167,7 +169,7 @@ function MinhaLoja() {
       setLogoUrl(u);
       await setConfig({ logoUrl: u });
     } catch (err: any) {
-      alert("Não foi possível enviar a logo: " + (err?.message || "erro"));
+      alerta({ titulo: "Não foi possível enviar a logo", mensagem: err?.message || "erro" });
     } finally {
       setEnviandoLogo(false);
     }
@@ -182,7 +184,7 @@ function MinhaLoja() {
       setCapaUrl(u);
       await setConfig({ lojaCapaUrl: u });
     } catch (err: any) {
-      alert("Não foi possível enviar a capa: " + (err?.message || "erro"));
+      alerta({ titulo: "Não foi possível enviar a capa", mensagem: err?.message || "erro" });
     } finally {
       setEnviandoCapa(false);
     }
@@ -200,10 +202,30 @@ function MinhaLoja() {
     setTimeout(() => setCopiado(false), 1500);
   }
 
-  const salvar = (campo: string, valor: string) => setConfig({ [campo]: valor || null } as any);
+  // feedback "Salvo ✓" — minha-loja persiste no onBlur, então confirmamos visualmente
+  const [salvoVisivel, setSalvoVisivel] = useState(false);
+  const salvoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function flashSalvo() {
+    setSalvoVisivel(true);
+    if (salvoTimer.current) clearTimeout(salvoTimer.current);
+    salvoTimer.current = setTimeout(() => setSalvoVisivel(false), 1600);
+  }
+  function persistir(patch: Record<string, any>) {
+    setConfig(patch as any);
+    flashSalvo();
+  }
+
+  const salvar = (campo: string, valor: string) => persistir({ [campo]: valor || null });
 
   return (
     <div className="space-y-4 pb-10">
+      {salvoVisivel && (
+        <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-50 reveal pointer-events-none">
+          <div className="surface shadow-pop border border-default rounded-full px-4 py-2 text-sm font-semibold flex items-center gap-2">
+            <Check size={15} className="text-green-500" /> Salvo
+          </div>
+        </div>
+      )}
       <header className="pt-1 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Minha Loja</h1>
@@ -261,7 +283,7 @@ function MinhaLoja() {
             </div>
             <div>
               <label className="label">Nome da loja</label>
-              <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={() => setConfig({ nomeLoja: nome || "Minha Loja" })} />
+              <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={() => persistir({ nomeLoja: nome || "Minha Loja" })} />
             </div>
             <div>
               <label className="label">Chamada curta (subtítulo)</label>
@@ -270,7 +292,7 @@ function MinhaLoja() {
                 rows={2}
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
-                onBlur={() => setConfig({ lojaDescricao: descricao || null })}
+                onBlur={() => persistir({ lojaDescricao: descricao || null })}
                 placeholder="Ex.: Semijoias folheadas com garantia. Entrega para toda a cidade."
               />
             </div>
@@ -332,7 +354,7 @@ function MinhaLoja() {
                   <button
                     key={c}
                     onClick={() => escolherCor(c)}
-                    className={`h-8 w-8 rounded-full border-2 ${cor === c ? "border-white ring-2 ring-brand-500" : "border-transparent"}`}
+                    className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${cor === c ? "border-white ring-2 ring-brand-500" : "border-transparent"}`}
                     style={{ background: c }}
                     aria-label={c}
                   />
@@ -389,8 +411,8 @@ function MinhaLoja() {
                     <button
                       key={t.key}
                       onClick={() => escolherTema(t.key)}
-                      className={`rounded-xl border p-2 text-left transition ${
-                        ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default"
+                      className={`rounded-xl border p-2 text-left transition-all active:scale-[.97] hover:-translate-y-0.5 ${
+                        ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default hover:border-brand-500/50"
                       }`}
                       style={{ background: t.bg }}
                     >
@@ -437,8 +459,8 @@ function MinhaLoja() {
                     <button
                       key={r.key}
                       onClick={() => escolherRaio(r.key === "padrao" ? null : r.key)}
-                      className={`border p-2 transition flex flex-col items-center gap-2 ${
-                        ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default"
+                      className={`border p-2 transition-all active:scale-[.97] flex flex-col items-center gap-2 ${
+                        ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default hover:border-brand-500/50 hover:bg-[var(--hover)]"
                       }`}
                       style={{ borderRadius: r.card }}
                     >
@@ -462,7 +484,7 @@ function MinhaLoja() {
               rows={4}
               value={sobre}
               onChange={(e) => setSobre(e.target.value)}
-              onBlur={() => setConfig({ lojaSobre: sobre || null })}
+              onBlur={() => persistir({ lojaSobre: sobre || null })}
               placeholder="Conte a história da sua loja, diferenciais, garantia, prazos de entrega, formas de pagamento…"
             />
           </section>

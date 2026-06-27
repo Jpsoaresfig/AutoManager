@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import { Plus, X, MessageCircle, BadgeDollarSign, Target, Pencil, KeyRound, Check, Mail } from "lucide-react";
 import type { Revendedora } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
@@ -21,6 +22,7 @@ function Revendedoras() {
   const { revendedoras, vendas, config, addRevendedora, updateRevendedora, marcarComissaoPaga } =
     useStore();
   const { caps, uso, limiteAtingido } = usePlano();
+  const { prompt, confirm } = useDialog();
   const [aberto, setAberto] = useState(false);
   const [upsell, setUpsell] = useState(false);
   const [nome, setNome] = useState("");
@@ -72,10 +74,26 @@ function Revendedoras() {
     setAberto(false);
   }
 
-  function editarMeta(id: string, atual: number) {
-    const v = prompt("Meta de vendas do mês (R$):", String(atual || ""));
+  async function editarMeta(id: string, atual: number) {
+    const v = await prompt({
+      titulo: "Meta do mês",
+      mensagem: "Defina a meta de vendas mensal (R$):",
+      valorInicial: String(atual || ""),
+      tipo: "number",
+      inputMode: "decimal",
+      confirmar: "Salvar",
+    });
     if (v === null) return;
     updateRevendedora(id, { metaMensal: parseFloat(v) || 0 });
+  }
+
+  async function pagarComissao(id: string, nome: string, valor: number) {
+    const ok = await confirm({
+      titulo: "Confirmar pagamento",
+      mensagem: `Marcar ${brl(valor)} como pago para ${nome}?`,
+      confirmar: "Marcar como pago",
+    });
+    if (ok) marcarComissaoPaga(id);
   }
 
   return (
@@ -180,10 +198,7 @@ function Revendedoras() {
                 </span>
                 {pend > 0 && (
                   <button
-                    onClick={() => {
-                      if (confirm(`Marcar ${brl(pend)} como pago para ${r.nome}?`))
-                        marcarComissaoPaga(r.id);
-                    }}
+                    onClick={() => pagarComissao(r.id, r.nome, pend)}
                     className="text-xs btn-primary py-1.5 px-2"
                   >
                     <BadgeDollarSign size={14} /> Pagar

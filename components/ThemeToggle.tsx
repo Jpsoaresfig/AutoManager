@@ -38,8 +38,8 @@ export default function ThemeToggle() {
           <button
             key={o.label}
             onClick={() => escolher(o.claro)}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition ${
-              ativo ? "surface shadow text-strong" : "text-muted"
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition active:scale-95 ${
+              ativo ? "surface shadow text-strong" : "text-muted hover:text-strong hover:bg-[var(--hover)]"
             }`}
           >
             <Icon size={16} /> {o.label}

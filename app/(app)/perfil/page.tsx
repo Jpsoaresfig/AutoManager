@@ -6,7 +6,10 @@ import { useStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
 import { usePlano } from "@/lib/usePlano";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import ThemeToggle from "@/components/ThemeToggle";
+import CountUp from "@/components/CountUp";
+import { Skeleton } from "@/components/Skeleton";
 import { brl } from "@/lib/analytics";
 import { Store, Mail, Palette, LogOut, BadgeCheck, ChevronRight } from "lucide-react";
 
@@ -21,6 +24,7 @@ export default function PerfilPage() {
 function Perfil() {
   const router = useRouter();
   const { config, produtos, vendas } = useStore();
+  const { confirm } = useDialog();
   const [email, setEmail] = useState("");
 
   useEffect(() => {
@@ -30,6 +34,13 @@ function Perfil() {
   }, []);
 
   async function sair() {
+    const ok = await confirm({
+      titulo: "Sair da conta?",
+      mensagem: "Você precisará entrar de novo com seu e-mail e senha.",
+      confirmar: "Sair",
+      perigo: true,
+    });
+    if (!ok) return;
     await createClient().auth.signOut();
     router.replace("/login");
   }
@@ -55,12 +66,12 @@ function Perfil() {
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted">
-          <Mail size={15} /> {email || "-"}
+          <Mail size={15} /> {email ? email : <Skeleton className="h-4 w-40" />}
         </div>
-        <div className="grid grid-cols-3 gap-2 pt-1">
-          <Stat label="Produtos" value={String(produtos.length)} />
-          <Stat label="Vendas" value={String(vendas.length)} />
-          <Stat label="Faturado" value={brl(faturamento)} />
+        <div className="grid grid-cols-3 gap-2 pt-1 stagger">
+          <Stat label="Produtos" value={<CountUp value={produtos.length} />} />
+          <Stat label="Vendas" value={<CountUp value={vendas.length} />} />
+          <Stat label="Faturado" value={<CountUp value={faturamento} format={brl} />} />
         </div>
       </div>
 
@@ -83,10 +94,10 @@ function Perfil() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="surface-alt rounded-xl px-3 py-2 text-center">
-      <div className="font-bold text-sm">{value}</div>
+    <div className="surface-alt rounded-xl px-3 py-2.5 text-center">
+      <div className="font-bold text-base truncate">{value}</div>
       <div className="text-[11px] text-muted">{label}</div>
     </div>
   );

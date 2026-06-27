@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import type { EntradaPendente, OrigemRecebimento } from "@/lib/types";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import { pedirPermissaoNotificacao } from "@/lib/useRecebimentos";
 import {
   Inbox,
@@ -45,6 +46,7 @@ function tempoRelativo(ms: number): string {
 function Recebimentos() {
   const { entradasPendentes, role, confirmarEntrada, recusarEntrada, simularRecebimento } =
     useStore();
+  const { alerta } = useDialog();
   const [permissao, setPermissao] = useState<string>(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "indisponivel"
   );
@@ -117,7 +119,7 @@ function Recebimentos() {
               setOcupado(e.id);
               const v = await confirmarEntrada(e.id);
               setOcupado(null);
-              if (!v) alert("Não foi possível lançar agora. Tente de novo.");
+              if (!v) alerta({ titulo: "Não foi possível lançar agora", mensagem: "Tente de novo." });
             }}
             onRecusar={async () => {
               setOcupado(e.id);

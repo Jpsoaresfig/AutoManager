@@ -7,6 +7,7 @@ import { usePlano } from "@/lib/usePlano";
 import { planoQueLibera } from "@/lib/plans";
 import { UpgradeBlock } from "@/components/UpgradeGate";
 import Guard from "@/components/Guard";
+import CountUp from "@/components/CountUp";
 import { PieChart, TrendingUp, TrendingDown, ShoppingBag, AlertTriangle, Sparkles } from "lucide-react";
 
 export default function AnalyticsPage() {
@@ -55,9 +56,9 @@ function Analytics() {
       ) : (
         <>
           {/* KPIs */}
-          <div className={`grid gap-2 ${caps.allowAdvancedAnalytics ? "grid-cols-3" : "grid-cols-2"}`}>
-            <Kpi label="Ticket médio" valor={brl(a.ticketMedio)} />
-            <Kpi label="Itens/venda" valor={a.itensPorVenda.toFixed(1)} />
+          <div className={`grid gap-2 stagger ${caps.allowAdvancedAnalytics ? "grid-cols-3" : "grid-cols-2"}`}>
+            <Kpi label="Ticket médio" valor={<CountUp value={a.ticketMedio} format={brl} />} />
+            <Kpi label="Itens/venda" valor={<CountUp value={a.itensPorVenda} format={(n) => n.toFixed(1)} />} />
             {caps.allowAdvancedAnalytics && (
               <Kpi
                 label="Mês vs anterior"
@@ -105,7 +106,7 @@ function Analytics() {
                   </span>
                 </div>
                 <div className="h-2.5 rounded-full surface-alt overflow-hidden">
-                  <div className="h-full rounded-full bg-brand-600" style={{ width: `${c.pct}%` }} />
+                  <div className="h-full rounded-full bg-brand-600 bar-grow-x" style={{ width: `${c.pct}%` }} />
                 </div>
               </div>
             ))}
@@ -125,7 +126,7 @@ function Analytics() {
                     <AlertTriangle size={18} /> Oportunidades perdidas
                   </div>
                   <p className="text-xs text-muted">
-                    Produtos sem estoque que vendiam bem - repor pode recuperar esta receita.
+                    Produtos sem estoque que vendiam bem — repor pode recuperar esta receita.
                   </p>
                   {a.ruptura.map((r) => (
                     <div key={r.nome} className="flex items-center justify-between text-sm">
@@ -160,7 +161,7 @@ function Kpi({
   icon: Icon,
 }: {
   label: string;
-  valor: string;
+  valor: React.ReactNode;
   cor?: string;
   icon?: any;
 }) {
@@ -181,7 +182,7 @@ function Donut({ data }: { data: { valor: number; cor: string }[] }) {
   const C = 2 * Math.PI * R;
   let offset = 0;
   return (
-    <svg viewBox="0 0 100 100" className="h-32 w-32 -rotate-90">
+    <svg viewBox="0 0 100 100" className="h-32 w-32 -rotate-90 reveal">
       <circle cx="50" cy="50" r={R} fill="none" stroke="var(--surface-alt)" strokeWidth="14" />
       {data.map((d, i) => {
         const frac = d.valor / total;
@@ -197,7 +198,10 @@ function Donut({ data }: { data: { valor: number; cor: string }[] }) {
             strokeWidth="14"
             strokeDasharray={`${len} ${C - len}`}
             strokeDashoffset={-offset}
-          />
+            className="origin-center transition-[stroke-width] duration-200 hover:[stroke-width:17] cursor-pointer"
+          >
+            <title>{brl(d.valor)}</title>
+          </circle>
         );
         offset += len;
         return el;
@@ -211,11 +215,11 @@ function BarsMes({ data }: { data: { mes: string; total: number }[] }) {
   return (
     <div className="flex items-end justify-between gap-2 h-32">
       {data.map((d, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+        <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group">
           <div className="text-[10px] text-muted">{d.total > 0 ? brl(d.total).replace("R$", "").trim() : ""}</div>
           <div
-            className="w-full rounded-t-lg bg-brand-600 min-h-[2px] transition-all"
-            style={{ height: `${(d.total / max) * 100}%` }}
+            className="w-full rounded-t-lg bg-brand-600 min-h-[2px] bar-grow-y transition-colors group-hover:bg-brand-500"
+            style={{ height: `${(d.total / max) * 100}%`, animationDelay: `${i * 60}ms` }}
           />
           <div className="text-[11px] text-muted">{d.mes}</div>
         </div>

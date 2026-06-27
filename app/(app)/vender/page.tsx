@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import type { Canal, FormaPagamento } from "@/lib/types";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import { Minus, Plus, Check, ShoppingBag, Loader2 } from "lucide-react";
 
 const FORMAS: { id: FormaPagamento; label: string }[] = [
@@ -37,6 +38,7 @@ const parseKey = (k: string) => {
 
 function Vender() {
   const { produtos, revendedoras, config, registrarVenda } = useStore();
+  const { alerta } = useDialog();
   const [cart, setCart] = useState<Record<string, number>>({});
   const [canal, setCanal] = useState<Canal>(config.canais[0] || "whatsapp");
   const [revId, setRevId] = useState<string>("");
@@ -103,7 +105,10 @@ function Vender() {
         fiado,
       });
       if (!v) {
-        alert("Não foi possível registrar a venda. Verifique o estoque e tente novamente.");
+        await alerta({
+          titulo: "Não foi possível registrar a venda",
+          mensagem: "Verifique o estoque e tente novamente.",
+        });
         return;
       }
       setSucesso(brl(v.total));

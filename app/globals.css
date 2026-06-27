@@ -192,6 +192,12 @@ body {
 .stagger > *:nth-child(11) { animation-delay: 0.54s; }
 .stagger > *:nth-child(12) { animation-delay: 0.59s; }
 
+/* ---- crescimento de barras de gráfico ---- */
+@keyframes ui-bar-grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes ui-bar-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.bar-grow-y { transform-origin: bottom; animation: ui-bar-grow-y 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bar-grow-x { transform-origin: left; animation: ui-bar-grow-x 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
 /* ---- transição entre rotas ---- */
 @keyframes ui-page-in {
   from { opacity: 0; transform: translateY(8px); }
@@ -239,6 +245,8 @@ body {
   .modal-panel,
   .sheet-panel,
   .skeleton::after,
+  .bar-grow-y,
+  .bar-grow-x,
   .progress-fill {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;

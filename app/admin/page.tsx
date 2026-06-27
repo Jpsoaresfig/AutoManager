@@ -4,6 +4,8 @@ import { useStore } from "@/lib/store";
 import { ehSuperadmin, linkWhatsappSuporte } from "@/lib/admin";
 import { brlPreco, ORDEM_PLANOS, PLANOS, type PlanoId } from "@/lib/plans";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
+import { SkeletonMetrics, SkeletonList } from "@/components/Skeleton";
 import type { Chamado } from "@/lib/types";
 import {
   ShieldCheck,
@@ -196,7 +198,10 @@ function Admin() {
       </div>
 
       {carregando ? (
-        <div className="card text-center text-muted py-10">Carregando…</div>
+        <>
+          <SkeletonMetrics count={4} />
+          <SkeletonList count={4} />
+        </>
       ) : aba === "resumo" ? (
         <ResumoView overview={overview} />
       ) : aba === "lojas" ? (
@@ -276,27 +281,47 @@ function LojasView({
   overview: Overview | null;
   recarregar: () => Promise<void>;
 }) {
+  const { confirm, alerta } = useDialog();
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState<string | null>(null);
 
   async function moderar(l: Loja, acao: "desativar" | "banir" | "reativar" | "deletar") {
     const dono = l.ownerEmail ?? "sem dono";
-    const confirmacoes: Record<typeof acao, string> = {
-      desativar:
-        `Desativar a loja "${l.nome}" (${dono})?\n\n` +
-        `Todos os usuários dela ficam sem conseguir entrar até você reativar.`,
-      banir:
-        `BANIR a loja "${l.nome}" (${dono})?\n\n` +
-        `O acesso de todos os usuários é bloqueado. Você ainda pode reativar depois.`,
-      reativar: `Reativar o acesso da loja "${l.nome}" (${dono})?`,
-      deletar:
-        `DELETAR a loja "${l.nome}" (${dono})?\n\n` +
-        `Isso APAGA a loja, todos os dados (produtos, vendas, etc.) e as contas dos usuários. ` +
-        `Esta ação é IRREVERSÍVEL.`,
+    const textos: Record<typeof acao, { titulo: string; mensagem: string; confirmar: string }> = {
+      desativar: {
+        titulo: `Desativar "${l.nome}"?`,
+        mensagem: `${dono}\n\nTodos os usuários dela ficam sem conseguir entrar até você reativar.`,
+        confirmar: "Desativar",
+      },
+      banir: {
+        titulo: `Banir "${l.nome}"?`,
+        mensagem: `${dono}\n\nO acesso de todos os usuários é bloqueado. Você ainda pode reativar depois.`,
+        confirmar: "Banir",
+      },
+      reativar: {
+        titulo: `Reativar "${l.nome}"?`,
+        mensagem: `${dono}\n\nOs usuários voltam a conseguir entrar.`,
+        confirmar: "Reativar",
+      },
+      deletar: {
+        titulo: `Deletar "${l.nome}"?`,
+        mensagem: `${dono}\n\nIsso APAGA a loja, todos os dados (produtos, vendas, etc.) e as contas dos usuários. Esta ação é IRREVERSÍVEL.`,
+        confirmar: "Deletar tudo",
+      },
     };
-    if (!confirm(confirmacoes[acao])) return;
+    const t = textos[acao];
+    const ok = await confirm({ ...t, perigo: acao !== "reativar" });
+    if (!ok) return;
     // segunda confirmação para a ação destrutiva
-    if (acao === "deletar" && !confirm(`Tem certeza absoluta? Digite OK na próxima. Não dá para desfazer.`))
+    if (
+      acao === "deletar" &&
+      !(await confirm({
+        titulo: "Tem certeza absoluta?",
+        mensagem: "Não há como desfazer. Confirme para apagar definitivamente.",
+        confirmar: "Sim, apagar para sempre",
+        perigo: true,
+      }))
+    )
       return;
 
     setSalvando(l.orgId);
@@ -308,12 +333,12 @@ function LojasView({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert("Não foi possível concluir: " + (json.erro || "erro"));
+        await alerta({ titulo: "Não foi possível concluir", mensagem: json.erro || "erro" });
         return;
       }
       await recarregar();
     } catch {
-      alert("Falha de conexão.");
+      await alerta({ titulo: "Falha de conexão" });
     } finally {
       setSalvando(null);
     }
@@ -321,11 +346,11 @@ function LojasView({
 
   async function mudarPlano(l: Loja, plano: PlanoId) {
     if (plano === l.plano) return;
-    const ok = confirm(
-      `Mudar a loja "${l.nome}" do plano ${PLANOS[l.plano].nome} para ${PLANOS[plano].nome}?\n\n` +
-        `A troca é aplicada na hora, sem cobrança pelo Mercado Pago. ` +
-        `Se a loja tiver uma assinatura ativa no MP, ela continua valendo lá — ajuste ou cancele por lá se for o caso.`
-    );
+    const ok = await confirm({
+      titulo: `Mudar para ${PLANOS[plano].nome}?`,
+      mensagem: `"${l.nome}" — de ${PLANOS[l.plano].nome} para ${PLANOS[plano].nome}.\n\nA troca é aplicada na hora, sem cobrança pelo Mercado Pago. Se a loja tiver uma assinatura ativa no MP, ela continua valendo lá.`,
+      confirmar: "Mudar plano",
+    });
     if (!ok) return;
     setSalvando(l.orgId);
     try {
@@ -336,12 +361,12 @@ function LojasView({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert("Não foi possível mudar o plano: " + (json.erro || "erro"));
+        await alerta({ titulo: "Não foi possível mudar o plano", mensagem: json.erro || "erro" });
         return;
       }
       await recarregar();
     } catch {
-      alert("Falha de conexão ao mudar o plano.");
+      await alerta({ titulo: "Falha de conexão ao mudar o plano" });
     } finally {
       setSalvando(null);
     }

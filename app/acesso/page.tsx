@@ -60,7 +60,7 @@ export default function AcessoPage() {
 
   return (
     <div className="min-h-screen grid place-items-center px-5 bg-[var(--bg)]">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm reveal">
         <div className="flex items-center justify-center gap-2 font-extrabold text-brand-500 text-xl mb-2">
           <Gem className="text-brand-600" /> Área da Revendedora
         </div>
@@ -70,13 +70,13 @@ export default function AcessoPage() {
           <div className="flex rounded-xl surface-alt p-1 text-sm font-semibold">
             <button
               onClick={() => setModo("ativar")}
-              className={`flex-1 rounded-lg py-2 ${modo === "ativar" ? "surface shadow" : "text-muted"}`}
+              className={`flex-1 rounded-lg py-2 transition active:scale-95 ${modo === "ativar" ? "surface shadow" : "text-muted hover:text-strong"}`}
             >
               Primeiro acesso
             </button>
             <button
               onClick={() => setModo("entrar")}
-              className={`flex-1 rounded-lg py-2 ${modo === "entrar" ? "surface shadow" : "text-muted"}`}
+              className={`flex-1 rounded-lg py-2 transition active:scale-95 ${modo === "entrar" ? "surface shadow" : "text-muted hover:text-strong"}`}
             >
               Entrar
             </button>

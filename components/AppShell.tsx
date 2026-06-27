@@ -27,6 +27,7 @@ import { useRecebimentosPendentes } from "@/lib/useRecebimentos";
 import type { PlanoDef } from "@/lib/plans";
 import { ehSuperadmin } from "@/lib/admin";
 import PageTransition from "./PageTransition";
+import { DialogProvider } from "./Dialog";
 
 type Item = {
   href: string;
@@ -81,6 +82,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const nav = ITENS.filter((it) => visivel(it, role, caps, admin) && it.mobile).slice(0, 5);
 
   return (
+    <DialogProvider>
     <div className="min-h-screen md:flex">
       {/* -------- sidebar (desktop) -------- */}
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-60 surface border-r border-default p-4">
@@ -200,5 +202,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
     </div>
+    </DialogProvider>
   );
 }

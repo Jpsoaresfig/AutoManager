@@ -6,7 +6,8 @@ import { brl } from "@/lib/analytics";
 import { uploadProdutoImagem } from "@/lib/uploadProdutoImagem";
 import type { Produto, Variacao } from "@/lib/types";
 import Guard from "@/components/Guard";
-import { Plus, X, PackagePlus, Pencil, ImagePlus, Trash2, Layers } from "lucide-react";
+import { useDialog } from "@/components/Dialog";
+import { Plus, X, PackagePlus, Pencil, ImagePlus, Trash2, Layers, SlidersHorizontal } from "lucide-react";
 
 export default function ProdutosPage() {
   return (
@@ -18,7 +19,34 @@ export default function ProdutosPage() {
 
 function Produtos() {
   const { produtos, config, entradaEstoque, ajustarEstoque, role } = useStore();
+  const { prompt } = useDialog();
   const podeEditar = role === "owner";
+
+  async function reporEstoque(p: Produto) {
+    const q = await prompt({
+      titulo: `Repor estoque`,
+      mensagem: `Quantas unidades de "${p.nome}" você comprou?`,
+      valorInicial: "10",
+      tipo: "number",
+      inputMode: "numeric",
+      confirmar: "Dar entrada",
+    });
+    const n = parseInt(q || "");
+    if (n > 0) entradaEstoque(p.id, n);
+  }
+
+  async function ajustar(p: Produto) {
+    const q = await prompt({
+      titulo: `Ajustar estoque`,
+      mensagem: `Defina o estoque atual de "${p.nome}":`,
+      valorInicial: String(p.estoqueAtual),
+      tipo: "number",
+      inputMode: "numeric",
+      confirmar: "Salvar",
+    });
+    const n = parseInt(q || "");
+    if (!isNaN(n) && n >= 0) ajustarEstoque(p.id, n, "Ajuste manual");
+  }
   const [form, setForm] = useState<{ open: boolean; editar: Produto | null }>({
     open: false,
     editar: null,
@@ -136,12 +164,13 @@ function Produtos() {
               </div>
               <div className="text-right shrink-0">
                 <div className={`font-bold ${baixo ? "text-red-500" : ""}`}>{p.estoqueAtual} un</div>
-                <div className="flex gap-2 mt-1 justify-end">
+                <div className="flex gap-1 mt-1 justify-end">
                   {podeEditar && (
                   <button
                     onClick={() => setForm({ open: true, editar: p })}
-                    className="text-brand-500"
+                    className="grid place-items-center h-9 w-9 rounded-lg text-brand-500 hover:bg-[var(--hover)] active:scale-90 transition"
                     title="Editar produto"
+                    aria-label="Editar produto"
                   >
                     <Pencil size={16} />
                   </button>
@@ -149,29 +178,20 @@ function Produtos() {
                   {podeEditar && !temGrade && (
                     <>
                       <button
-                        onClick={() => {
-                          const q = prompt(`Repor quantas unidades de "${p.nome}"?`, "10");
-                          const n = parseInt(q || "");
-                          if (n > 0) entradaEstoque(p.id, n);
-                        }}
-                        className="text-brand-600"
-                        title="Entrada de estoque"
+                        onClick={() => reporEstoque(p)}
+                        className="grid place-items-center h-9 w-9 rounded-lg text-brand-600 hover:bg-[var(--hover)] active:scale-90 transition"
+                        title="Dar entrada (comprei)"
+                        aria-label="Dar entrada no estoque"
                       >
                         <PackagePlus size={18} />
                       </button>
                       <button
-                        onClick={() => {
-                          const q = prompt(
-                            `Ajustar estoque de "${p.nome}" para:`,
-                            String(p.estoqueAtual)
-                          );
-                          const n = parseInt(q || "");
-                          if (!isNaN(n) && n >= 0) ajustarEstoque(p.id, n, "Ajuste manual");
-                        }}
-                        className="text-muted"
-                        title="Ajustar"
+                        onClick={() => ajustar(p)}
+                        className="grid place-items-center h-9 w-9 rounded-lg text-muted hover:bg-[var(--hover)] active:scale-90 transition"
+                        title="Ajustar estoque"
+                        aria-label="Ajustar estoque"
                       >
-                        <Pencil size={16} />
+                        <SlidersHorizontal size={16} />
                       </button>
                     </>
                   )}
@@ -203,6 +223,7 @@ function ProdutoForm({
   onClose: () => void;
 }) {
   const { addProduto, updateProduto, config, orgId } = useStore();
+  const { alerta } = useDialog();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [nome, setNome] = useState(editar?.nome ?? "");
@@ -240,7 +261,7 @@ function ProdutoForm({
       for (const f of Array.from(files)) urls.push(await uploadProdutoImagem(orgId, f));
       setImagens((prev) => [...prev, ...urls]);
     } catch (e: any) {
-      alert("Falha ao enviar imagem: " + (e?.message || e));
+      alerta({ titulo: "Falha ao enviar imagem", mensagem: e?.message || String(e) });
     } finally {
       setEnviando(false);
       if (fileRef.current) fileRef.current.value = "";

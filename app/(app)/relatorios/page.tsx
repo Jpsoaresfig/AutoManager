@@ -5,9 +5,10 @@ import { useStore } from "@/lib/store";
 import { calcularRelatorio, rankingRevendedoras, brl } from "@/lib/analytics";
 import { baixarCSV, dataHora } from "@/lib/export";
 import Guard from "@/components/Guard";
+import CountUp from "@/components/CountUp";
 const VendasArea = dynamic(() => import("@/components/charts/VendasArea"), {
   ssr: false,
-  loading: () => <div style={{ height: 150 }} className="grid place-items-center text-xs text-muted">carregando gráfico…</div>,
+  loading: () => <div style={{ height: 150 }} className="skeleton rounded-xl" />,
 });
 import {
   FileSpreadsheet,
@@ -171,7 +172,7 @@ function Relatorios() {
           ))}
         </div>
         {preset === "custom" && (
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <label className="label">De</label>
               <input type="date" className="input" value={de} onChange={(e) => setDe(e.target.value)} />
@@ -195,17 +196,17 @@ function Relatorios() {
       <div className="text-xs text-muted -mt-1">Período: {label}</div>
 
       {/* cards principais */}
-      <div className="grid grid-cols-2 gap-3">
-        <Metric titulo="Faturamento bruto" valor={brl(r.faturamento)} sub="vendas (competência)" />
-        <Metric titulo="Recebido (caixa)" valor={brl(r.recebido)} sub={`${r.qtdPagas} pagas`} forte />
-        <Metric titulo="A receber" valor={brl(r.aReceber)} sub={`${r.qtdPendentes} pendentes`} />
-        <Metric titulo="Descontos" valor={brl(r.descontos)} sub={`${r.qtdCanceladas} canceladas`} />
+      <div className="grid grid-cols-2 gap-3 stagger">
+        <Metric titulo="Faturamento bruto" valor={<CountUp value={r.faturamento} format={brl} />} sub="vendas (competência)" />
+        <Metric titulo="Recebido (caixa)" valor={<CountUp value={r.recebido} format={brl} />} sub={`${r.qtdPagas} pagas`} forte />
+        <Metric titulo="A receber" valor={<CountUp value={r.aReceber} format={brl} />} sub={`${r.qtdPendentes} pendentes`} />
+        <Metric titulo="Descontos" valor={<CountUp value={r.descontos} format={brl} />} sub={`${r.qtdCanceladas} canceladas`} />
       </div>
 
       <div className="grid grid-cols-1 gap-3">
         <div className="card">
           <div className="text-xs text-muted">Lucro projetado</div>
-          <div className="text-2xl font-bold text-green-500">{brl(r.lucroProjetado)}</div>
+          <CountUp value={r.lucroProjetado} format={brl} className="text-2xl font-bold text-green-500 block" />
           <div className="text-xs text-muted mt-1">
             Se todas as vendas do período forem pagas · margem {r.margem.toFixed(1)}%
           </div>
@@ -219,9 +220,9 @@ function Relatorios() {
       {/* fluxo de caixa */}
       <div className="card">
         <div className="flex items-center gap-2 font-semibold">
-          <Wallet size={18} className="text-brand-500" /> Fluxo de Caixa - entradas no período
+          <Wallet size={18} className="text-brand-500" /> Fluxo de Caixa — entradas no período
         </div>
-        <div className="text-2xl font-bold mt-1">{brl(r.fluxoTotal)}</div>
+        <CountUp value={r.fluxoTotal} format={brl} className="text-2xl font-bold mt-1 block" />
         <div className="grid grid-cols-3 gap-2 my-3">
           <Mini label="Média" valor={brl(r.fluxoMedia)} />
           <Mini label="Pico" valor={brl(r.fluxoPico.valor)} sub={r.fluxoPico.dia} />
@@ -293,7 +294,7 @@ function Metric({
   forte,
 }: {
   titulo: string;
-  valor: string;
+  valor: React.ReactNode;
   sub?: string;
   forte?: boolean;
 }) {

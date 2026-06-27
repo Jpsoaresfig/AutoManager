@@ -10,6 +10,7 @@ import type { Canal, Role } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
 import { brlPreco } from "@/lib/plans";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import {
   Store,
   Palette,
@@ -56,6 +57,7 @@ const ROLE_LABEL: Record<Role, string> = {
 
 function Configuracoes() {
   const { config, orgId, setConfig } = useStore();
+  const { alerta } = useDialog();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [nomeLoja, setNomeLoja] = useState(config.nomeLoja);
@@ -114,7 +116,7 @@ function Configuracoes() {
       setLogoUrl(url);
       await setConfig({ logoUrl: url });
     } catch (err: any) {
-      alert("Não foi possível enviar a logo: " + (err?.message || "erro"));
+      alerta({ titulo: "Não foi possível enviar a logo", mensagem: err?.message || "erro" });
     } finally {
       setEnviandoLogo(false);
     }
@@ -140,8 +142,8 @@ function Configuracoes() {
   }
 
   return (
-    <div className="space-y-4">
-      <header className="pt-1 flex items-center justify-between">
+    <div className="space-y-4 stagger">
+      <header className="pt-1 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Configurações</h1>
           <p className="text-sm text-muted">Gerencie as configurações da sua loja</p>
@@ -494,6 +496,7 @@ function MiniLojaSection() {
 function MembrosSection() {
   const { membros, usuarioId, criarMembro, removerMembro } = useStore();
   const { caps } = usePlano();
+  const { confirm } = useDialog();
   const papeisDisponiveis: Role[] = [
     ...(caps.allowVendedores ? ["vendedor" as Role] : []),
     ...(caps.allowMotoboys ? ["motoboy" as Role] : []),
@@ -562,8 +565,14 @@ function MembrosSection() {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  if (confirm(`Remover o acesso de ${m.nome || m.email}?`)) removerMembro(m.id);
+                onClick={async () => {
+                  const ok = await confirm({
+                    titulo: "Remover acesso?",
+                    mensagem: `${m.nome || m.email} perderá o login deste painel.`,
+                    confirmar: "Remover",
+                    perigo: true,
+                  });
+                  if (ok) removerMembro(m.id);
                 }}
                 className="text-red-500 shrink-0"
                 title="Remover acesso"
