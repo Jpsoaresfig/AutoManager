@@ -70,11 +70,13 @@ export async function POST(req: Request) {
   if (capacidades(assinatura).maxRevendedoras === 0) return naoElegivel;
 
   // cria o login (role 'revendedora' -> trigger NÃO cria org/usuario)
+  // role em app_metadata (não-gravável pelo cliente) — o trigger só lê dali.
   const { data: created, error: errCreate } = await sb.auth.admin.createUser({
     email: mail,
     password: senha,
     email_confirm: true,
-    user_metadata: { role: "revendedora", nome: rev.nome },
+    user_metadata: { nome: rev.nome },
+    app_metadata: { role: "revendedora" },
   });
   if (errCreate) {
     const dup = /already|exists|registered/i.test(errCreate.message);

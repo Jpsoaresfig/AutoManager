@@ -46,49 +46,89 @@ export async function POST(req: Request) {
 
   const a = admin();
 
-  // usuários da loja (id = id do auth.users). Serve para banir/deletar as contas.
+  // membros internos da loja (id = id do auth.users) + papel p/ identificar o dono.
   const { data: usuarios, error: erroUsuarios } = await a
     .from("usuario")
-    .select("id, email")
+    .select("id, email, role")
     .eq("org_id", orgId);
   if (erroUsuarios)
     return NextResponse.json({ erro: erroUsuarios.message }, { status: 500 });
+
+  // revendedoras vivem num plano de auth paralelo (revendedora.user_id), fora de
+  // public.usuario. Sem isto, banir/deletar a loja não as atingia (C-2).
+  const { data: revs, error: erroRevs } = await a
+    .from("revendedora")
+    .select("user_id")
+    .eq("org_id", orgId)
+    .not("user_id", "is", null);
+  if (erroRevs)
+    return NextResponse.json({ erro: erroRevs.message }, { status: 500 });
 
   // trava de segurança: nunca agir sobre a própria conta do super-admin
   if ((usuarios ?? []).some((u) => (u.email ?? "").trim().toLowerCase() === SUPERADMIN_EMAIL))
     return NextResponse.json({ erro: "Não é possível moderar a conta de administração." }, { status: 400 });
 
-  const ids = (usuarios ?? []).map((u) => u.id);
+  const idsMembros = (usuarios ?? []).map((u) => u.id);
+  const idsRevendedoras = (revs ?? []).map((r) => r.user_id as string).filter(Boolean);
+  // todas as contas de auth da loja (membros + revendedoras), sem duplicatas.
+  const idsAuth = Array.from(new Set([...idsMembros, ...idsRevendedoras]));
 
-  // descrição da loja p/ a trilha de auditoria (nome + e-mail do dono).
+  // descrição da loja p/ a trilha de auditoria (nome + e-mail do DONO — B-4).
   const { data: orgRow } = await a.from("org").select("nome").eq("id", orgId).maybeSingle();
-  const donoEmail = (usuarios ?? [])[0]?.email ?? null;
+  const donoEmail =
+    (usuarios ?? []).find((u) => u.role === "owner")?.email ?? (usuarios ?? [])[0]?.email ?? null;
   const alvoDescricao = `${orgRow?.nome ?? "loja"}${donoEmail ? ` (${donoEmail})` : ""}`;
   const actorEmail = (su.email ?? "").trim().toLowerCase();
 
   try {
     if (acao === "deletar") {
+      // A-8: a ação mais irreversível do sistema é AUDITADA ANTES de destruir, e a
+      // falha de auditoria ABORTA o delete — nunca apagamos uma loja sem deixar trace.
+      const trace = await registrarAdminLog(a, {
+        actorEmail,
+        acao: "deletar",
+        alvoOrgId: orgId,
+        alvoDescricao,
+        detalhe: {
+          fase: "iniciado",
+          usuarios: idsMembros.length,
+          revendedoras: idsRevendedoras.length,
+        },
+      });
+      if (!trace.ok)
+        return NextResponse.json(
+          { erro: "Não foi possível registrar a auditoria; exclusão abortada por segurança." },
+          { status: 500 }
+        );
+
       // apaga a org -> cascata remove todos os dados e as linhas de public.usuario.
       const { error } = await a.from("org").delete().eq("id", orgId);
       if (error) throw new Error(error.message);
-      // remove as contas de autenticação (não saem na cascata da org).
-      for (const id of ids) {
+      // remove TODAS as contas de autenticação (membros + revendedoras): não saem
+      // na cascata da org (auth.users é tabela do GoTrue).
+      let authRemovidos = 0;
+      for (const id of idsAuth) {
         const { error: e } = await a.auth.admin.deleteUser(id);
         if (e) console.error("Falha ao deletar auth user", id, e.message);
+        else authRemovidos++;
       }
       await registrarAdminLog(a, {
         actorEmail,
         acao: "deletar",
         alvoOrgId: orgId,
         alvoDescricao,
-        detalhe: { usuarios_removidos: ids.length },
+        detalhe: { fase: "concluido", auth_removidos: authRemovidos, esperados: idsAuth.length },
       });
       return NextResponse.json({ ok: true, acao });
     }
 
-    // bloquear (desativar/banir) ou liberar (reativar) o login de todos os usuários
+    // bloquear (desativar/banir) ou liberar (reativar) o login. O bloqueio real na
+    // camada de dados é o org.acesso (migration 0035): current_org_id() retorna NULL
+    // e as RPCs da revendedora barram — vale inclusive p/ JWTs já emitidos (M-4). O
+    // ban_duration no auth impede novos logins/refresh; aplicamos a membros E
+    // revendedoras (C-2).
     const banir = acao === "desativar" || acao === "banir";
-    for (const id of ids) {
+    for (const id of idsAuth) {
       const { error: e } = await a.auth.admin.updateUserById(id, {
         ban_duration: banir ? BAN_LONGO : "none",
       });
@@ -104,7 +144,7 @@ export async function POST(req: Request) {
       acao: acao!,
       alvoOrgId: orgId,
       alvoDescricao,
-      detalhe: { acesso, usuarios_afetados: ids.length },
+      detalhe: { acesso, membros_afetados: idsMembros.length, revendedoras_afetadas: idsRevendedoras.length },
     });
 
     return NextResponse.json({ ok: true, acao, acesso });

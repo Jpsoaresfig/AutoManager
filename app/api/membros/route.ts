@@ -81,11 +81,15 @@ export async function POST(req: Request) {
     }
   }
 
+  // org_id/role vão em app_metadata (NÃO graváveis pelo cliente no signUp) — o
+  // trigger handle_new_user só confia nesse campo. user_metadata fica só com o
+  // nome (display). Ver migration 0035 / C-1.
   const { data, error } = await admin().auth.admin.createUser({
     email,
     password: senha,
     email_confirm: true,
-    user_metadata: { nome, org_id: dono.orgId, role },
+    user_metadata: { nome },
+    app_metadata: { org_id: dono.orgId, role },
   });
   if (error)
     return NextResponse.json(
