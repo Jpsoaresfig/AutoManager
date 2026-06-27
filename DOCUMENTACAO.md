@@ -41,7 +41,7 @@ contra o banco real**.
 
 | Módulo | Status | Observação |
 |---|---|---|
-| **Planos & assinatura** (Ambulante/Solo/Equipe/Expansão) + trial + enforcement | ✅ Pronto | Tabela `assinatura`, limites em `lib/plans.ts`, triggers no banco |
+| **Planos & assinatura** (Ambulante/Solo/Equipe/Expansão + Personalizado sob consulta) + trial + enforcement | ✅ Pronto | Tabela `assinatura`, limites em `lib/plans.ts`, triggers no banco |
 | **Pagamento (Mercado Pago)** — checkout + webhook (assinatura + recebimentos) | ✅ Integrado | `/planos` → checkout; `api/mercadopago/*`; webhook valida `x-signature` |
 | **Caixa de recebimentos** (`/recebimentos`) — confirma "foi venda?" → vira venda | ✅ Pronto | Tabela `entrada_pendente`, webhook MP grava, dono confirma (atômico/idempotente) |
 | **Financeiro / contas a pagar** (`/financeiro`) — o que sai + a receber + saldo projetado | ✅ Pronto | Tabela `conta_pagar`; fecha o fluxo de caixa (a receber − a pagar) |
@@ -118,6 +118,13 @@ Há ainda um **superadmin** do produto (suporte), fora das lojas — ver §12.
 2. **Solo — R$ 49/mês** — só o dono, até 3 revendedoras, loja online, relatórios básicos.
 3. **Equipe — R$ 99/mês** ⭐ — + vendedores internos, até 15 revendedoras, ranking, analytics, chat.
 4. **Expansão — R$ 199/mês** — + motoboys/entregas, revendedoras ilimitadas, analytics avançado (tendência + ruptura).
+5. **Personalizado — sob consulta** — sistema feito 100% do zero, sob medida, com integração direta ao
+   banco da pessoa e tudo o que a operação tiver direito. Orçamento à parte, conforme o tamanho do projeto.
+   **Não é um `PlanoId`** — fica fora do fluxo de assinatura (sem preço fixo, sem Mercado Pago, sem entrar
+   nos guards de limite/capacidade): é puramente um **cartão de contato** que leva ao WhatsApp do suporte.
+   Conteúdo na fonte única `PLANO_PERSONALIZADO` (`lib/plans.ts`); link via `linkWhatsappSuporte` (`lib/admin.ts`).
+   Renderizado na **landing** (`components/landing/Pricing.tsx`, banner em destaque abaixo dos cards), na tela
+   **`/planos`** e no **onboarding**.
 
 Toda org nova nasce em **trial com acesso Expansão**. No **onboarding**, o dono escolhe o
 plano e ganha **1 mês grátis** (a rota `POST /api/onboarding/plano` grava o plano com
@@ -519,7 +526,7 @@ dark próprio via CSS vars, independente do tema salvo do visitante), com:
 - **Scroll storytelling** (`Reveal`, via IntersectionObserver) em todas as seções.
 - Estrutura: nav glass → hero → prova social → dor→solução → benefícios (feature→resultado) →
   como funciona (fluxo) → diferencial → casos de uso → depoimentos → planos → FAQ curada → CTA.
-- **Pricing** com destaque do plano Equipe; **Faq** aceita lista curada de objeções.
+- **Pricing** com destaque do plano Equipe e banner do plano **Personalizado** (sob consulta → WhatsApp) logo abaixo dos cards; **Faq** aceita lista curada de objeções.
 
 > A estratégia, a copy e as variações de headline ficam em **`LANDING.md`**. Números e
 > depoimentos estão marcados como **ilustrativos** — trocar por dados reais.
