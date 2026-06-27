@@ -274,6 +274,10 @@ interface State {
   }) => Promise<{ ok: boolean; erro?: string }>;
   atribuirMotoboy: (entregaId: string, motoboyId: string | null) => Promise<void>;
   setStatusEntrega: (entregaId: string, status: StatusEntrega) => Promise<void>;
+  // pool do motoboy: pegar uma entrega disponível / devolver ao balcão
+  pegarEntrega: (entregaId: string) => Promise<{ ok: boolean; erro?: string }>;
+  devolverEntrega: (entregaId: string) => Promise<void>;
+  recarregarEntregas: () => Promise<void>;
 
   addProduto: (p: NovoProduto) => Promise<void>;
   importarProdutos: (linhas: NovoProduto[]) => Promise<{ ok: boolean; inseridos: number; erro?: string }>;
@@ -624,6 +628,44 @@ export const useStore = create<State>()((set, get) => {
           entregue_em: entregueEm ? new Date(entregueEm).toISOString() : null,
         })
         .eq("id", entregaId);
+    },
+
+    // motoboy reivindica uma entrega do balcão. O `.is("motoboy_id", null)`
+    // garante a corrida: se outro já pegou, este update não afeta linha nenhuma.
+    pegarEntrega: async (entregaId) => {
+      const { usuarioId } = get();
+      if (!usuarioId) return { ok: false, erro: "Sessão expirada. Entre de novo." };
+      set((s) => ({
+        entregas: s.entregas.map((e) => (e.id === entregaId ? { ...e, motoboyId: usuarioId } : e)),
+      }));
+      const { data, error } = await sb()
+        .from("entrega")
+        .update({ motoboy_id: usuarioId })
+        .eq("id", entregaId)
+        .is("motoboy_id", null)
+        .select("id");
+      if (error || !data || data.length === 0) {
+        // não conseguiu (já pegaram / RLS / rede): ressincroniza com o banco
+        await get().recarregarEntregas();
+        return { ok: false, erro: error ? error.message : "Outra pessoa já pegou esta entrega." };
+      }
+      return { ok: true };
+    },
+
+    // motoboy devolve a entrega ao balcão (volta a ficar sem dono).
+    devolverEntrega: async (entregaId) => {
+      const anterior = get().entregas.find((e) => e.id === entregaId);
+      set((s) => ({
+        entregas: s.entregas.map((e) => (e.id === entregaId ? { ...e, motoboyId: null } : e)),
+      }));
+      const { error } = await sb().from("entrega").update({ motoboy_id: null }).eq("id", entregaId);
+      if (error && anterior)
+        set((s) => ({ entregas: s.entregas.map((e) => (e.id === entregaId ? anterior : e)) }));
+    },
+
+    recarregarEntregas: async () => {
+      const { data } = await sb().from("entrega").select("*").order("criada_em", { ascending: false });
+      set({ entregas: (data || []).map(mapEntrega) });
     },
 
     completarOnboarding: async () => {

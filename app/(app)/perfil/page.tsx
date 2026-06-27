@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePlano } from "@/lib/usePlano";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
+import MembrosManager from "@/components/MembrosManager";
 import ThemeToggle from "@/components/ThemeToggle";
 import CountUp from "@/components/CountUp";
 import { Skeleton } from "@/components/Skeleton";
@@ -23,7 +24,7 @@ export default function PerfilPage() {
 
 function Perfil() {
   const router = useRouter();
-  const { config, produtos, vendas } = useStore();
+  const { config, produtos, vendas, role } = useStore();
   const { confirm } = useDialog();
   const [email, setEmail] = useState("");
 
@@ -86,6 +87,9 @@ function Perfil() {
 
       {/* plano */}
       <PlanoLinha />
+
+      {/* equipe (vendedor / entregador) — só o dono, papéis conforme o plano */}
+      {role === "owner" && <MembrosManager />}
 
       <button onClick={sair} className="btn-ghost w-full text-red-500">
         <LogOut size={18} /> Sair da conta
