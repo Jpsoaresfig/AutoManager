@@ -19,11 +19,13 @@ export default function Modal({
   onClose,
   children,
   footer,
+  wide,
 }: {
   title: React.ReactNode;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  wide?: boolean; // usa max-w-lg (ex.: tabela de preview na importação)
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -50,7 +52,11 @@ export default function Modal({
         if (e.target === e.currentTarget) onClose(); // clique fora fecha
       }}
     >
-      <div className="surface modal-panel w-full max-w-md rounded-t-3xl md:rounded-3xl flex flex-col max-h-[90dvh] md:max-h-[88vh]">
+      <div
+        className={`surface modal-panel w-full ${
+          wide ? "max-w-lg" : "max-w-md"
+        } rounded-t-3xl md:rounded-3xl flex flex-col max-h-[90dvh] md:max-h-[88vh]`}
+      >
         {/* cabeçalho fixo */}
         <div className="flex items-center justify-between gap-3 p-5 pb-3 border-b border-default shrink-0">
           <h2 className="text-lg font-bold flex items-center gap-2 min-w-0">{title}</h2>

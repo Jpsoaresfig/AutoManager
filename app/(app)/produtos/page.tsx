@@ -9,6 +9,7 @@ import { baixarCSV } from "@/lib/export";
 import type { Produto, Variacao } from "@/lib/types";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
+import Modal from "@/components/Modal";
 import { Plus, X, PackagePlus, Pencil, ImagePlus, Trash2, Layers, SlidersHorizontal, Search, Upload, FileSpreadsheet, AlertTriangle } from "lucide-react";
 
 export default function ProdutosPage() {
@@ -315,18 +316,25 @@ function ImportarProdutos({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-40 flex items-end md:items-center justify-center">
-      <div className="surface w-full max-w-lg rounded-t-3xl md:rounded-3xl p-5 space-y-3 max-h-[92vh] overflow-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <FileSpreadsheet size={20} className="text-brand-500" /> Importar produtos
-          </h2>
-          <button onClick={onClose}>
-            <X />
-          </button>
-        </div>
-
-        <p className="text-sm text-muted">
+    <Modal
+      wide
+      title={
+        <>
+          <FileSpreadsheet size={20} className="text-brand-500" /> Importar produtos
+        </>
+      }
+      onClose={onClose}
+      footer={
+        <button onClick={confirmar} disabled={salvando || linhas.length === 0} className="btn-primary w-full disabled:opacity-60">
+          {salvando
+            ? "Importando…"
+            : linhas.length > 0
+            ? `Importar ${linhas.length} produto(s)`
+            : "Escolha um arquivo"}
+        </button>
+      }
+    >
+      <p className="text-sm text-muted">
           Envie uma planilha <b>.csv</b> com as colunas <b>nome</b> e <b>preço</b> (e, se quiser,
           categoria, custo, estoque, estoque mínimo, sku e marca).
         </p>
@@ -393,20 +401,7 @@ function ImportarProdutos({ onClose }: { onClose: () => void }) {
             )}
           </div>
         )}
-
-        <button
-          onClick={confirmar}
-          disabled={salvando || linhas.length === 0}
-          className="btn-primary w-full disabled:opacity-60"
-        >
-          {salvando
-            ? "Importando…"
-            : linhas.length > 0
-            ? `Importar ${linhas.length} produto(s)`
-            : "Escolha um arquivo"}
-        </button>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -519,15 +514,15 @@ function ProdutoForm({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-40 flex items-end md:items-center justify-center">
-      <div className="surface w-full max-w-md rounded-t-3xl md:rounded-3xl p-5 space-y-3 max-h-[92vh] overflow-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">{editar ? "Editar produto" : "Novo produto"}</h2>
-          <button onClick={onClose}>
-            <X />
-          </button>
-        </div>
-
+    <Modal
+      title={editar ? "Editar produto" : "Novo produto"}
+      onClose={onClose}
+      footer={
+        <button onClick={salvar} disabled={salvando || enviando} className="btn-primary w-full disabled:opacity-60">
+          {salvando ? "Salvando…" : editar ? "Salvar alterações" : "Salvar produto"}
+        </button>
+      }
+    >
         {/* fotos */}
         <div>
           <label className="label">Fotos</label>
@@ -684,12 +679,7 @@ function ProdutoForm({
             <input className="input" inputMode="numeric" value={minimo} onChange={(e) => setMinimo(e.target.value)} />
           </div>
         )}
-
-        <button onClick={salvar} disabled={salvando || enviando} className="btn-primary w-full disabled:opacity-60">
-          {salvando ? "Salvando…" : editar ? "Salvar alterações" : "Salvar produto"}
-        </button>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { SUPORTE_WHATSAPP_LABEL, linkWhatsappSuporte } from "@/lib/admin";
 import type { TipoChamado } from "@/lib/types";
-import { LifeBuoy, X, Send, MessageCircle, CheckCircle2, Zap, Loader2 } from "lucide-react";
+import Modal from "@/components/Modal";
+import { LifeBuoy, Send, MessageCircle, CheckCircle2, Zap, Loader2 } from "lucide-react";
 
 const TIPOS: { id: TipoChamado; label: string }[] = [
   { id: "erro", label: "Erro / bug" },
@@ -82,151 +83,135 @@ export default function Reporte() {
 
       {/* modal */}
       {aberto && (
-        <div
-          className="modal-backdrop fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={fechar}
-          role="dialog"
-          aria-modal="true"
+        <Modal
+          title={
+            <>
+              <LifeBuoy size={18} className="text-brand-600" /> Suporte AutoManager
+            </>
+          }
+          onClose={fechar}
+          footer={
+            enviado ? undefined : (
+              <>
+                {erro && <p className="text-sm text-red-500">{erro}</p>}
+                <button
+                  onClick={enviar}
+                  disabled={enviando}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {enviando ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  {enviando ? "Enviando…" : "Registrar ticket"}
+                </button>
+              </>
+            )
+          }
         >
-          <div
-            className="sheet-panel sm:modal-panel surface shadow-pop w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl border border-default max-h-[92vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-default sticky top-0 surface z-10">
-              <div className="flex items-center gap-2 font-bold">
-                <LifeBuoy size={18} className="text-brand-600" /> Suporte AutoManager
-              </div>
-              <button
-                onClick={fechar}
-                aria-label="Fechar"
-                className="grid place-items-center h-9 w-9 -mr-1 rounded-full text-muted hover:bg-[var(--hover)] hover:text-strong active:scale-90 transition"
+          {enviado ? (
+            <div className="text-center space-y-3 py-2">
+              <CheckCircle2 size={40} className="text-green-600 mx-auto" />
+              <div className="font-semibold text-lg">Ticket registrado!</div>
+              <p className="text-sm text-muted">
+                Recebemos seu chamado e vamos analisar. Se for urgente, chame também no WhatsApp.
+              </p>
+              <a
+                href={linkWhatsappSuporte(textoWhats)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost inline-flex items-center gap-2"
               >
-                <X size={20} />
-              </button>
+                <MessageCircle size={16} /> Falar no WhatsApp
+              </a>
+              <div>
+                <button onClick={fechar} className="text-sm text-muted underline mt-1">
+                  Fechar
+                </button>
+              </div>
             </div>
+          ) : (
+            <>
+              {/* WhatsApp */}
+              <a
+                href={linkWhatsappSuporte(textoWhats)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-green-500/40 bg-green-500/5 p-3 hover:bg-green-500/10 transition"
+              >
+                <span className="shrink-0 rounded-lg bg-green-500/15 text-green-600 p-2">
+                  <MessageCircle size={20} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold">WhatsApp do suporte</span>
+                  <span className="block text-sm text-muted">{SUPORTE_WHATSAPP_LABEL}</span>
+                </span>
+              </a>
 
-            {enviado ? (
-              <div className="p-6 text-center space-y-3">
-                <CheckCircle2 size={40} className="text-green-600 mx-auto" />
-                <div className="font-semibold text-lg">Ticket registrado!</div>
-                <p className="text-sm text-muted">
-                  Recebemos seu chamado e vamos analisar. Se for urgente, chame também no
-                  WhatsApp.
-                </p>
-                <a
-                  href={linkWhatsappSuporte(textoWhats)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-ghost inline-flex items-center gap-2"
-                >
-                  <MessageCircle size={16} /> Falar no WhatsApp
-                </a>
-                <div>
-                  <button onClick={fechar} className="text-sm text-muted underline mt-1">
-                    Fechar
-                  </button>
+              {/* aviso: ticket é mais rápido */}
+              <div className="flex items-start gap-2 rounded-xl bg-brand-500/10 border border-brand-500/30 p-3 text-sm text-brand-600">
+                <Zap size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  <strong>Registrar um ticket é mais rápido.</strong> Descreva o problema abaixo que
+                  conseguimos resolver com mais detalhes e histórico.
+                </span>
+              </div>
+
+              {/* formulário de ticket */}
+              <div>
+                <label className="text-sm font-medium block mb-1">Tipo</label>
+                <div className="flex gap-2">
+                  {TIPOS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTipo(t.id)}
+                      className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                        tipo === t.id
+                          ? "bg-brand-600 text-white border-brand-600"
+                          : "border-default text-muted hover:surface-alt"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <div className="p-4 space-y-4">
-                {/* WhatsApp */}
-                <a
-                  href={linkWhatsappSuporte(textoWhats)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-xl border border-green-500/40 bg-green-500/5 p-3 hover:bg-green-500/10 transition"
-                >
-                  <span className="shrink-0 rounded-lg bg-green-500/15 text-green-600 p-2">
-                    <MessageCircle size={20} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-semibold">WhatsApp do suporte</span>
-                    <span className="block text-sm text-muted">{SUPORTE_WHATSAPP_LABEL}</span>
-                  </span>
-                </a>
 
-                {/* aviso: ticket é mais rápido */}
-                <div className="flex items-start gap-2 rounded-xl bg-brand-500/10 border border-brand-500/30 p-3 text-sm text-brand-600">
-                  <Zap size={16} className="shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Registrar um ticket é mais rápido.</strong> Descreva o problema
-                    abaixo que conseguimos resolver com mais detalhes e histórico.
-                  </span>
-                </div>
-
-                {/* formulário de ticket */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium block mb-1">Tipo</label>
-                    <div className="flex gap-2">
-                      {TIPOS.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setTipo(t.id)}
-                          className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
-                            tipo === t.id
-                              ? "bg-brand-600 text-white border-brand-600"
-                              : "border-default text-muted hover:surface-alt"
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium block mb-1">Assunto</label>
-                    <input
-                      value={assunto}
-                      onChange={(e) => setAssunto(e.target.value)}
-                      placeholder="Ex.: Não consigo registrar venda fiado"
-                      className="input w-full"
-                      maxLength={120}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium block mb-1">O que aconteceu?</label>
-                    <textarea
-                      value={mensagem}
-                      onChange={(e) => setMensagem(e.target.value)}
-                      placeholder="Conte o que você estava fazendo e o que deu errado."
-                      className="input w-full min-h-[110px] resize-y"
-                      maxLength={2000}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium block mb-1">
-                      E-mail para retorno{" "}
-                      <span className="text-muted font-normal">(opcional)</span>
-                    </label>
-                    <input
-                      value={emailContato}
-                      onChange={(e) => setEmailContato(e.target.value)}
-                      placeholder={emailSessao || "voce@email.com"}
-                      className="input w-full"
-                      type="email"
-                    />
-                  </div>
-
-                  {erro && <p className="text-sm text-red-500">{erro}</p>}
-
-                  <button
-                    onClick={enviar}
-                    disabled={enviando}
-                    className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {enviando ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                    {enviando ? "Enviando…" : "Registrar ticket"}
-                  </button>
-                </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Assunto</label>
+                <input
+                  value={assunto}
+                  onChange={(e) => setAssunto(e.target.value)}
+                  placeholder="Ex.: Não consigo registrar venda fiado"
+                  className="input w-full"
+                  maxLength={120}
+                />
               </div>
-            )}
-          </div>
-        </div>
+
+              <div>
+                <label className="text-sm font-medium block mb-1">O que aconteceu?</label>
+                <textarea
+                  value={mensagem}
+                  onChange={(e) => setMensagem(e.target.value)}
+                  placeholder="Conte o que você estava fazendo e o que deu errado."
+                  className="input w-full min-h-[110px] resize-y"
+                  maxLength={2000}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium block mb-1">
+                  E-mail para retorno <span className="text-muted font-normal">(opcional)</span>
+                </label>
+                <input
+                  value={emailContato}
+                  onChange={(e) => setEmailContato(e.target.value)}
+                  placeholder={emailSessao || "voce@email.com"}
+                  className="input w-full"
+                  type="email"
+                />
+              </div>
+            </>
+          )}
+        </Modal>
       )}
     </>
   );
