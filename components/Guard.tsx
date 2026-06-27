@@ -26,6 +26,7 @@ export default function Guard({ children }: { children: React.ReactNode }) {
   const nomeLoja = useStore((s) => s.config.nomeLoja);
   const role = useStore((s) => s.role);
   const semOrg = useStore((s) => s.semOrg);
+  const suspenso = useStore((s) => s.suspenso);
 
   useEffect(() => {
     if (jaMontado) return;
@@ -45,6 +46,8 @@ export default function Guard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (jaMontado || !ready) return;
+    // loja suspensa/banida (C-2): não redireciona — mostra aviso abaixo.
+    if (suspenso) return;
     // autenticado mas sem loja própria (revendedora/visitante que caiu no painel):
     // não pertence ao painel do dono — manda para o acesso da revendedora.
     if (semOrg) {
@@ -58,19 +61,37 @@ export default function Guard({ children }: { children: React.ReactNode }) {
     }
     // bloqueia rota fora do papel
     if (!podeAcessar(role, path)) router.replace(homeDe(role));
-  }, [jaMontado, ready, completo, role, path, router, semOrg]);
+  }, [jaMontado, ready, completo, role, path, router, semOrg, suspenso]);
 
   // Já há um Guard/AppShell acima (no layout) -> não duplica, só repassa.
-  if (jaMontado) return <>{children}</>;
+  if (jaMontado) return suspenso ? <ContaSuspensa /> : <>{children}</>;
 
   // continua abaixo: estados de loading / shell
 
   if (!ready) return <AppLoadingSkeleton />;
 
+  if (suspenso) return <ContaSuspensa />;
+
   return (
     <GuardMontado.Provider value={true}>
       <AppShell>{children}</AppShell>
     </GuardMontado.Provider>
+  );
+}
+
+// Aviso de conta suspensa/banida (C-2): a org não é mais legível na camada de
+// dados. Não há dados a mostrar — só a orientação de contato.
+function ContaSuspensa() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="surface border border-default rounded-2xl max-w-md w-full p-6 text-center space-y-3">
+        <h1 className="text-xl font-bold">Conta suspensa</h1>
+        <p className="text-sm text-muted">
+          O acesso a esta loja está temporariamente bloqueado. Se você acredita que isso é um
+          engano, entre em contato com o suporte para regularizar a situação.
+        </p>
+      </div>
+    </div>
   );
 }
 

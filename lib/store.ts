@@ -238,6 +238,9 @@ interface State {
   role: Role;
   // autenticado, porém sem loja própria (revendedora/visitante): não pertence ao painel
   semOrg: boolean;
+  // true quando o usuário tem vínculo (usuario) mas a org não é legível — loja
+  // suspensa/banida (current_org_id retorna NULL). Ver C-2.
+  suspenso: boolean;
   config: Config;
   assinatura: Assinatura | null;
   produtos: Produto[];
@@ -352,6 +355,7 @@ export const useStore = create<State>()((set, get) => {
     email: null,
     role: "owner",
     semOrg: false,
+    suspenso: false,
     config: configInicial,
     assinatura: null,
     produtos: [],
@@ -427,6 +431,8 @@ export const useStore = create<State>()((set, get) => {
         role: (eu?.role as Role) ?? "owner",
         // sem linha em usuario = não é dono nem membro desta loja (revendedora/visitante)
         semOrg: !eu,
+        // tem vínculo (eu) mas a org não veio = loja suspensa/banida (C-2)
+        suspenso: !!eu && !org,
         assinatura,
         config: org
           ? {

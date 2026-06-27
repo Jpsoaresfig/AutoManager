@@ -150,8 +150,13 @@ function Recebimentos() {
           <button
             onClick={async () => {
               const v = parseFloat(valorTeste.replace(",", "."));
+              if (!v || v <= 0) {
+                alerta({ titulo: "Valor inválido", mensagem: "Informe um valor maior que zero." });
+                return;
+              }
               const r = await simularRecebimento({ valor: v });
               if (r.ok) setValorTeste("");
+              else alerta({ titulo: "Não foi possível simular", mensagem: r.erro || "Tente novamente." });
             }}
             className="btn-ghost px-4 text-sm whitespace-nowrap"
           >

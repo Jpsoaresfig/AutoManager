@@ -37,9 +37,10 @@ export async function POST(req: Request) {
   const su = await exigirSuperadmin();
   if (!su) return NextResponse.json({ erro: "Sem permissão" }, { status: 403 });
 
-  const { orgId, acao } = (await req.json().catch(() => ({}))) as {
+  const { orgId, acao, confirmacao } = (await req.json().catch(() => ({}))) as {
     orgId?: string;
     acao?: Acao;
+    confirmacao?: string;
   };
   if (!orgId || !["desativar", "banir", "reativar", "deletar"].includes(acao ?? ""))
     return NextResponse.json({ erro: "Dados inválidos" }, { status: 400 });
@@ -82,6 +83,13 @@ export async function POST(req: Request) {
 
   try {
     if (acao === "deletar") {
+      // B-5: confirmação forte no servidor — exige o nome exato da loja.
+      const nomeEsperado = (orgRow?.nome ?? "").trim().toLowerCase();
+      if (!nomeEsperado || (confirmacao ?? "").trim().toLowerCase() !== nomeEsperado)
+        return NextResponse.json(
+          { erro: "Confirmação inválida: digite o nome exato da loja." },
+          { status: 400 }
+        );
       // A-8: a ação mais irreversível do sistema é AUDITADA ANTES de destruir, e a
       // falha de auditoria ABORTA o delete — nunca apagamos uma loja sem deixar trace.
       const trace = await registrarAdminLog(a, {

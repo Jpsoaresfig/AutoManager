@@ -300,7 +300,7 @@ function LojasView({
   overview: Overview | null;
   recarregar: () => Promise<void>;
 }) {
-  const { confirm, alerta } = useDialog();
+  const { confirm, alerta, prompt } = useDialog();
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState<string | null>(null);
 
@@ -331,24 +331,28 @@ function LojasView({
     const t = textos[acao];
     const ok = await confirm({ ...t, perigo: acao !== "reativar" });
     if (!ok) return;
-    // segunda confirmação para a ação destrutiva
-    if (
-      acao === "deletar" &&
-      !(await confirm({
+    // B-5: confirmação forte da ação destrutiva — exige digitar o nome exato da loja.
+    let confirmacao: string | undefined;
+    if (acao === "deletar") {
+      const digitado = await prompt({
         titulo: "Tem certeza absoluta?",
-        mensagem: "Não há como desfazer. Confirme para apagar definitivamente.",
-        confirmar: "Sim, apagar para sempre",
-        perigo: true,
-      }))
-    )
-      return;
+        mensagem: `Não há como desfazer. Digite o nome da loja "${l.nome}" para confirmar:`,
+        confirmar: "Apagar para sempre",
+      });
+      if (digitado === null) return; // cancelou
+      if (digitado.trim().toLowerCase() !== (l.nome ?? "").trim().toLowerCase()) {
+        await alerta({ titulo: "Nome não confere", mensagem: "A loja NÃO foi apagada." });
+        return;
+      }
+      confirmacao = digitado;
+    }
 
     setSalvando(l.orgId);
     try {
       const res = await fetch("/api/admin/usuario", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgId: l.orgId, acao }),
+        body: JSON.stringify({ orgId: l.orgId, acao, confirmacao }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
