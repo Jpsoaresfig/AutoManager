@@ -1,8 +1,9 @@
 "use client";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
-import { sugestoesReposicao, brl } from "@/lib/analytics";
+import { sugestoesReposicao } from "@/lib/analytics";
 import Guard from "@/components/Guard";
-import { TrendingUp, PackagePlus, CheckCircle2 } from "lucide-react";
+import { TrendingUp, PackagePlus, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function ReposicaoPage() {
   return (
@@ -21,6 +22,21 @@ const MOTIVO_LABEL: Record<string, { txt: string; cls: string }> = {
 function Reposicao() {
   const { produtos, vendas, entradaEstoque } = useStore();
   const sugestoes = sugestoesReposicao(produtos, vendas);
+  const [processando, setProcessando] = useState<Set<string>>(new Set());
+
+  async function darEntrada(id: string, qtd: number) {
+    if (processando.has(id)) return; // trava duplo clique
+    setProcessando((s) => new Set(s).add(id));
+    try {
+      await entradaEstoque(id, qtd);
+    } finally {
+      setProcessando((s) => {
+        const n = new Set(s);
+        n.delete(id);
+        return n;
+      });
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -39,9 +55,10 @@ function Reposicao() {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2 stagger">
         {sugestoes.map((s) => {
           const m = MOTIVO_LABEL[s.motivo];
+          const busy = processando.has(s.produto.id);
           return (
             <div key={s.produto.id} className="card space-y-2">
               <div className="flex items-center justify-between">
@@ -65,10 +82,12 @@ function Reposicao() {
                 </div>
               </div>
               <button
-                onClick={() => entradaEstoque(s.produto.id, s.qtdSugerida)}
-                className="btn-primary w-full py-2 text-sm"
+                onClick={() => darEntrada(s.produto.id, s.qtdSugerida)}
+                disabled={busy}
+                className="btn-primary w-full py-2 text-sm disabled:opacity-70"
               >
-                <PackagePlus size={16} /> Comprei {s.qtdSugerida} un - dar entrada
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <PackagePlus size={16} />}
+                {busy ? "Dando entrada…" : `Comprei ${s.qtdSugerida} un · dar entrada`}
               </button>
             </div>
           );

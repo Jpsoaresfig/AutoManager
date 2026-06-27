@@ -1,10 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { createClient } from "@/lib/supabase/client";
 import { brl } from "@/lib/analytics";
 import type { Entrega, StatusEntrega } from "@/lib/types";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import { usePlano } from "@/lib/usePlano";
 import { planoQueLibera, brlPreco } from "@/lib/plans";
 import {
@@ -23,6 +25,9 @@ import {
   BadgeCheck,
   Zap,
   ArrowRight,
+  PackageCheck,
+  Undo2,
+  Inbox,
 } from "lucide-react";
 
 export default function EntregasPage() {
@@ -45,13 +50,59 @@ const STATUS_COR: Record<StatusEntrega, string> = {
 };
 
 function Entregas() {
-  const { entregas, membros, role, addEntrega, atribuirMotoboy, setStatusEntrega } = useStore();
+  const {
+    entregas,
+    membros,
+    role,
+    usuarioId,
+    addEntrega,
+    atribuirMotoboy,
+    setStatusEntrega,
+    pegarEntrega,
+    devolverEntrega,
+    recarregarEntregas,
+  } = useStore();
   const { caps } = usePlano();
   const dono = role === "owner";
 
-  // owner em plano sem entregas vê o pitch de upgrade (motoboy só existe no Expansão)
+  // realtime: o balcão e os status ficam vivos (nova entrega, alguém pegou, mudou status)
+  useEffect(() => {
+    const client = createClient();
+    let ch: ReturnType<typeof client.channel> | null = null;
+    let cancelado = false;
+    (async () => {
+      const { data } = await client.auth.getSession();
+      if (cancelado) return;
+      if (data.session) client.realtime.setAuth(data.session.access_token);
+      ch = client
+        .channel("entregas-live")
+        .on("postgres_changes", { event: "*", schema: "public", table: "entrega" }, () => {
+          recarregarEntregas();
+        })
+        .subscribe();
+    })();
+    return () => {
+      cancelado = true;
+      if (ch) client.removeChannel(ch);
+    };
+  }, [recarregarEntregas]);
+
+  // owner em plano sem entregas vê o pitch de upgrade (entregas só no Expansão)
   if (dono && !caps.allowEntregas) {
     return <PitchEntregas />;
+  }
+
+  // motoboy: painel próprio com balcão de disponíveis + as suas
+  if (!dono) {
+    return (
+      <MotoboyEntregas
+        entregas={entregas}
+        usuarioId={usuarioId}
+        onPegar={pegarEntrega}
+        onDevolver={devolverEntrega}
+        onStatus={setStatusEntrega}
+      />
+    );
   }
 
   const motoboys = membros.filter((m) => m.role === "motoboy");
@@ -81,7 +132,7 @@ function Entregas() {
       )}
 
       {ativas.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 stagger">
           <h2 className="text-sm font-semibold text-muted">Em aberto ({ativas.length})</h2>
           {ativas.map((e) => (
             <EntregaCard
@@ -98,7 +149,7 @@ function Entregas() {
       )}
 
       {concluidas.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 stagger">
           <h2 className="text-sm font-semibold text-muted">Entregues ({concluidas.length})</h2>
           {concluidas.map((e) => (
             <EntregaCard
@@ -262,6 +313,171 @@ function PitchEntregas() {
           <Sparkles size={16} /> Quero gerenciar minhas entregas
         </Link>
       </section>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------- painel do motoboy
+function MotoboyEntregas({
+  entregas,
+  usuarioId,
+  onPegar,
+  onDevolver,
+  onStatus,
+}: {
+  entregas: Entrega[];
+  usuarioId: string | null;
+  onPegar: (id: string) => Promise<{ ok: boolean; erro?: string }>;
+  onDevolver: (id: string) => void;
+  onStatus: (id: string, s: StatusEntrega) => void;
+}) {
+  const { alerta } = useDialog();
+  const [aba, setAba] = useState<"disponiveis" | "minhas">("disponiveis");
+  const [ocupado, setOcupado] = useState<string | null>(null);
+
+  const minhas = entregas.filter((e) => e.motoboyId === usuarioId);
+  const disponiveis = entregas.filter((e) => !e.motoboyId && e.status !== "entregue");
+  const minhasAtivas = minhas.filter((e) => e.status !== "entregue");
+  const minhasFeitas = minhas.filter((e) => e.status === "entregue");
+
+  async function pegar(id: string) {
+    setOcupado(id);
+    const r = await onPegar(id);
+    setOcupado(null);
+    if (!r.ok) alerta({ titulo: "Não deu para pegar", mensagem: r.erro || "Tente outra entrega." });
+  }
+
+  function tab(id: "disponiveis" | "minhas", label: string) {
+    return (
+      <button
+        onClick={() => setAba(id)}
+        className={`chip ${aba === id ? "bg-brand-600 text-white border-brand-600" : "border-default"}`}
+      >
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <header className="flex items-center gap-2 pt-1">
+        <Truck className="text-brand-600" />
+        <h1 className="text-2xl font-bold">Minhas entregas</h1>
+      </header>
+
+      <div className="flex gap-2">
+        {tab("disponiveis", `Disponíveis (${disponiveis.length})`)}
+        {tab("minhas", `Minhas (${minhasAtivas.length})`)}
+      </div>
+
+      {aba === "disponiveis" ? (
+        disponiveis.length === 0 ? (
+          <div className="card text-center text-muted py-8 flex flex-col items-center gap-2">
+            <Inbox size={28} /> Nenhuma entrega no balcão agora.
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-muted">Toque em “Pegar” para assumir a entrega. Ela sai do balcão e vai para “Minhas”.</p>
+            <div className="space-y-2 stagger">
+              {disponiveis.map((e) => (
+                <div key={e.id} className="card space-y-2">
+                  <EntregaInfo e={e} />
+                  <button
+                    disabled={ocupado === e.id}
+                    onClick={() => pegar(e.id)}
+                    className="btn-primary w-full py-2 text-sm disabled:opacity-60"
+                  >
+                    <PackageCheck size={16} /> {ocupado === e.id ? "Pegando…" : "Pegar entrega"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )
+      ) : (
+        <>
+          {minhasAtivas.length === 0 && minhasFeitas.length === 0 && (
+            <div className="card text-center text-muted py-8">
+              Você ainda não pegou nenhuma entrega. Veja o balcão em “Disponíveis”.
+            </div>
+          )}
+          {minhasAtivas.length > 0 && (
+            <div className="space-y-2 stagger">
+              <h2 className="text-sm font-semibold text-muted">Em aberto ({minhasAtivas.length})</h2>
+              {minhasAtivas.map((e) => (
+                <MinhaEntregaCard key={e.id} e={e} onStatus={onStatus} onDevolver={onDevolver} />
+              ))}
+            </div>
+          )}
+          {minhasFeitas.length > 0 && (
+            <div className="space-y-2 stagger">
+              <h2 className="text-sm font-semibold text-muted">Entregues ({minhasFeitas.length})</h2>
+              {minhasFeitas.map((e) => (
+                <MinhaEntregaCard key={e.id} e={e} onStatus={onStatus} onDevolver={onDevolver} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// bloco de dados da entrega (cliente, endereço, telefone, taxa, status) reutilizado
+function EntregaInfo({ e }: { e: Entrega }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <div className="font-semibold truncate">{e.clienteNome || "Cliente"}</div>
+        {e.endereco && (
+          <div className="text-xs text-muted flex items-center gap-1">
+            <MapPin size={12} /> {e.endereco}
+          </div>
+        )}
+        {e.telefone && (
+          <a href={`tel:${e.telefone}`} className="text-xs text-brand-500 flex items-center gap-1">
+            <Phone size={12} /> {e.telefone}
+          </a>
+        )}
+        {e.observacao && <div className="text-xs text-muted mt-0.5">{e.observacao}</div>}
+      </div>
+      <div className="text-right shrink-0">
+        {e.taxa > 0 && <div className="text-sm font-semibold">{brl(e.taxa)}</div>}
+        <div className={`text-xs font-medium ${STATUS_COR[e.status]}`}>{STATUS_LABEL[e.status]}</div>
+      </div>
+    </div>
+  );
+}
+
+function MinhaEntregaCard({
+  e,
+  onStatus,
+  onDevolver,
+}: {
+  e: Entrega;
+  onStatus: (id: string, s: StatusEntrega) => void;
+  onDevolver: (id: string) => void;
+}) {
+  return (
+    <div className="card space-y-2">
+      <EntregaInfo e={e} />
+      {e.status !== "entregue" && (
+        <div className="flex gap-2">
+          {e.status === "pendente" && (
+            <button onClick={() => onStatus(e.id, "a_caminho")} className="btn-ghost flex-1 py-2 text-sm">
+              <Bike size={16} /> Saí para entrega
+            </button>
+          )}
+          <button onClick={() => onStatus(e.id, "entregue")} className="btn-primary flex-1 py-2 text-sm">
+            <Check size={16} /> Entregue
+          </button>
+        </div>
+      )}
+      {e.status === "pendente" && (
+        <button onClick={() => onDevolver(e.id)} className="w-full py-1.5 text-xs text-muted flex items-center justify-center gap-1">
+          <Undo2 size={14} /> Devolver ao balcão
+        </button>
+      )}
     </div>
   );
 }

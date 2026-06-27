@@ -27,6 +27,8 @@ export function useConversasNaoLidas(): number {
       setCount(n);
     }
 
+    let cancelado = false;
+
     client
       .from("conversa")
       .select("id, ultima_cliente_em")
@@ -35,26 +37,29 @@ export function useConversasNaoLidas(): number {
         recompute();
       });
 
+    // autentica o realtime ANTES de assinar (RLS): evita perder eventos na janela
+    // entre o subscribe e a aplicação do token.
     client.auth.getSession().then(({ data }) => {
+      if (cancelado) return;
       if (data.session) client.realtime.setAuth(data.session.access_token);
-    });
 
-    ch = client
-      .channel("inbox-badge")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagem" }, (p) => {
-        const m = p.new as any;
-        if (m.autor_tipo !== "cliente") return;
-        const c = lista.find((x) => x.id === m.conversa_id);
-        if (c) c.ultima_cliente_em = m.criada_em;
-        else lista = [...lista, { id: m.conversa_id, ultima_cliente_em: m.criada_em }];
-        recompute();
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversa" }, (p) => {
-        const c = p.new as any;
-        if (!lista.some((x) => x.id === c.id)) lista = [...lista, { id: c.id, ultima_cliente_em: c.ultima_cliente_em ?? null }];
-        recompute();
-      })
-      .subscribe();
+      ch = client
+        .channel("inbox-badge")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagem" }, (p) => {
+          const m = p.new as any;
+          if (m.autor_tipo !== "cliente") return;
+          const c = lista.find((x) => x.id === m.conversa_id);
+          if (c) c.ultima_cliente_em = m.criada_em;
+          else lista = [...lista, { id: m.conversa_id, ultima_cliente_em: m.criada_em }];
+          recompute();
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversa" }, (p) => {
+          const c = p.new as any;
+          if (!lista.some((x) => x.id === c.id)) lista = [...lista, { id: c.id, ultima_cliente_em: c.ultima_cliente_em ?? null }];
+          recompute();
+        })
+        .subscribe();
+    });
 
     // sincroniza quando uma conversa é marcada como vista (mesma aba ou outra aba)
     const onSync = () => recompute();
@@ -63,6 +68,7 @@ export function useConversasNaoLidas(): number {
     window.addEventListener("focus", onSync);
 
     return () => {
+      cancelado = true;
       if (ch) client.removeChannel(ch);
       window.removeEventListener("aminbox-visto", onSync);
       window.removeEventListener("storage", onSync);

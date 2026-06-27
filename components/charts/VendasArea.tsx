@@ -1,6 +1,35 @@
 "use client";
-import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts";
+import { useEffect, useState } from "react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { brl } from "@/lib/analytics";
+
+// Lê a cor da marca (--brand-600) em runtime, então o gráfico acompanha a cor
+// personalizada da loja em vez de um rosa fixo.
+function useCorMarca() {
+  const [rgb, setRgb] = useState("219 39 119");
+  useEffect(() => {
+    const v = getComputedStyle(document.documentElement).getPropertyValue("--brand-600").trim();
+    if (v) setRgb(v);
+  }, []);
+  return `rgb(${rgb})`;
+}
+
+function TooltipCustom({ active, payload, label, formatLabel }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="surface shadow-pop rounded-xl border border-default px-3 py-2 text-xs">
+      {label != null && <div className="text-muted mb-0.5">{formatLabel ? formatLabel(label) : label}</div>}
+      <div className="font-bold text-sm">{brl(payload[0].value)}</div>
+    </div>
+  );
+}
 
 // Gráfico de área isolado, carregado sob demanda (next/dynamic), tirando o peso
 // do recharts do bundle inicial. Reutilizado no painel e nos relatórios.
@@ -11,6 +40,7 @@ export default function VendasArea({
   gradientId = "g",
   interval = 2,
   height = 140,
+  formatLabel,
 }: {
   data: any[];
   xKey?: string;
@@ -18,20 +48,44 @@ export default function VendasArea({
   gradientId?: string;
   interval?: number | "preserveStart" | "preserveEnd" | "preserveStartEnd";
   height?: number;
+  formatLabel?: (v: any) => string;
 }) {
+  const cor = useCorMarca();
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <AreaChart data={data}>
+        <AreaChart data={data} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#db2777" stopOpacity={0.4} />
-              <stop offset="95%" stopColor="#db2777" stopOpacity={0} />
+              <stop offset="5%" stopColor={cor} stopOpacity={0.4} />
+              <stop offset="95%" stopColor={cor} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey={xKey} fontSize={10} tickLine={false} axisLine={false} interval={interval} />
-          <Tooltip formatter={(v: number) => brl(v)} />
-          <Area type="monotone" dataKey={yKey} stroke="#db2777" fill={`url(#${gradientId})`} strokeWidth={2} />
+          <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.6} strokeDasharray="3 3" />
+          <XAxis
+            dataKey={xKey}
+            fontSize={10}
+            tickLine={false}
+            axisLine={false}
+            interval={interval}
+            stroke="var(--text-muted)"
+          />
+          <Tooltip
+            content={<TooltipCustom formatLabel={formatLabel} />}
+            cursor={{ stroke: cor, strokeOpacity: 0.4, strokeWidth: 1 }}
+          />
+          <Area
+            type="monotone"
+            dataKey={yKey}
+            stroke={cor}
+            fill={`url(#${gradientId})`}
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 5, fill: cor, stroke: "var(--surface)", strokeWidth: 2 }}
+            isAnimationActive
+            animationDuration={750}
+            animationEasing="ease-out"
+          />
         </AreaChart>
       </ResponsiveContainer>
     </div>

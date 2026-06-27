@@ -34,32 +34,51 @@ export function useRecebimentosPendentes(): number {
   useEffect(() => {
     if (!ready || role !== "owner" || !orgId) return;
     const client = sb.current;
+    let ch: ReturnType<typeof client.channel> | null = null;
+    let cancelado = false;
 
-    client.auth.getSession().then(({ data }) => {
+    // autentica o realtime ANTES de assinar (a tabela tem RLS): evita perder
+    // eventos que cheguem na janela entre o subscribe e a aplicação do token.
+    (async () => {
+      const { data } = await client.auth.getSession();
+      if (cancelado) return;
       if (data.session) client.realtime.setAuth(data.session.access_token);
-    });
 
-    const ch = client
-      .channel("recebimentos-badge")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "entrada_pendente", filter: `org_id=eq.${orgId}` },
-        (p) => {
-          const row = p.new as any;
-          if (row.status && row.status !== "pendente") return;
-          const entrada = mapRow(row);
-          useStore.setState((s) =>
-            s.entradasPendentes.some((e) => e.id === entrada.id)
-              ? s
-              : { entradasPendentes: [entrada, ...s.entradasPendentes] }
-          );
-          notificar(entrada);
-        }
-      )
-      .subscribe();
+      ch = client
+        .channel("recebimentos-badge")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "entrada_pendente", filter: `org_id=eq.${orgId}` },
+          (p) => {
+            const row = p.new as any;
+            if (row.status && row.status !== "pendente") return;
+            const entrada = mapRow(row);
+            useStore.setState((s) =>
+              s.entradasPendentes.some((e) => e.id === entrada.id)
+                ? s
+                : { entradasPendentes: [entrada, ...s.entradasPendentes] }
+            );
+            notificar(entrada);
+          }
+        )
+        // decidida (confirmada/recusada) em outro dispositivo: tira da caixa local
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "entrada_pendente", filter: `org_id=eq.${orgId}` },
+          (p) => {
+            const row = p.new as any;
+            if (row.status && row.status !== "pendente")
+              useStore.setState((s) => ({
+                entradasPendentes: s.entradasPendentes.filter((e) => e.id !== row.id),
+              }));
+          }
+        )
+        .subscribe();
+    })();
 
     return () => {
-      client.removeChannel(ch);
+      cancelado = true;
+      if (ch) client.removeChannel(ch);
     };
   }, [ready, role, orgId]);
 

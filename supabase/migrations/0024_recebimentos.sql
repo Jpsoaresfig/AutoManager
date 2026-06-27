@@ -27,9 +27,14 @@ create index if not exists entrada_pendente_org_idx on public.entrada_pendente(o
 create index if not exists entrada_pendente_status_idx on public.entrada_pendente(org_id, status);
 
 -- idempotência: o mesmo pagamento do provedor não entra duas vezes (reenvio de webhook).
+-- IMPORTANTE: índice NÃO-parcial. O upsert do PostgREST (onConflict) não consegue usar
+-- um índice único PARCIAL como árbitro de ON CONFLICT sem repetir o predicado WHERE,
+-- o que fazia o webhook falhar ("no unique or exclusion constraint matching...") em toda
+-- chamada real. No Postgres múltiplos NULL já são distintos, então entradas manuais
+-- (sem provider_pagamento_id) não colidem entre si.
+drop index if exists public.entrada_pendente_provider_uq;
 create unique index if not exists entrada_pendente_provider_uq
-  on public.entrada_pendente(org_id, provider_pagamento_id)
-  where provider_pagamento_id is not null;
+  on public.entrada_pendente(org_id, provider_pagamento_id);
 
 alter table public.entrada_pendente enable row level security;
 grant select, insert, update, delete on public.entrada_pendente to authenticated;

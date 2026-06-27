@@ -150,7 +150,10 @@ export function diasDeTrial(a: Assinatura | null): number {
 
 // Durante o trial valem as capacidades de EXPANSAO.
 export function planoEfetivo(a: Assinatura | null): PlanoId {
-  if (!a) return "solo";
+  // sem assinatura carregada: assume o mais restritivo (o banco enforça de qualquer jeito)
+  if (!a) return "ambulante";
+  // parou de pagar (cancelado/inadimplente): perde as capacidades, cai no piso
+  if (a.status === "canceled" || a.status === "past_due") return "ambulante";
   return trialAtivo(a) ? "expansao" : a.plano;
 }
 
@@ -169,8 +172,9 @@ export type Recurso = "revendedoras" | "vendedores" | "motoboys";
 
 export function limiteDoRecurso(caps: PlanoDef, r: Recurso): number {
   if (r === "revendedoras") return caps.maxRevendedoras;
-  // vendedores/motoboys são booleanos: 0 = bloqueado, Infinity = liberado
-  if (r === "vendedores") return caps.allowVendedores ? Infinity : 0;
+  // vendedores: Equipe tem teto de 3; Expansão ilimitado; demais bloqueado
+  if (r === "vendedores") return caps.allowVendedores ? (caps.id === "equipe" ? 3 : Infinity) : 0;
+  // motoboys: booleano (0 = bloqueado, Infinity = liberado)
   return caps.allowMotoboys ? Infinity : 0;
 }
 

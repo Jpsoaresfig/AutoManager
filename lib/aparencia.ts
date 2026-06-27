@@ -238,14 +238,60 @@ export function aplicarAparencia(a: Aparencia) {
   }
 }
 
+// ----------------------------------------------------------------------------
+// Favicon dinâmico: o ícone da aba do navegador vira a logo da loja. Troca
+// sozinho quando o dono muda a logo (chamado no Guard) e na vitrine pública
+// usa a logo daquela loja. Sem logo, cai no /icon.svg padrão.
+// ----------------------------------------------------------------------------
+const CHAVE_FAVICON = "favicon";
+
+function definirIconLink(rel: string, href: string) {
+  if (typeof document === "undefined") return;
+  const head = document.head;
+  // remove os links existentes desse rel e recria — força o navegador a reler o ícone
+  head.querySelectorAll(`link[rel="${rel}"]`).forEach((el) => el.remove());
+  const link = document.createElement("link");
+  link.rel = rel;
+  link.href = href;
+  head.appendChild(link);
+}
+
+// Aplica a logo como favicon (e, opcionalmente, o nome da loja como título da aba).
+// persistir=true cacheia p/ reaplicar antes da pintura na próxima visita (app do dono).
+// A vitrine pública passa persistir=false p/ não vazar o ícone de uma loja visitada
+// para a landing (o script anti-flash é global ao site).
+export function aplicarFavicon(
+  logoUrl: string | null | undefined,
+  titulo?: string | null,
+  persistir = true
+) {
+  if (typeof document === "undefined") return;
+  const href = logoUrl || "/icon.svg";
+  definirIconLink("icon", href);
+  definirIconLink("apple-touch-icon", href);
+  if (titulo) document.title = titulo;
+  if (!persistir) return;
+  try {
+    localStorage.setItem(CHAVE_FAVICON, href);
+  } catch {
+    /* ignora */
+  }
+}
+
 // Script injetado no <head> - reaplica a aparência cacheada antes da pintura.
 export const APARENCIA_NO_FLASH = `(function(){try{
-var c=JSON.parse(localStorage.getItem('${CHAVE_CACHE}')||'null');if(!c)return;
+var c=JSON.parse(localStorage.getItem('${CHAVE_CACHE}')||'null');
 var r=document.documentElement;
+if(c){
 r.classList.toggle('light',!!c.light);
 r.style.colorScheme=c.light?'light':'dark';
 if(c.tokens)for(var k in c.tokens)r.style.setProperty(k,c.tokens[k]);
 var T=[50,100,200,300,400,500,600,700,800,900],i;
 if(c.brand){for(i=0;i<T.length;i++)r.style.setProperty('--brand-'+T[i],c.brand[T[i]]);}
 if(c.font)r.style.fontFamily=c.font;
+}
+var lg=localStorage.getItem('${CHAVE_FAVICON}');
+if(lg){['icon','apple-touch-icon'].forEach(function(rel){
+var l=document.createElement('link');l.rel=rel;l.href=lg;document.head.appendChild(l);
+});}
 }catch(e){}})();`;

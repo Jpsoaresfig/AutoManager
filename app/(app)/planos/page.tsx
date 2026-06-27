@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { usePlano } from "@/lib/usePlano";
 import { ORDEM_PLANOS, PLANOS, brlPreco, type PlanoId } from "@/lib/plans";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import { Check, Sparkles, Star, Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
 
 export default function PlanosPage() {
@@ -17,6 +18,7 @@ export default function PlanosPage() {
 function Planos() {
   const router = useRouter();
   const { planoContratado, emTrial, diasTrial, uso } = usePlano();
+  const { confirm, alerta } = useDialog();
   const [salvando, setSalvando] = useState<PlanoId | null>(null);
 
   async function selecionar(novo: PlanoId) {
@@ -31,9 +33,14 @@ function Planos() {
     if (!def.allowMotoboys && uso.motoboys > 0) estourou.push(`${uso.motoboys} motoboy(s)`);
 
     if (estourou.length > 0) {
-      const ok = confirm(
-        `Você tem ${estourou.join(", ")}. Nada será apagado, mas novos cadastros ficam bloqueados até você ficar dentro do limite do plano ${def.nome}.\n\nConfirmar mudança?`
-      );
+      const ok = await confirm({
+        titulo: `Mudar para o plano ${def.nome}?`,
+        mensagem: `Você tem ${estourou.join(
+          ", "
+        )}. Nada será apagado, mas novos cadastros ficam bloqueados até você ficar dentro do limite.`,
+        confirmar: "Confirmar mudança",
+        perigo: true,
+      });
       if (!ok) return;
     }
 
@@ -47,13 +54,13 @@ function Planos() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.init_point) {
-        alert("Não foi possível iniciar o pagamento: " + (json.erro || "erro"));
+        await alerta({ titulo: "Não foi possível iniciar o pagamento", mensagem: json.erro || "Tente novamente." });
         setSalvando(null);
         return;
       }
       window.location.href = json.init_point; // checkout do Mercado Pago
     } catch {
-      alert("Falha de conexão ao iniciar o pagamento. Tente novamente.");
+      await alerta({ titulo: "Falha de conexão", mensagem: "Não consegui iniciar o pagamento. Tente novamente." });
       setSalvando(null);
     }
   }
@@ -78,15 +85,15 @@ function Planos() {
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start stagger">
         {ORDEM_PLANOS.map((id) => {
           const p = PLANOS[id];
           const atual = id === planoContratado && !emTrial;
           return (
             <div
               key={id}
-              className={`card relative flex flex-col ${
-                p.destaque ? "ring-2 ring-brand-500 lg:scale-[1.03]" : ""
+              className={`card relative flex flex-col transition-transform duration-200 hover:-translate-y-1 ${
+                p.destaque ? "ring-2 ring-brand-500 shadow-card lg:scale-[1.03] lg:hover:scale-[1.05]" : ""
               }`}
             >
               {p.destaque && (

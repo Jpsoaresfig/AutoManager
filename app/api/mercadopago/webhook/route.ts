@@ -1,10 +1,39 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import {
   buscarPreapproval,
   aplicarPreapproval,
   buscarPagamento,
   registrarRecebimentoMP,
 } from "@/lib/mercadopago";
+
+// Valida a assinatura (x-signature) do Mercado Pago. Só atua se MP_WEBHOOK_SECRET
+// estiver configurado (mantém retrocompat com setups que ainda não definiram o
+// segredo). Manifesto conforme docs do MP: id:<data.id>;request-id:<id>;ts:<ts>;
+function assinaturaValida(req: Request, dataId: string): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) return true; // não configurado -> não bloqueia
+  const sig = req.headers.get("x-signature") || "";
+  const reqId = req.headers.get("x-request-id") || "";
+  const parts: Record<string, string> = {};
+  for (const kv of sig.split(",")) {
+    const [k, v] = kv.split("=");
+    if (k && v) parts[k.trim()] = v.trim();
+  }
+  const ts = parts["ts"];
+  const v1 = parts["v1"];
+  if (!ts || !v1) return false;
+  const manifest = `id:${dataId};request-id:${reqId};ts:${ts};`;
+  const esperado = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+  try {
+    return (
+      esperado.length === v1.length &&
+      crypto.timingSafeEqual(Buffer.from(esperado), Buffer.from(v1))
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Webhook do Mercado Pago. Trata dois tipos de evento:
 //  - preapproval: assinatura de plano -> aplica o plano.
@@ -32,6 +61,11 @@ export async function POST(req: Request) {
   if ((!ehPreapproval && !ehPagamento) || !id) {
     // responde 200 para o MP não reenviar eventos que não nos interessam
     return NextResponse.json({ ignorado: true });
+  }
+
+  // rejeita notificações forjadas (quando o segredo do webhook está configurado)
+  if (!assinaturaValida(req, String(id))) {
+    return NextResponse.json({ erro: "assinatura invalida" }, { status: 401 });
   }
 
   try {

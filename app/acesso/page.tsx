@@ -9,6 +9,7 @@ export default function AcessoPage() {
   const [modo, setModo] = useState<"ativar" | "entrar">("ativar");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +36,7 @@ export default function AcessoPage() {
         const res = await fetch("/api/revendedora/ativar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: mail, senha }),
+          body: JSON.stringify({ email: mail, senha, codigo: codigo.trim().toUpperCase() }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -60,7 +61,7 @@ export default function AcessoPage() {
 
   return (
     <div className="min-h-screen grid place-items-center px-5 bg-[var(--bg)]">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm reveal">
         <div className="flex items-center justify-center gap-2 font-extrabold text-brand-500 text-xl mb-2">
           <Gem className="text-brand-600" /> Área da Revendedora
         </div>
@@ -70,13 +71,13 @@ export default function AcessoPage() {
           <div className="flex rounded-xl surface-alt p-1 text-sm font-semibold">
             <button
               onClick={() => setModo("ativar")}
-              className={`flex-1 rounded-lg py-2 ${modo === "ativar" ? "surface shadow" : "text-muted"}`}
+              className={`flex-1 rounded-lg py-2 transition active:scale-95 ${modo === "ativar" ? "surface shadow" : "text-muted hover:text-strong"}`}
             >
               Primeiro acesso
             </button>
             <button
               onClick={() => setModo("entrar")}
-              className={`flex-1 rounded-lg py-2 ${modo === "entrar" ? "surface shadow" : "text-muted"}`}
+              className={`flex-1 rounded-lg py-2 transition active:scale-95 ${modo === "entrar" ? "surface shadow" : "text-muted hover:text-strong"}`}
             >
               Entrar
             </button>
@@ -84,7 +85,7 @@ export default function AcessoPage() {
 
           <p className="text-xs text-muted">
             {modo === "ativar"
-              ? "Use o e-mail que a loja cadastrou e crie a sua senha agora."
+              ? "Use o e-mail que a loja cadastrou, o código de acesso que ela te enviou e crie a sua senha agora."
               : "Entre com o e-mail e a senha que você criou."}
           </p>
 
@@ -93,6 +94,22 @@ export default function AcessoPage() {
               <label className="label">E-mail</label>
               <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
             </div>
+            {modo === "ativar" && (
+              <div>
+                <label className="label">Código de acesso</label>
+                <input
+                  className="input tracking-[0.3em] font-mono uppercase"
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+                  required
+                  maxLength={6}
+                  placeholder="ABC123"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted mt-1">A loja te passa esse código junto com o link de acesso.</p>
+              </div>
+            )}
             <div>
               <label className="label">{modo === "ativar" ? "Crie sua senha" : "Senha"}</label>
               <input

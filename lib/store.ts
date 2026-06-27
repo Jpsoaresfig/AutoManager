@@ -18,6 +18,7 @@ import type {
   TipoChamado,
   EntradaPendente,
   OrigemRecebimento,
+  ContaPagar,
 } from "./types";
 import type { Assinatura, PlanoId } from "./plans";
 
@@ -135,6 +136,22 @@ function mapEntradaPendente(r: any): EntradaPendente {
   };
 }
 
+function mapContaPagar(r: any): ContaPagar {
+  return {
+    id: r.id,
+    descricao: r.descricao,
+    categoria: r.categoria ?? null,
+    fornecedor: r.fornecedor ?? null,
+    valor: Number(r.valor ?? 0),
+    vencimento: r.vencimento, // já vem "YYYY-MM-DD"
+    status: r.status ?? "pendente",
+    pagoEm: r.pago_em ? new Date(r.pago_em).getTime() : null,
+    recorrente: !!r.recorrente,
+    observacao: r.observacao ?? null,
+    criadoEm: new Date(r.criado_em).getTime(),
+  };
+}
+
 // ----------------------------------------------------- mapeadores row -> tipo
 function mapVariacao(r: any): Variacao {
   return {
@@ -219,6 +236,8 @@ interface State {
   usuarioId: string | null;
   email: string | null;
   role: Role;
+  // autenticado, porém sem loja própria (revendedora/visitante): não pertence ao painel
+  semOrg: boolean;
   config: Config;
   assinatura: Assinatura | null;
   produtos: Produto[];
@@ -228,6 +247,7 @@ interface State {
   membros: Membro[];
   entregas: Entrega[];
   entradasPendentes: EntradaPendente[];
+  contasPagar: ContaPagar[];
 
   hydrate: () => Promise<void>;
 
@@ -254,14 +274,22 @@ interface State {
   }) => Promise<{ ok: boolean; erro?: string }>;
   atribuirMotoboy: (entregaId: string, motoboyId: string | null) => Promise<void>;
   setStatusEntrega: (entregaId: string, status: StatusEntrega) => Promise<void>;
+  // pool do motoboy: pegar uma entrega disponível / devolver ao balcão
+  pegarEntrega: (entregaId: string) => Promise<{ ok: boolean; erro?: string }>;
+  devolverEntrega: (entregaId: string) => Promise<void>;
+  recarregarEntregas: () => Promise<void>;
 
   addProduto: (p: NovoProduto) => Promise<void>;
+  importarProdutos: (linhas: NovoProduto[]) => Promise<{ ok: boolean; inseridos: number; erro?: string }>;
   updateProduto: (id: string, patch: EditarProduto) => Promise<void>;
   entradaEstoque: (id: string, qtd: number) => Promise<void>;
   ajustarEstoque: (id: string, novaQtd: number, motivo: string) => Promise<void>;
 
   addRevendedora: (r: Omit<Revendedora, "id" | "criadaEm" | "ativa" | "acessoLiberado" | "temAcesso">) => Promise<void>;
   updateRevendedora: (id: string, patch: Partial<Revendedora>) => Promise<void>;
+  // libera o 1º acesso e devolve o código de convite (uso único) p/ o dono compartilhar
+  liberarAcessoRevendedora: (id: string) => Promise<{ ok: boolean; codigo?: string; erro?: string }>;
+  revogarAcessoRevendedora: (id: string) => Promise<void>;
 
   registrarVenda: (args: {
     itens: { produtoId: string; variacaoId?: string | null; qtd: number }[];
@@ -274,6 +302,19 @@ interface State {
   }) => Promise<Venda | null>;
   marcarComissaoPaga: (revendedoraId: string) => Promise<void>;
   marcarVendaRecebida: (vendaId: string) => Promise<void>;
+
+  // contas a pagar (financeiro)
+  addContaPagar: (c: {
+    descricao: string;
+    valor: number;
+    vencimento: string;
+    categoria?: string | null;
+    fornecedor?: string | null;
+    recorrente?: boolean;
+    observacao?: string | null;
+  }) => Promise<{ ok: boolean; erro?: string }>;
+  marcarContaPaga: (id: string, paga: boolean) => Promise<void>;
+  removerContaPagar: (id: string) => Promise<void>;
 
   // caixa de entrada de recebimentos
   confirmarEntrada: (entradaId: string) => Promise<Venda | null>;
@@ -306,6 +347,7 @@ export const useStore = create<State>()((set, get) => {
     usuarioId: null,
     email: null,
     role: "owner",
+    semOrg: false,
     config: configInicial,
     assinatura: null,
     produtos: [],
@@ -315,6 +357,7 @@ export const useStore = create<State>()((set, get) => {
     membros: [],
     entregas: [],
     entradasPendentes: [],
+    contasPagar: [],
 
     hydrate: async () => {
       const supabase = sb();
@@ -338,6 +381,7 @@ export const useStore = create<State>()((set, get) => {
         { data: membros },
         { data: entregas },
         { data: entradas },
+        { data: contas },
         { data: assin },
       ] = await Promise.all([
         supabase.from("org").select("*").limit(1).maybeSingle(),
@@ -356,6 +400,8 @@ export const useStore = create<State>()((set, get) => {
           .select("*")
           .eq("status", "pendente")
           .order("recebido_em", { ascending: false }),
+        // contas a pagar (tabela pode não existir se 0033 não rodou)
+        supabase.from("conta_pagar").select("*").order("vencimento", { ascending: true }),
         supabase.from("assinatura").select("*").limit(1).maybeSingle(),
       ]);
 
@@ -377,6 +423,8 @@ export const useStore = create<State>()((set, get) => {
         usuarioId: user.id,
         email: user.email ?? null,
         role: (eu?.role as Role) ?? "owner",
+        // sem linha em usuario = não é dono nem membro desta loja (revendedora/visitante)
+        semOrg: !eu,
         assinatura,
         config: org
           ? {
@@ -414,6 +462,7 @@ export const useStore = create<State>()((set, get) => {
         membros: (membros || []).map(mapMembro),
         entregas: (entregas || []).map(mapEntrega),
         entradasPendentes: (entradas || []).map(mapEntradaPendente),
+        contasPagar: (contas || []).map(mapContaPagar),
       });
 
       // 2ª fase: histórico anterior à janela, paginado e mesclado em segundo plano.
@@ -581,6 +630,44 @@ export const useStore = create<State>()((set, get) => {
         .eq("id", entregaId);
     },
 
+    // motoboy reivindica uma entrega do balcão. O `.is("motoboy_id", null)`
+    // garante a corrida: se outro já pegou, este update não afeta linha nenhuma.
+    pegarEntrega: async (entregaId) => {
+      const { usuarioId } = get();
+      if (!usuarioId) return { ok: false, erro: "Sessão expirada. Entre de novo." };
+      set((s) => ({
+        entregas: s.entregas.map((e) => (e.id === entregaId ? { ...e, motoboyId: usuarioId } : e)),
+      }));
+      const { data, error } = await sb()
+        .from("entrega")
+        .update({ motoboy_id: usuarioId })
+        .eq("id", entregaId)
+        .is("motoboy_id", null)
+        .select("id");
+      if (error || !data || data.length === 0) {
+        // não conseguiu (já pegaram / RLS / rede): ressincroniza com o banco
+        await get().recarregarEntregas();
+        return { ok: false, erro: error ? error.message : "Outra pessoa já pegou esta entrega." };
+      }
+      return { ok: true };
+    },
+
+    // motoboy devolve a entrega ao balcão (volta a ficar sem dono).
+    devolverEntrega: async (entregaId) => {
+      const anterior = get().entregas.find((e) => e.id === entregaId);
+      set((s) => ({
+        entregas: s.entregas.map((e) => (e.id === entregaId ? { ...e, motoboyId: null } : e)),
+      }));
+      const { error } = await sb().from("entrega").update({ motoboy_id: null }).eq("id", entregaId);
+      if (error && anterior)
+        set((s) => ({ entregas: s.entregas.map((e) => (e.id === entregaId ? anterior : e)) }));
+    },
+
+    recarregarEntregas: async () => {
+      const { data } = await sb().from("entrega").select("*").order("criada_em", { ascending: false });
+      set({ entregas: (data || []).map(mapEntrega) });
+    },
+
     completarOnboarding: async () => {
       set((s) => ({ config: { ...s.config, onboardingCompleto: true } }));
       const { orgId } = get();
@@ -656,6 +743,76 @@ export const useStore = create<State>()((set, get) => {
           motivo: "Estoque inicial",
         });
       }
+    },
+
+    // Importação em lote (CSV): grava todos os produtos numa tacada só, sem
+    // variações (a grade é cadastrada produto a produto). Registra a entrada de
+    // estoque inicial dos que vieram com quantidade.
+    importarProdutos: async (linhas) => {
+      if (linhas.length === 0) return { ok: true, inseridos: 0 };
+      const { orgId } = get();
+      const agora = Date.now();
+      const novos: Produto[] = linhas.map((p) => ({
+        id: uid(),
+        nome: p.nome,
+        categoria: p.categoria,
+        sku: p.sku,
+        marca: p.marca,
+        custo: p.custo,
+        precoVenda: p.precoVenda,
+        precoComparativo: p.precoComparativo,
+        impostoPercent: p.impostoPercent ?? 0,
+        descricao: p.descricao,
+        imagens: [],
+        estoqueAtual: p.estoqueAtual,
+        estoqueMinimo: p.estoqueMinimo,
+        variacoes: [],
+        ativo: true,
+        criadoEm: agora,
+      }));
+      set((s) => ({ produtos: [...s.produtos, ...novos] }));
+      if (!orgId) return { ok: true, inseridos: novos.length };
+
+      const supabase = sb();
+      const { error } = await supabase.from("produto").insert(
+        novos.map((p) => ({
+          id: p.id,
+          org_id: orgId,
+          nome: p.nome,
+          categoria: p.categoria,
+          sku: p.sku || null,
+          marca: p.marca || null,
+          custo: p.custo,
+          preco_venda: p.precoVenda,
+          preco_comparativo: p.precoComparativo ?? null,
+          imposto_percent: p.impostoPercent ?? 0,
+          descricao: p.descricao || null,
+          imagens: [],
+          estoque_atual: p.estoqueAtual,
+          estoque_minimo: p.estoqueMinimo,
+          ativo: true,
+        }))
+      );
+      // falhou -> desfaz o otimista
+      if (error) {
+        const ids = new Set(novos.map((p) => p.id));
+        set((s) => ({ produtos: s.produtos.filter((p) => !ids.has(p.id)) }));
+        return { ok: false, inseridos: 0, erro: error.message };
+      }
+
+      const comEstoque = novos.filter((p) => p.estoqueAtual > 0);
+      if (comEstoque.length > 0) {
+        await supabase.from("movimento_estoque").insert(
+          comEstoque.map((p) => ({
+            org_id: orgId,
+            produto_id: p.id,
+            tipo: "entrada",
+            qtd: p.estoqueAtual,
+            motivo: "Importação inicial",
+          }))
+        );
+      }
+      return { ok: true, inseridos: novos.length };
     },
 
     updateProduto: async (id, patch) => {
@@ -738,6 +895,9 @@ export const useStore = create<State>()((set, get) => {
       const { orgId } = get();
       const prod = get().produtos.find((x) => x.id === id);
       if (!prod) return;
+      // grade: o estoque é a soma das variações; dar entrada no agregado
+      // criaria estoque "fantasma" invendável. Reposição vai na tela do produto.
+      if (prod.variacoes.length > 0) return;
       const novoEstoque = prod.estoqueAtual + qtd;
       set((s) => ({
         produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: novoEstoque } : x)),
@@ -757,6 +917,8 @@ export const useStore = create<State>()((set, get) => {
       const { orgId } = get();
       const prod = get().produtos.find((x) => x.id === id);
       if (!prod) return;
+      // grade: ajuste é por variação (na tela do produto); não mexe no agregado.
+      if (prod.variacoes.length > 0) return;
       const delta = novaQtd - prod.estoqueAtual;
       set((s) => ({
         produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: novaQtd } : x)),
@@ -816,6 +978,29 @@ export const useStore = create<State>()((set, get) => {
       await sb().from("revendedora").update(row).eq("id", id);
     },
 
+    liberarAcessoRevendedora: async (id) => {
+      const { data, error } = await sb().rpc("liberar_revendedora", { p_id: id });
+      if (error) {
+        const erro = /sem_email/.test(error.message)
+          ? "Cadastre o e-mail dela antes de liberar o acesso."
+          : /ja_ativada/.test(error.message)
+          ? "Essa revendedora já ativou o acesso."
+          : "Não foi possível liberar o acesso agora.";
+        return { ok: false, erro };
+      }
+      set((s) => ({
+        revendedoras: s.revendedoras.map((r) => (r.id === id ? { ...r, acessoLiberado: true } : r)),
+      }));
+      return { ok: true, codigo: (data as any)?.codigo };
+    },
+
+    revogarAcessoRevendedora: async (id) => {
+      set((s) => ({
+        revendedoras: s.revendedoras.map((r) => (r.id === id ? { ...r, acessoLiberado: false } : r)),
+      }));
+      await sb().rpc("revogar_revendedora", { p_id: id });
+    },
+
     registrarVenda: async ({ itens, canal, revendedoraId, formaPagamento, parcelas = 1, desconto = 0, fiado = false }) => {
       const parcelasNorm = formaPagamento === "credito" ? Math.max(1, parcelas) : 1;
       const s = get();
@@ -854,15 +1039,14 @@ export const useStore = create<State>()((set, get) => {
         };
       });
 
+      const round2 = (n: number) => Math.round(n * 100) / 100;
       const bruto = vendaItens.reduce((a, i) => a + i.precoUnit * i.qtd, 0);
-      const desc = Math.min(Math.max(desconto, 0), bruto);
-      const total = bruto - desc;
-      const custoTotal = vendaItens.reduce((a, i) => a + i.custoUnit * i.qtd, 0);
-      const comissaoTotal = vendaItens.reduce(
-        (a, i) => a + (i.precoUnit * i.qtd * i.comissaoPercent) / 100,
-        0
-      );
-      const lucro = total - custoTotal - comissaoTotal;
+      const desc = round2(Math.min(Math.max(desconto, 0), bruto));
+      const total = round2(bruto - desc);
+      const custoTotal = round2(vendaItens.reduce((a, i) => a + i.custoUnit * i.qtd, 0));
+      // comissão sobre o total JÁ com desconto (igual à UI e ao RPC registrar_venda)
+      const comissaoTotal = round2((total * comissaoPercent) / 100);
+      const lucro = round2(total - custoTotal - comissaoTotal);
       const vendaId = uid();
       const data = Date.now();
       const statusPagamento = fiado ? "pendente" : "paga";
@@ -909,71 +1093,37 @@ export const useStore = create<State>()((set, get) => {
 
       if (!orgId) return venda;
 
-      const supabase = sb();
-      await supabase.from("venda").insert({
-        id: vendaId,
-        org_id: orgId,
-        canal,
-        revendedora_id: revendedoraId,
-        total,
-        custo_total: custoTotal,
-        comissao_total: comissaoTotal,
-        lucro,
-        status_comissao: "pendente",
-        forma_pagamento: formaPagamento,
-        parcelas: parcelasNorm,
-        status_pagamento: statusPagamento,
-        desconto: desc,
-        data_pagamento: dataPagamento ? new Date(dataPagamento).toISOString() : null,
+      // Tudo numa transação atômica no banco (valida estoque, grava venda+itens,
+      // baixa estoque relativo e movimentos). O id vem do cliente p/ casar com o otimista.
+      const { error } = await sb().rpc("registrar_venda", {
+        p_venda_id: vendaId,
+        p_itens: itens.map((it) => ({
+          produto_id: it.produtoId,
+          variacao_id: it.variacaoId ?? null,
+          qtd: it.qtd,
+        })),
+        p_canal: canal,
+        p_revendedora_id: revendedoraId,
+        p_forma: formaPagamento,
+        p_parcelas: parcelasNorm,
+        p_desconto: desc,
+        p_fiado: fiado,
       });
-      await supabase.from("venda_item").insert(
-        vendaItens.map((i) => ({
-          venda_id: vendaId,
-          org_id: orgId,
-          produto_id: i.produtoId,
-          variacao_id: i.variacaoId || null,
-          variacao_nome: i.variacaoNome || null,
-          nome: i.nome,
-          qtd: i.qtd,
-          preco_unit: i.precoUnit,
-          custo_unit: i.custoUnit,
-          comissao_percent_aplicada: i.comissaoPercent,
-        }))
-      );
-      // baixa no agregado do produto
-      for (const [produtoId, baixa] of baixaPorProduto) {
-        const prod = s.produtos.find((p) => p.id === produtoId)!;
-        await supabase
-          .from("produto")
-          .update({ estoque_atual: prod.estoqueAtual - baixa })
-          .eq("id", produtoId);
+
+      // erro no banco (estoque, RLS, rede) -> desfaz o otimista: remove a venda
+      // e restaura o estoque dos produtos afetados ao valor anterior à venda.
+      if (error) {
+        const afetados = new Set(baixaPorProduto.keys());
+        set((st) => ({
+          vendas: st.vendas.filter((v) => v.id !== vendaId),
+          produtos: st.produtos.map((p) => {
+            if (!afetados.has(p.id)) return p;
+            const orig = s.produtos.find((o) => o.id === p.id);
+            return orig ?? p;
+          }),
+        }));
+        return null;
       }
-      // baixa nas variações
-      const baixaPorVariacao = new Map<string, number>();
-      for (const it of itens)
-        if (it.variacaoId)
-          baixaPorVariacao.set(
-            it.variacaoId,
-            (baixaPorVariacao.get(it.variacaoId) || 0) + it.qtd
-          );
-      for (const [variacaoId, baixa] of baixaPorVariacao) {
-        const prod = s.produtos.find((p) => p.variacoes.some((v) => v.id === variacaoId))!;
-        const v = prod.variacoes.find((x) => x.id === variacaoId)!;
-        await supabase
-          .from("produto_variacao")
-          .update({ estoque_atual: v.estoqueAtual - baixa })
-          .eq("id", variacaoId);
-      }
-      await supabase.from("movimento_estoque").insert(
-        vendaItens.map((i) => ({
-          org_id: orgId,
-          produto_id: i.produtoId,
-          tipo: "saida",
-          qtd: -i.qtd,
-          motivo: "Venda",
-          ref_venda_id: vendaId,
-        }))
-      );
 
       return venda;
     },
@@ -1010,6 +1160,71 @@ export const useStore = create<State>()((set, get) => {
         .eq("id", vendaId);
     },
 
+    addContaPagar: async (c) => {
+      const { orgId } = get();
+      if (!c.descricao.trim()) return { ok: false, erro: "Informe a descrição da conta." };
+      if (!c.valor || c.valor <= 0) return { ok: false, erro: "Informe um valor válido." };
+      if (!c.vencimento) return { ok: false, erro: "Informe a data de vencimento." };
+      const id = uid();
+      const nova: ContaPagar = {
+        id,
+        descricao: c.descricao.trim(),
+        categoria: c.categoria?.trim() || null,
+        fornecedor: c.fornecedor?.trim() || null,
+        valor: c.valor,
+        vencimento: c.vencimento,
+        status: "pendente",
+        pagoEm: null,
+        recorrente: !!c.recorrente,
+        observacao: c.observacao?.trim() || null,
+        criadoEm: Date.now(),
+      };
+      set((s) => ({ contasPagar: [...s.contasPagar, nova] }));
+      if (!orgId) return { ok: true };
+      const { error } = await sb().from("conta_pagar").insert({
+        id,
+        org_id: orgId,
+        descricao: nova.descricao,
+        categoria: nova.categoria,
+        fornecedor: nova.fornecedor,
+        valor: nova.valor,
+        vencimento: nova.vencimento,
+        recorrente: nova.recorrente,
+        observacao: nova.observacao,
+        status: "pendente",
+      });
+      if (error) {
+        set((s) => ({ contasPagar: s.contasPagar.filter((x) => x.id !== id) }));
+        return { ok: false, erro: error.message };
+      }
+      return { ok: true };
+    },
+
+    marcarContaPaga: async (id, paga) => {
+      const pagoEm = paga ? Date.now() : null;
+      set((s) => ({
+        contasPagar: s.contasPagar.map((c) =>
+          c.id === id ? { ...c, status: paga ? "paga" : "pendente", pagoEm } : c
+        ),
+      }));
+      const { orgId } = get();
+      if (!orgId) return;
+      await sb()
+        .from("conta_pagar")
+        .update({
+          status: paga ? "paga" : "pendente",
+          pago_em: pagoEm ? new Date(pagoEm).toISOString() : null,
+        })
+        .eq("id", id);
+    },
+
+    removerContaPagar: async (id) => {
+      const anterior = get().contasPagar.find((c) => c.id === id);
+      set((s) => ({ contasPagar: s.contasPagar.filter((c) => c.id !== id) }));
+      const { error } = await sb().from("conta_pagar").delete().eq("id", id);
+      if (error && anterior) set((s) => ({ contasPagar: [...s.contasPagar, anterior] }));
+    },
+
     // "Sim, foi venda da loja": transforma o recebimento numa venda avulsa (sem itens,
     // só o valor) e marca a entrada como confirmada, ligando-a à venda criada.
     confirmarEntrada: async (entradaId) => {
@@ -1044,46 +1259,45 @@ export const useStore = create<State>()((set, get) => {
         entradasPendentes: st.entradasPendentes.filter((e) => e.id !== entradaId),
       }));
 
-      const supabase = sb();
-      await supabase.from("venda").insert({
-        id: vendaId,
-        org_id: orgId,
-        canal: "loja",
-        revendedora_id: null,
-        total: entrada.valor,
-        custo_total: 0,
-        comissao_total: 0,
-        lucro: entrada.valor,
-        status_comissao: "paga",
-        forma_pagamento: entrada.formaPagamento,
-        parcelas: 1,
-        status_pagamento: "paga",
-        desconto: 0,
-        data: new Date(data).toISOString(),
-        data_pagamento: new Date(data).toISOString(),
+      // cria a venda e marca a entrada como confirmada na MESMA transação.
+      // Idempotente: confirmar de novo (duplo-clique/2ª aba) não duplica a venda.
+      const { error } = await sb().rpc("confirmar_entrada", {
+        p_entrada_id: entradaId,
+        p_venda_id: vendaId,
       });
-      await supabase
-        .from("entrada_pendente")
-        .update({ status: "confirmada", venda_id: vendaId, decidido_em: new Date().toISOString() })
-        .eq("id", entradaId);
 
-      // avisa o badge de não lidas para recontar
-      if (typeof window !== "undefined")
-        window.dispatchEvent(new Event("am-recebimentos-mudou"));
+      // erro -> desfaz: tira a venda otimista e devolve a entrada à caixa
+      if (error) {
+        set((st) => ({
+          vendas: st.vendas.filter((v) => v.id !== vendaId),
+          entradasPendentes: st.entradasPendentes.some((e) => e.id === entradaId)
+            ? st.entradasPendentes
+            : [entrada, ...st.entradasPendentes],
+        }));
+        return null;
+      }
+
       return venda;
     },
 
     // "Não foi da loja": só arquiva a entrada, sem gerar venda.
     recusarEntrada: async (entradaId) => {
+      const anterior = get().entradasPendentes.find((e) => e.id === entradaId);
       set((st) => ({
         entradasPendentes: st.entradasPendentes.filter((e) => e.id !== entradaId),
       }));
-      await sb()
+      const { error } = await sb()
         .from("entrada_pendente")
         .update({ status: "recusada", decidido_em: new Date().toISOString() })
-        .eq("id", entradaId);
-      if (typeof window !== "undefined")
-        window.dispatchEvent(new Event("am-recebimentos-mudou"));
+        .eq("id", entradaId)
+        .eq("status", "pendente");
+      // falhou -> devolve a entrada à caixa pra não "sumir" sem persistir
+      if (error && anterior)
+        set((st) => ({
+          entradasPendentes: st.entradasPendentes.some((e) => e.id === entradaId)
+            ? st.entradasPendentes
+            : [anterior, ...st.entradasPendentes],
+        }));
     },
 
     // Cria um recebimento de teste (enquanto não há banco conectado de verdade),

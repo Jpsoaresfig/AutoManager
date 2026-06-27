@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServer } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
-import { capacidades, type Assinatura, type PlanoId } from "@/lib/plans";
+import { capacidades, limiteDoRecurso, type Assinatura, type PlanoId } from "@/lib/plans";
 
 // Cria/remove membros (vendedor, motoboy) com login+senha definidos pelo admin.
 // Usa a service_role (somente servidor) p/ criar usuários no Auth, mas SÓ depois
@@ -63,6 +63,23 @@ export async function POST(req: Request) {
       { erro: `Seu plano não permite criar ${role === "vendedor" ? "vendedores" : "motoboys"}. Faça upgrade.` },
       { status: 403 }
     );
+
+  // limite de vendedores do plano (Equipe = 3): erro amigável antes de criar o órfão
+  if (role === "vendedor") {
+    const limite = limiteDoRecurso(caps, "vendedores");
+    if (Number.isFinite(limite)) {
+      const { count } = await admin()
+        .from("usuario")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", dono.orgId)
+        .eq("role", "vendedor");
+      if ((count ?? 0) >= limite)
+        return NextResponse.json(
+          { erro: `Seu plano permite até ${limite} vendedores. Faça upgrade para adicionar mais.` },
+          { status: 403 }
+        );
+    }
+  }
 
   const { data, error } = await admin().auth.admin.createUser({
     email,

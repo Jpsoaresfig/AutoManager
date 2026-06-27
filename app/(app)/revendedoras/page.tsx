@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import Guard from "@/components/Guard";
+import { useDialog } from "@/components/Dialog";
 import { Plus, X, MessageCircle, BadgeDollarSign, Target, Pencil, KeyRound, Check, Mail } from "lucide-react";
 import type { Revendedora } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
@@ -21,6 +22,7 @@ function Revendedoras() {
   const { revendedoras, vendas, config, addRevendedora, updateRevendedora, marcarComissaoPaga } =
     useStore();
   const { caps, uso, limiteAtingido } = usePlano();
+  const { prompt, confirm } = useDialog();
   const [aberto, setAberto] = useState(false);
   const [upsell, setUpsell] = useState(false);
   const [nome, setNome] = useState("");
@@ -72,10 +74,26 @@ function Revendedoras() {
     setAberto(false);
   }
 
-  function editarMeta(id: string, atual: number) {
-    const v = prompt("Meta de vendas do mês (R$):", String(atual || ""));
+  async function editarMeta(id: string, atual: number) {
+    const v = await prompt({
+      titulo: "Meta do mês",
+      mensagem: "Defina a meta de vendas mensal (R$):",
+      valorInicial: String(atual || ""),
+      tipo: "number",
+      inputMode: "decimal",
+      confirmar: "Salvar",
+    });
     if (v === null) return;
     updateRevendedora(id, { metaMensal: parseFloat(v) || 0 });
+  }
+
+  async function pagarComissao(id: string, nome: string, valor: number) {
+    const ok = await confirm({
+      titulo: "Confirmar pagamento",
+      mensagem: `Marcar ${brl(valor)} como pago para ${nome}?`,
+      confirmar: "Marcar como pago",
+    });
+    if (ok) marcarComissaoPaga(id);
   }
 
   return (
@@ -120,7 +138,7 @@ function Revendedoras() {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2 stagger">
         {revendedoras.map((r) => {
           const pend = pendentePara(r.id);
           const vendMes = vendidoNoMes(r.id);
@@ -180,10 +198,7 @@ function Revendedoras() {
                 </span>
                 {pend > 0 && (
                   <button
-                    onClick={() => {
-                      if (confirm(`Marcar ${brl(pend)} como pago para ${r.nome}?`))
-                        marcarComissaoPaga(r.id);
-                    }}
+                    onClick={() => pagarComissao(r.id, r.nome, pend)}
                     className="text-xs btn-primary py-1.5 px-2"
                   >
                     <BadgeDollarSign size={14} /> Pagar
@@ -278,15 +293,48 @@ function AcessoRevendedora({
   r: Revendedora;
   onUpdate: (id: string, patch: Partial<Revendedora>) => Promise<void>;
 }) {
+  const { liberarAcessoRevendedora, revogarAcessoRevendedora } = useStore();
+  const { alerta } = useDialog();
   const [editando, setEditando] = useState(!r.email);
   const [email, setEmail] = useState(r.email ?? "");
   const [salvando, setSalvando] = useState(false);
+  const [liberando, setLiberando] = useState(false);
+  const [codigo, setCodigo] = useState<string | null>(null); // só disponível logo após gerar
+  const [copiado, setCopiado] = useState(false);
 
   async function salvarEmail() {
     setSalvando(true);
     await onUpdate(r.id, { email: email.trim().toLowerCase() || null });
     setSalvando(false);
     if (email.trim()) setEditando(false);
+  }
+
+  async function liberar() {
+    setLiberando(true);
+    const res = await liberarAcessoRevendedora(r.id);
+    setLiberando(false);
+    if (!res.ok) {
+      alerta({ titulo: "Não foi possível liberar", mensagem: res.erro || "Tente novamente." });
+      return;
+    }
+    setCodigo(res.codigo ?? null);
+    setCopiado(false);
+  }
+
+  async function revogar() {
+    setCodigo(null);
+    await revogarAcessoRevendedora(r.id);
+  }
+
+  async function copiar() {
+    if (!codigo) return;
+    try {
+      await navigator.clipboard.writeText(codigo);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      /* clipboard indisponível: o código segue visível para copiar à mão */
+    }
   }
 
   // estado do acesso
@@ -330,17 +378,35 @@ function AcessoRevendedora({
 
       {r.email && !r.temAcesso && (
         <button
-          onClick={() => onUpdate(r.id, { acessoLiberado: !r.acessoLiberado })}
-          className={`w-full rounded-lg py-2 text-sm font-semibold ${
+          onClick={r.acessoLiberado ? revogar : liberar}
+          disabled={liberando}
+          className={`w-full rounded-lg py-2 text-sm font-semibold disabled:opacity-60 ${
             r.acessoLiberado ? "surface-alt text-muted" : "btn-primary"
           }`}
         >
-          {r.acessoLiberado ? "Cancelar liberação" : "Liberar acesso (1ª senha)"}
+          {liberando ? "Gerando…" : r.acessoLiberado ? "Cancelar liberação" : "Liberar acesso (gerar código)"}
         </button>
       )}
-      {r.email && !r.temAcesso && r.acessoLiberado && (
+
+      {/* código recém-gerado: mostrado uma vez, para o dono copiar e enviar */}
+      {codigo && !r.temAcesso && (
+        <div className="rounded-lg bg-brand-500/10 border border-brand-500/30 p-3 space-y-1.5">
+          <div className="text-[11px] text-muted">Código de acesso (válido por 7 dias)</div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-xl font-bold tracking-[0.25em] text-brand-600">{codigo}</span>
+            <button onClick={copiar} className="btn-ghost py-1.5 px-3 text-xs whitespace-nowrap">
+              {copiado ? <Check size={14} /> : "Copiar"}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted">
+            Envie para ela junto do link <b>/acesso</b>. Some assim que ela ativar — só aparece agora.
+          </p>
+        </div>
+      )}
+
+      {r.email && !r.temAcesso && r.acessoLiberado && !codigo && (
         <p className="text-[11px] text-muted">
-          Peça para ela entrar em <b>/acesso</b>, usar este e-mail e criar a senha.
+          Acesso liberado. Se ela perdeu o código, clique em <b>Cancelar liberação</b> e libere de novo para gerar um novo.
         </p>
       )}
     </div>

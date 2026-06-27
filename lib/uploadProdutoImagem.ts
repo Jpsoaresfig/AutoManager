@@ -1,8 +1,10 @@
 import { createClient } from "./supabase/client";
+import { validarImagem } from "./imagem";
 
 // Faz upload de uma imagem de produto para o bucket "produtos" na pasta da org
 // e devolve a URL pública. O 1º segmento da pasta é o org_id (exigido pelo RLS).
 export async function uploadProdutoImagem(orgId: string, file: File): Promise<string> {
+  validarImagem(file);
   const supabase = createClient();
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const rand = (typeof crypto !== "undefined" && crypto.randomUUID)

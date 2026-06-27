@@ -19,6 +19,7 @@ import {
   Crown,
   ShieldCheck,
   Inbox,
+  Wallet,
 } from "lucide-react";
 import type { Role } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
@@ -26,6 +27,8 @@ import { useConversasNaoLidas } from "@/lib/useConversasNaoLidas";
 import { useRecebimentosPendentes } from "@/lib/useRecebimentos";
 import type { PlanoDef } from "@/lib/plans";
 import { ehSuperadmin } from "@/lib/admin";
+import PageTransition from "./PageTransition";
+import { DialogProvider } from "./Dialog";
 
 type Item = {
   href: string;
@@ -50,6 +53,7 @@ const ITENS: Item[] = [
   { href: "/revendedoras", label: "Equipe", icon: Users, roles: ["owner"] },
   { href: "/conversas", label: "Conversas", icon: MessageCircle, roles: ["owner"] },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, roles: ["owner"] },
+  { href: "/financeiro", label: "Financeiro", icon: Wallet, roles: ["owner"] },
   { href: "/analytics", label: "Inteligência", icon: PieChart, roles: ["owner"] },
   { href: "/planos", label: "Planos", icon: Crown, roles: ["owner"] },
   { href: "/configuracoes", label: "Configurações", icon: Settings, roles: ["owner"] },
@@ -80,6 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const nav = ITENS.filter((it) => visivel(it, role, caps, admin) && it.mobile).slice(0, 5);
 
   return (
+    <DialogProvider>
     <div className="min-h-screen md:flex">
       {/* -------- sidebar (desktop) -------- */}
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-60 surface border-r border-default p-4">
@@ -103,15 +108,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={n.href}
                 href={n.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition ${
-                  active ? "bg-brand-600 text-white" : "text-muted hover:surface-alt"
+                aria-current={active ? "page" : undefined}
+                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all duration-200 active:scale-[.98] ${
+                  active
+                    ? "bg-brand-600 text-white shadow-card"
+                    : "text-muted hover:text-strong hover:translate-x-0.5"
                 }`}
               >
-                <Icon size={20} />
-                <span className="flex-1">{n.label}</span>
+                {!active && (
+                  <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--hover)]" />
+                )}
+                <Icon
+                  size={20}
+                  className={`relative transition-transform duration-200 ${
+                    active ? "" : "group-hover:scale-110"
+                  }`}
+                />
+                <span className="relative flex-1">{n.label}</span>
                 {n.href === "/conversas" && conversasNaoLidas > 0 && (
                   <span
-                    className={`text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 grid place-items-center ${
+                    className={`relative text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 grid place-items-center ${
                       active ? "bg-white text-brand-600" : "bg-red-500 text-white"
                     }`}
                   >
@@ -120,7 +136,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 )}
                 {n.href === "/recebimentos" && recebimentosPendentes > 0 && (
                   <span
-                    className={`text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 grid place-items-center ${
+                    className={`relative text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 grid place-items-center ${
                       active ? "bg-white text-brand-600" : "bg-red-500 text-white"
                     }`}
                   >
@@ -140,7 +156,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             path === "/minha-loja" ? "max-w-7xl" : "max-w-3xl"
           } mx-auto px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-12`}
         >
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
 
@@ -151,8 +167,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           const Icon = n.icon;
           if (n.primary) {
             return (
-              <Link key={n.href} href={n.href} className="flex flex-col items-center -mt-6">
-                <span className="bg-brand-600 text-white rounded-full p-3 shadow-lg shadow-brand-600/30">
+              <Link
+                key={n.href}
+                href={n.href}
+                aria-current={active ? "page" : undefined}
+                className="flex flex-col items-center -mt-6 active:scale-95 transition-transform"
+              >
+                <span className="bg-brand-600 text-white rounded-full p-3 shadow-lg shadow-brand-600/30 transition-transform duration-200 hover:scale-105 active:scale-95">
                   <Icon size={26} />
                 </span>
                 <span className="text-[11px] mt-1 font-medium text-brand-500">{n.label}</span>
@@ -163,16 +184,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={n.href}
               href={n.href}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 ${
+              aria-current={active ? "page" : undefined}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-90 ${
                 active ? "text-brand-500" : "text-muted"
               }`}
             >
-              <Icon size={22} />
+              <Icon
+                size={22}
+                className={`transition-transform duration-200 ${active ? "scale-110" : ""}`}
+              />
               <span className="text-[11px] font-medium">{n.label}</span>
+              <span
+                className={`h-1 w-1 rounded-full bg-brand-500 transition-opacity duration-200 ${
+                  active ? "opacity-100" : "opacity-0"
+                }`}
+              />
             </Link>
           );
         })}
       </nav>
     </div>
+    </DialogProvider>
   );
 }

@@ -27,6 +27,14 @@
   --r-card: 1rem;
   --r-btn: 0.75rem;
   --r-input: 0.75rem;
+
+  /* hierarquia de sombras (suave / média / destaque) */
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 6px 16px rgb(0 0 0 / 0.10), 0 2px 6px rgb(0 0 0 / 0.06);
+  --shadow-pop: 0 16px 40px rgb(0 0 0 / 0.18), 0 6px 12px rgb(0 0 0 / 0.08);
+
+  /* overlay de hover sensível ao tema (clareia no escuro, escurece no claro) */
+  --hover: rgb(255 255 255 / 0.06);
   color-scheme: dark;
 }
 
@@ -37,6 +45,10 @@ html.light {
   --text: #1f2937;
   --text-muted: #6b7280;
   --border: #ececf1;
+  --shadow-soft: 0 1px 2px rgb(17 24 39 / 0.05), 0 1px 3px rgb(17 24 39 / 0.06);
+  --shadow-md: 0 6px 16px rgb(17 24 39 / 0.08), 0 2px 6px rgb(17 24 39 / 0.05);
+  --shadow-pop: 0 16px 40px rgb(17 24 39 / 0.14), 0 6px 12px rgb(17 24 39 / 0.06);
+  --hover: rgb(17 24 39 / 0.04);
   color-scheme: light;
 }
 
@@ -52,7 +64,23 @@ body {
     border-radius: var(--r-card);
     background: var(--surface);
     border-color: var(--border);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+    box-shadow: var(--shadow-soft);
+  }
+  /* cards clicáveis (renderizados como <a>/<button>) ganham hover/feedback */
+  a.card,
+  button.card {
+    @apply cursor-pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease,
+      background 0.18s ease;
+  }
+  a.card:hover,
+  button.card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  a.card:active,
+  button.card:active {
+    transform: translateY(0) scale(0.99);
   }
   /* superfícies / utilitários temáticos */
   .surface {
@@ -83,12 +111,23 @@ body {
     background: var(--surface-alt);
     color: var(--text);
   }
+  .btn-ghost:hover {
+    background-image: linear-gradient(var(--hover), var(--hover));
+    box-shadow: var(--shadow-soft);
+  }
+  .btn-primary:hover {
+    box-shadow: var(--shadow-md);
+  }
   .input {
     @apply w-full border px-3 py-3 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
     border-radius: var(--r-input);
     background: var(--surface);
     border-color: var(--border);
     color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .input:hover:not(:focus) {
+    border-color: var(--text-muted);
   }
   .input::placeholder {
     color: var(--text-muted);
@@ -101,6 +140,231 @@ body {
     @apply px-3 py-2 rounded-full border text-sm font-medium cursor-pointer select-none;
     border-color: var(--border);
     color: var(--text);
+    transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .chip:hover {
+    background-image: linear-gradient(var(--hover), var(--hover));
+  }
+  .chip:active {
+    transform: scale(0.95);
+  }
+}
+
+/* ============================================================ */
+/* Design system de movimento — usado em TODO o app             */
+/* ============================================================ */
+
+/* foco visível e acessível (teclado) */
+:focus-visible {
+  outline: 2px solid rgb(var(--brand-500) / 0.75);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* hierarquia de sombras como utilitários */
+.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-card { box-shadow: var(--shadow-md); }
+.shadow-pop { box-shadow: var(--shadow-pop); }
+
+/* barras de progresso animam o preenchimento em vez de "saltar" */
+.progress-fill { transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ---- entrada de componentes (fade + slide up) ---- */
+@keyframes ui-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal { animation: ui-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* stagger: filhos diretos surgem em sequência (até 12 itens) */
+.stagger > * { animation: ui-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.09s; }
+.stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger > *:nth-child(4) { animation-delay: 0.19s; }
+.stagger > *:nth-child(5) { animation-delay: 0.24s; }
+.stagger > *:nth-child(6) { animation-delay: 0.29s; }
+.stagger > *:nth-child(7) { animation-delay: 0.34s; }
+.stagger > *:nth-child(8) { animation-delay: 0.39s; }
+.stagger > *:nth-child(9) { animation-delay: 0.44s; }
+.stagger > *:nth-child(10) { animation-delay: 0.49s; }
+.stagger > *:nth-child(11) { animation-delay: 0.54s; }
+.stagger > *:nth-child(12) { animation-delay: 0.59s; }
+
+/* ---- crescimento de barras de gráfico ---- */
+@keyframes ui-bar-grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes ui-bar-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.bar-grow-y { transform-origin: bottom; animation: ui-bar-grow-y 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bar-grow-x { transform-origin: left; animation: ui-bar-grow-x 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---- transição entre rotas ---- */
+@keyframes ui-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: ui-page-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---- modais: backdrop + painel ---- */
+@keyframes ui-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ui-modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-backdrop { animation: ui-backdrop-in 0.2s ease both; }
+.modal-panel { animation: ui-modal-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes ui-sheet-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sheet-panel { animation: ui-sheet-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---- landing: grid de fundo + scroll reveal + brilho ---- */
+.lp-grid-bg {
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 55% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 55% at 50% 0%, #000 35%, transparent 100%);
+}
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.lp-reveal.is-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+@keyframes lp-toast-in {
+  0% { opacity: 0; transform: translateX(24px) scale(0.96); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.lp-toast { animation: lp-toast-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes lp-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+.lp-live-dot { animation: lp-pulse-dot 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal { opacity: 1; transform: none; transition: none; }
+  .lp-toast, .lp-live-dot { animation: none; }
+}
+
+/* ---- skeleton / shimmer ---- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-alt);
+  border-radius: var(--r-input);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--hover), transparent);
+  animation: ui-skeleton 1.4s ease-in-out infinite;
+}
+@keyframes ui-skeleton { 100% { transform: translateX(100%); } }
+
+/* respeita quem prefere menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .stagger > *,
+  .page-enter,
+  .modal-backdrop,
+  .modal-panel,
+  .sheet-panel,
+  .skeleton::after,
+  .bar-grow-y,
+  .bar-grow-x,
+  .progress-fill {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ============================================================ */
+/* Onboarding — tela de geração animada ("criando sua loja…")   */
+/* ============================================================ */
+@keyframes ob-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes ob-float {
+  0%   { transform: translateY(20px) rotate(0deg); opacity: 0; }
+  12%  { opacity: var(--ob-op, 0.5); }
+  88%  { opacity: var(--ob-op, 0.5); }
+  100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+}
+@keyframes ob-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ob-ring {
+  0%   { transform: scale(0.85); opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes ob-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes ob-spin { to { transform: rotate(360deg); } }
+@keyframes ob-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+@keyframes ob-fall {
+  0%   { transform: translateY(-12vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(112vh) rotate(620deg); opacity: 0.9; }
+}
+@keyframes ob-shimmer { 100% { transform: translateX(100%); } }
+@keyframes ob-grow { from { width: 0%; } }
+@keyframes ob-in-right {
+  from { opacity: 0; transform: translateX(70px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ob-in-left {
+  from { opacity: 0; transform: translateX(-70px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ob-aurora {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(7%, -6%) scale(1.18); }
+  66%  { transform: translate(-6%, 7%) scale(0.92); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.ob-anim-gradient { background-size: 220% 220%; animation: ob-gradient 9s ease infinite; }
+.ob-anim-float { animation: ob-float linear infinite; }
+.ob-anim-pop { animation: ob-pop 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both; }
+.ob-anim-ring { animation: ob-ring 2.1s ease-out infinite; }
+.ob-anim-rise { animation: ob-rise 0.5s ease both; }
+.ob-anim-spin { animation: ob-spin 0.9s linear infinite; }
+.ob-anim-bob { animation: ob-bob 3s ease-in-out infinite; }
+.ob-anim-fall { animation: ob-fall linear forwards; }
+.ob-in-right { animation: ob-in-right 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ob-in-left { animation: ob-in-left 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ob-aurora { animation: ob-aurora 16s ease-in-out infinite; }
+.ob-shimmer { position: relative; overflow: hidden; }
+.ob-shimmer::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: translateX(-100%); animation: ob-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-anim-gradient, .ob-anim-float, .ob-anim-pop, .ob-anim-ring,
+  .ob-anim-rise, .ob-anim-spin, .ob-anim-bob, .ob-anim-fall, .ob-shimmer::after,
+  .ob-in-right, .ob-in-left, .ob-aurora {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 

@@ -102,12 +102,13 @@ const PERGUNTAS: { q: string; a: string }[] = [
   },
 ];
 
-export default function Faq() {
+export default function Faq({ itens }: { itens?: { q: string; a: string }[] } = {}) {
+  const lista = itens ?? PERGUNTAS;
   const [aberta, setAberta] = useState<number | null>(0);
 
   return (
     <div className="mx-auto mt-10 max-w-3xl divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-default surface">
-      {PERGUNTAS.map((item, i) => {
+      {lista.map((item, i) => {
         const open = aberta === i;
         return (
           <div key={item.q}>

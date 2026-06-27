@@ -4,7 +4,8 @@ import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import type { Canal, FormaPagamento } from "@/lib/types";
 import Guard from "@/components/Guard";
-import { Minus, Plus, Check, ShoppingBag } from "lucide-react";
+import { useDialog } from "@/components/Dialog";
+import { Minus, Plus, Check, ShoppingBag, Loader2 } from "lucide-react";
 
 const FORMAS: { id: FormaPagamento; label: string }[] = [
   { id: "dinheiro", label: "💵 Dinheiro" },
@@ -37,6 +38,7 @@ const parseKey = (k: string) => {
 
 function Vender() {
   const { produtos, revendedoras, config, registrarVenda } = useStore();
+  const { alerta } = useDialog();
   const [cart, setCart] = useState<Record<string, number>>({});
   const [canal, setCanal] = useState<Canal>(config.canais[0] || "whatsapp");
   const [revId, setRevId] = useState<string>("");
@@ -45,6 +47,7 @@ function Vender() {
   const [descontoStr, setDescontoStr] = useState("");
   const [fiado, setFiado] = useState(false);
   const [sucesso, setSucesso] = useState<string | null>(null);
+  const [registrando, setRegistrando] = useState(false);
   const [busca, setBusca] = useState("");
 
   const disponiveis = produtos.filter(
@@ -89,27 +92,35 @@ function Vender() {
   const comissao = rev ? (total * rev.comissaoPercent) / 100 : 0;
 
   async function finalizar() {
-    if (itens.length === 0) return;
-    const v = await registrarVenda({
-      itens,
-      canal,
-      revendedoraId: revId || null,
-      formaPagamento: forma,
-      parcelas: forma === "credito" ? parcelas : 1,
-      desconto,
-      fiado,
-    });
-    if (!v) {
-      alert("Estoque insuficiente para algum item.");
-      return;
+    if (itens.length === 0 || registrando) return; // trava duplo clique
+    setRegistrando(true);
+    try {
+      const v = await registrarVenda({
+        itens,
+        canal,
+        revendedoraId: revId || null,
+        formaPagamento: forma,
+        parcelas: forma === "credito" ? parcelas : 1,
+        desconto,
+        fiado,
+      });
+      if (!v) {
+        await alerta({
+          titulo: "Não foi possível registrar a venda",
+          mensagem: "Verifique o estoque e tente novamente.",
+        });
+        return;
+      }
+      setSucesso(brl(v.total));
+      setCart({});
+      setRevId("");
+      setDescontoStr("");
+      setParcelas(1);
+      setFiado(false);
+      setTimeout(() => setSucesso(null), 2500);
+    } finally {
+      setRegistrando(false);
     }
-    setSucesso(brl(v.total));
-    setCart({});
-    setRevId("");
-    setDescontoStr("");
-    setParcelas(1);
-    setFiado(false);
-    setTimeout(() => setSucesso(null), 2500);
   }
 
   if (produtos.length === 0) {
@@ -292,8 +303,9 @@ function Vender() {
                       }`}
                 </div>
               </div>
-              <button onClick={finalizar} className="btn-primary px-6">
-                <Check size={20} /> Registrar
+              <button onClick={finalizar} disabled={registrando} className="btn-primary px-6 disabled:opacity-70">
+                {registrando ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
+                {registrando ? "Registrando…" : "Registrar"}
               </button>
             </div>
           </div>
@@ -301,9 +313,9 @@ function Vender() {
       )}
 
       {sucesso && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30">
-          <div className="surface rounded-3xl p-8 text-center space-y-2 animate-in">
-            <div className="text-5xl">🎉</div>
+        <div className="modal-backdrop fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm">
+          <div className="modal-panel surface shadow-pop rounded-3xl p-8 text-center space-y-2">
+            <div className="text-5xl ob-anim-pop">🎉</div>
             <div className="text-xl font-bold">Venda registrada!</div>
             <div className="text-brand-600 font-semibold text-lg">{sucesso}</div>
           </div>

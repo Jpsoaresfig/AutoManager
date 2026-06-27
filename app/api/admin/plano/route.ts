@@ -3,6 +3,7 @@ import { createClient as createServer } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { SUPERADMIN_EMAIL } from "@/lib/admin";
 import { PLANOS, type PlanoId } from "@/lib/plans";
+import { registrarAdminLog } from "@/lib/adminAudit";
 
 // Troca MANUAL de plano de uma loja pelo super-admin (cortesia / suporte).
 // Altera direto a tabela `assinatura` via service_role (ignora RLS), SÓ depois
@@ -41,7 +42,11 @@ export async function POST(req: Request) {
   const fim = new Date(inicio);
   fim.setMonth(fim.getMonth() + 1); // ciclo mensal a partir de agora
 
-  const { data, error } = await admin()
+  const a = admin();
+  // plano anterior (p/ auditoria) antes de sobrescrever
+  const { data: antes } = await a.from("assinatura").select("plano").eq("org_id", orgId).maybeSingle();
+
+  const { data, error } = await a
     .from("assinatura")
     .update({
       plano,
@@ -59,6 +64,15 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ erro: "Loja não encontrada" }, { status: 404 });
+
+  const { data: orgRow } = await a.from("org").select("nome").eq("id", orgId).maybeSingle();
+  await registrarAdminLog(a, {
+    actorEmail: (su.email ?? "").trim().toLowerCase(),
+    acao: "mudar_plano",
+    alvoOrgId: orgId,
+    alvoDescricao: orgRow?.nome ?? "loja",
+    detalhe: { de: antes?.plano ?? null, para: plano },
+  });
 
   return NextResponse.json({ ok: true, plano });
 }

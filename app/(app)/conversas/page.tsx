@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/client";
 import Guard from "@/components/Guard";
-import { MessageCircle, Send, ChevronLeft } from "lucide-react";
+import { SkeletonList } from "@/components/Skeleton";
+import { MessageCircle, Send, ChevronLeft, Loader2 } from "lucide-react";
 
 export default function ConversasPage() {
   return (
@@ -14,20 +15,39 @@ export default function ConversasPage() {
 }
 
 type Conversa = { id: string; cliente_nome: string | null; ultima_em: string; ultima_cliente_em: string | null };
-type Msg = { id: string; autor_tipo: string; texto: string };
+type Msg = {
+  id: string;
+  autor_tipo: string;
+  texto: string;
+  criada_em?: string;
+  pendente?: boolean; // otimista, ainda gravando
+  falhou?: boolean; // falhou ao enviar
+};
 
 const vistoKey = (id: string) => "aminbox_visto_" + id;
+
+function hora(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
 
 function Conversas() {
   const orgId = useStore((s) => s.orgId);
   const meId = useStore((s) => s.usuarioId);
   const sb = useRef(createClient());
   const [conversas, setConversas] = useState<Conversa[]>([]);
+  const [carregando, setCarregando] = useState(true);
   const [sel, setSel] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [msgsCarregando, setMsgsCarregando] = useState(false);
   const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
   const [vistos, setVistos] = useState<Record<string, number>>({});
   const fimRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const deveColar = useRef(true); // só auto-scrolla se o usuário está perto do fim
+  const primeira = useRef(true); // primeiro render da conversa = pula direto pro fim
 
   function naoLida(c: Conversa) {
     if (!c.ultima_cliente_em) return false;
@@ -41,7 +61,16 @@ function Conversas() {
   }
   function abrir(id: string) {
     marcarVisto(id);
+    primeira.current = true;
+    deveColar.current = true;
     setSel(id);
+  }
+
+  // detecta se o usuário está perto do fim (pra não puxar o scroll enquanto lê histórico)
+  function aoRolar() {
+    const el = scrollRef.current;
+    if (!el) return;
+    deveColar.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
   }
 
   // carrega conversas + realtime de novas mensagens da org
@@ -56,6 +85,7 @@ function Conversas() {
       .then(({ data }) => {
         const lista = (data as Conversa[]) || [];
         setConversas(lista);
+        setCarregando(false);
         if (typeof localStorage !== "undefined") {
           const seed: Record<string, number> = {};
           for (const c of lista) seed[c.id] = Number(localStorage.getItem(vistoKey(c.id)) || 0);
@@ -102,29 +132,66 @@ function Conversas() {
 
   useEffect(() => {
     if (!sel) return;
+    setMsgsCarregando(true);
     sb.current
       .from("mensagem")
-      .select("id, autor_tipo, texto")
+      .select("id, autor_tipo, texto, criada_em")
       .eq("conversa_id", sel)
       .order("criada_em")
-      .then(({ data }) => setMsgs((data as Msg[]) || []));
+      .then(({ data }) => {
+        setMsgs((data as Msg[]) || []);
+        setMsgsCarregando(false);
+      });
   }, [sel]);
 
+  // scroll inteligente: pula direto no 1º render; depois só rola se está perto do fim
   useEffect(() => {
-    fimRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (primeira.current) {
+      fimRef.current?.scrollIntoView({ behavior: "auto" });
+      primeira.current = false;
+      return;
+    }
+    if (deveColar.current) fimRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 
-  async function enviar() {
-    const t = texto.trim();
-    if (!t || !sel || !meId || !orgId) return;
-    setTexto("");
-    const { data } = await sb.current
-      .from("mensagem")
-      .insert({ conversa_id: sel, org_id: orgId, autor_id: meId, autor_tipo: "loja", texto: t })
-      .select("id, autor_tipo, texto")
-      .single();
-    if (data) setMsgs((prev) => (prev.some((x) => x.id === data.id) ? prev : [...prev, data as Msg]));
-    await sb.current.from("conversa").update({ ultima_em: new Date().toISOString() }).eq("id", sel);
+  async function enviar(textoParam?: string) {
+    const t = (textoParam ?? texto).trim();
+    if (!t || !sel || !meId || !orgId || enviando) return; // trava duplo envio
+    setEnviando(true);
+    const tmpId = "tmp-" + Date.now();
+    // 1) mostra a bolha na hora (otimista) com estado "enviando"
+    setMsgs((prev) => [
+      ...prev,
+      { id: tmpId, autor_tipo: "loja", texto: t, criada_em: new Date().toISOString(), pendente: true },
+    ]);
+    if (textoParam === undefined) setTexto("");
+    deveColar.current = true; // ao enviar, sempre rola pro fim
+    try {
+      const { data, error } = await sb.current
+        .from("mensagem")
+        .insert({ conversa_id: sel, org_id: orgId, autor_id: meId, autor_tipo: "loja", texto: t })
+        .select("id, autor_tipo, texto, criada_em")
+        .single();
+      if (error || !data) {
+        // 2a) falhou: mantém a bolha marcada como erro (texto não se perde)
+        setMsgs((prev) => prev.map((m) => (m.id === tmpId ? { ...m, pendente: false, falhou: true } : m)));
+        return;
+      }
+      // 2b) ok: troca a bolha temporária pela real (evita duplicar com o realtime)
+      setMsgs((prev) => {
+        const semTmp = prev.filter((m) => m.id !== tmpId);
+        return semTmp.some((x) => x.id === data.id) ? semTmp : [...semTmp, data as Msg];
+      });
+      await sb.current.from("conversa").update({ ultima_em: new Date().toISOString() }).eq("id", sel);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  // reenvia uma mensagem que falhou
+  function reenviar(m: Msg) {
+    setMsgs((prev) => prev.filter((x) => x.id !== m.id));
+    enviar(m.texto);
   }
 
   const selConversa = conversas.find((c) => c.id === sel);
@@ -134,7 +201,11 @@ function Conversas() {
     <div className="space-y-3">
       <header className="flex items-center gap-2 pt-1">
         {sel && (
-          <button onClick={() => setSel(null)} className="md:hidden text-muted">
+          <button
+            onClick={() => setSel(null)}
+            aria-label="Voltar"
+            className="md:hidden grid place-items-center h-9 w-9 -ml-1 rounded-full text-muted hover:bg-[var(--hover)] hover:text-strong active:scale-90 transition"
+          >
             <ChevronLeft />
           </button>
         )}
@@ -148,8 +219,9 @@ function Conversas() {
       </header>
 
       {/* lista */}
-      {!sel && (
-        <div className="space-y-2">
+      {!sel && carregando && <SkeletonList count={4} />}
+      {!sel && !carregando && (
+        <div className="space-y-2 stagger">
           {conversas.length === 0 && (
             <div className="card text-center text-muted">
               Nenhuma conversa ainda. Ative a mini-loja em Configurações e compartilhe o link.
@@ -182,18 +254,42 @@ function Conversas() {
       {/* chat */}
       {sel && (
         <div className="card flex flex-col h-[70vh] p-0 overflow-hidden">
-          <div className="flex-1 overflow-auto p-4 space-y-2">
-            {msgs.length === 0 && <p className="text-center text-sm text-muted">Sem mensagens ainda.</p>}
-            {msgs.map((m) => (
-              <div
-                key={m.id}
-                className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-                  m.autor_tipo === "loja" ? "bg-brand-600 text-white ml-auto" : "surface-alt"
-                }`}
-              >
-                {m.texto}
+          <div ref={scrollRef} onScroll={aoRolar} className="flex-1 overflow-auto p-4 space-y-2">
+            {msgsCarregando && msgs.length === 0 && (
+              <div className="space-y-2">
+                <div className="skeleton h-9 w-1/2 rounded-2xl" />
+                <div className="skeleton h-9 w-2/3 rounded-2xl ml-auto" />
+                <div className="skeleton h-9 w-2/5 rounded-2xl" />
               </div>
-            ))}
+            )}
+            {!msgsCarregando && msgs.length === 0 && (
+              <p className="text-center text-sm text-muted">Sem mensagens ainda.</p>
+            )}
+            {msgs.map((m) => {
+              const daLoja = m.autor_tipo === "loja";
+              return (
+                <div key={m.id} className={`reveal flex flex-col ${daLoja ? "items-end" : "items-start"}`}>
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                      daLoja ? "bg-brand-600 text-white" : "surface-alt"
+                    } ${m.pendente ? "opacity-70" : ""} ${m.falhou ? "ring-1 ring-red-500" : ""}`}
+                  >
+                    {m.texto}
+                  </div>
+                  <div className="text-[10px] text-muted mt-0.5 px-1 flex items-center gap-1">
+                    {m.falhou ? (
+                      <button onClick={() => reenviar(m)} className="text-red-500 font-semibold hover:underline">
+                        falhou · tocar para reenviar
+                      </button>
+                    ) : m.pendente ? (
+                      "enviando…"
+                    ) : (
+                      hora(m.criada_em)
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             <div ref={fimRef} />
           </div>
           <div className="p-3 border-t border-default flex gap-2">
@@ -202,10 +298,20 @@ function Conversas() {
               placeholder="Responder…"
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && enviar()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  enviar();
+                }
+              }}
             />
-            <button onClick={enviar} className="btn-primary px-4">
-              <Send size={18} />
+            <button
+              onClick={() => enviar()}
+              disabled={enviando || !texto.trim()}
+              className="btn-primary px-4 disabled:opacity-50"
+              aria-label="Enviar"
+            >
+              {enviando ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>
           </div>
         </div>

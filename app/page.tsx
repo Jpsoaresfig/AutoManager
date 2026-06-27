@@ -21,41 +21,104 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  ShoppingBag,
   X,
 } from "lucide-react";
 import Faq from "@/components/landing/Faq";
 import Pricing from "@/components/landing/Pricing";
 import StickyCta from "@/components/landing/StickyCta";
-import DashboardMock from "@/components/landing/DashboardMock";
+import LiveDashboard from "@/components/landing/LiveDashboard";
+import Reveal from "@/components/landing/Reveal";
 
 export const metadata = {
-  title: "AutoManager - Pare de controlar seu negócio no caderno",
+  title: "AutoManager — Saiba quanto sua loja vende e lucra, todo dia",
   description:
-    "O sistema de gestão acessível para micronegócios: doces, bijuterias, cosméticos, roupas e qualquer pequena loja. Estoque, vendas, comissões e revendedoras em um só app, configurado do seu jeito. Teste grátis, sem cartão.",
+    "O sistema de gestão para micronegócios do Brasil: estoque, vendas, comissões, revendedoras e relatórios de lucro em um app só. Troque o caderno, a planilha e o WhatsApp por um painel. Teste grátis, sem cartão.",
 };
 
 const COMECAR = "/login";
 
+// landing sempre em dark premium (independente do tema salvo do visitante)
+const TEMA_DARK = {
+  "--bg": "#09090f",
+  "--surface": "#111119",
+  "--surface-alt": "#1a1a24",
+  "--text": "#f5f5f7",
+  "--text-muted": "#9aa0ac",
+  "--border": "#24242e",
+  "--brand-50": "253 242 248",
+  "--brand-100": "252 231 243",
+  "--brand-200": "251 207 232",
+  "--brand-300": "249 168 212",
+  "--brand-400": "244 114 182",
+  "--brand-500": "236 72 153",
+  "--brand-600": "219 39 119",
+  "--brand-700": "190 24 93",
+  "--brand-800": "157 23 77",
+  "--brand-900": "131 24 67",
+  colorScheme: "dark",
+} as React.CSSProperties;
+
+const SEGMENTOS = ["Semijoias", "Roupas", "Cosméticos", "Doces", "Bijuterias", "Papelaria", "Artesanato", "Pet shop"];
+
+const DORES = [
+  { p: "Produto acabou e você só viu quando o cliente pediu.", s: "Alerta de estoque baixo antes de faltar — você repõe a tempo." },
+  { p: "Cliente pagou e você esqueceu de registrar.", s: "Recebimentos e fiado anotados no automático. Nada se perde." },
+  { p: "Comissão calculada de cabeça — e quase sempre errada.", s: "Comissão exata por venda, sem calculadora e sem briga." },
+  { p: "Dinheiro entrando e você sem saber se deu lucro.", s: "Lucro real por produto, por canal e por período." },
+  { p: "Tudo espalhado entre caderno, WhatsApp e planilha.", s: "Um painel só, no seu celular, sempre atualizado." },
+  { p: "Revendedora vendendo e você sem saber quanto deve.", s: "Cada uma com login próprio; você acompanha em tempo real." },
+];
+
+const BENEFICIOS = [
+  { icon: Boxes, t: "Nunca mais perca venda por falta de estoque", d: "O estoque baixa sozinho a cada venda e te avisa quando algo está acabando." },
+  { icon: Timer, t: "Registre a venda em segundos", d: "No balcão ou pelo WhatsApp, com fiado e parcelas — em 1 toque." },
+  { icon: Wallet, t: "Comissão certa, no automático", d: "Defina o percentual uma vez. O sistema calcula e mostra quanto pagar." },
+  { icon: LineChart, t: "Saiba o lucro real, sem achismo", d: "Relatório por produto, canal e período. Descubra o que dá retorno." },
+  { icon: Store, t: "Uma loja online pronta", d: "Vitrine com link próprio pra mandar no Insta e no Zap, com chat." },
+  { icon: Users, t: "Sua equipe vendendo, você no controle", d: "Revendedoras com acesso próprio, vendendo pelo celular delas." },
+];
+
+const FLUXO = [
+  { n: 1, icon: ShoppingBag, t: "Venda registrada", d: "No balcão ou no WhatsApp, em 1 toque." },
+  { n: 2, icon: Boxes, t: "Estoque atualizado", d: "Baixa sozinho, sem você anotar nada." },
+  { n: 3, icon: Wallet, t: "Comissão calculada", d: "Na hora, certinha, por revendedora." },
+  { n: 4, icon: TrendingUp, t: "Lucro registrado", d: "Custo x venda calculado automaticamente." },
+  { n: 5, icon: LineChart, t: "Relatório atualizado", d: "Seus números prontos, em tempo real." },
+];
+
+const FAQ_LANDING = [
+  { q: "Preciso colocar cartão para testar?", a: "Não. O teste grátis começa sem cartão. Você só decide pagar se gostar — e aí escolhe o plano do tamanho da sua loja." },
+  { q: "Funciona no celular?", a: "Funciona e foi feito pensando primeiro no celular. Dá pra adicionar à tela inicial e usar como um aplicativo, inclusive pra registrar venda no balcão." },
+  { q: "Posso cancelar quando quiser?", a: "Sim. Sem fidelidade, sem multa e sem ligação pra te 'segurar'. Cancelou, paramos de cobrar no fim do período e seus dados ficam disponíveis pra exportar." },
+  { q: "Preciso instalar algum programa?", a: "Não. Abre direto no navegador do celular ou do computador. Nada pra baixar, nada pra atualizar." },
+  { q: "Serve para o meu tipo de negócio?", a: "Sim. Doces, semijoias, bijuterias, cosméticos, roupas, papelaria, artesanato, pet shop e mais. Você cria suas próprias categorias e deixa o sistema com a cara do seu negócio." },
+  { q: "Preciso entender de tecnologia?", a: "Se você usa WhatsApp, você usa o AutoManager. O cadastro é guiado por poucas perguntas e a maioria registra a primeira venda em menos de 5 minutos." },
+  { q: "Serve mesmo para quem tem revendedoras?", a: "Esse é o nosso diferencial. Cada revendedora tem acesso próprio, registra a venda pelo celular e a comissão é calculada automaticamente. Você vê quem vende, quanto deve e o ranking." },
+  { q: "Meus dados ficam seguros?", a: "Ficam. Cada loja é isolada das outras no banco de dados, tudo trafega criptografado e o backup é automático. Ninguém de outra loja enxerga seus números." },
+];
+
 export default function Landing() {
   return (
-    <main className="min-h-screen bg-[var(--bg)] text-strong">
+    <main style={TEMA_DARK} className="min-h-screen bg-[var(--bg)] text-strong antialiased">
       {/* ======================= NAV ======================= */}
-      <header className="sticky top-0 z-30 border-b border-default bg-[var(--bg)]/80 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-white/5 bg-[var(--bg)]/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
           <span className="flex items-center gap-2 font-extrabold text-brand-500">
-            <Gem size={22} className="text-brand-600" /> AutoManager
+            <Gem size={22} className="text-brand-500" /> AutoManager
           </span>
-          <nav className="hidden items-center gap-6 text-sm text-muted md:flex">
-            <a href="#solucao" className="hover:text-strong">Como funciona</a>
-            <a href="#planos" className="hover:text-strong">Planos</a>
-            <a href="#faq" className="hover:text-strong">Dúvidas</a>
+          <nav className="hidden items-center gap-7 text-sm text-muted md:flex">
+            <a href="#como" className="transition hover:text-strong">Como funciona</a>
+            <a href="#beneficios" className="transition hover:text-strong">Recursos</a>
+            <a href="#planos" className="transition hover:text-strong">Planos</a>
+            <a href="#faq" className="transition hover:text-strong">Dúvidas</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/login?modo=entrar" className="btn-ghost text-sm">
+            <Link href="/login?modo=entrar" className="hidden text-sm text-muted transition hover:text-strong sm:block">
               Entrar
             </Link>
             <Link href={COMECAR} className="btn-primary text-sm">
-              Teste grátis
+              Teste grátis <ArrowRight size={15} />
             </Link>
           </div>
         </div>
@@ -63,394 +126,416 @@ export default function Landing() {
 
       {/* ======================= HERO ======================= */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute top-40 -left-20 h-72 w-72 rounded-full bg-brand-700/10 blur-3xl" />
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 sm:py-20 lg:grid-cols-2">
+        <div className="pointer-events-none absolute inset-0 lp-grid-bg opacity-[0.5]" />
+        <div className="pointer-events-none absolute -top-32 left-1/2 h-[28rem] w-[44rem] -translate-x-1/2 rounded-full bg-brand-600/20 blur-[120px]" />
+        <div className="pointer-events-none absolute top-40 -right-24 h-72 w-72 rounded-full bg-brand-500/10 blur-3xl" />
+
+        <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 sm:py-24 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/40 surface px-3 py-1 text-sm font-medium text-brand-500">
-              <Sparkles size={15} /> Para micronegócios - doces, bijuterias, cosméticos, roupas e mais
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-brand-300 backdrop-blur">
+              <Sparkles size={14} /> Feito para micronegócios do Brasil
             </span>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] text-strong sm:text-5xl">
-              Pare de controlar seu negócio no{" "}
-              <span className="relative whitespace-nowrap text-brand-600">
-                caderno
-                <span className="absolute -bottom-1 left-0 h-1 w-full rounded bg-brand-500/40" />
-              </span>
+            <h1 className="mt-6 text-[2.6rem] font-extrabold leading-[1.05] tracking-tight text-strong sm:text-6xl">
+              Saiba quanto sua loja{" "}
+              <span className="bg-gradient-to-r from-brand-400 via-brand-500 to-brand-700 bg-clip-text text-transparent">
+                vende e lucra
+              </span>{" "}
+              — todo dia.
             </h1>
-            <p className="mt-5 max-w-xl text-lg text-muted">
-              Saiba exatamente <strong className="text-strong">quanto você vende</strong>,{" "}
-              <strong className="text-strong">quanto lucra</strong> e{" "}
-              <strong className="text-strong">quem está te dando prejuízo</strong>. Estoque, vendas e
-              comissões em um único app que você <strong className="text-strong">configura do seu
-              jeito</strong> - e que cabe no bolso de micronegócio.
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
+              O AutoManager troca o caderno, a planilha e o WhatsApp por um painel só: estoque,
+              vendas, comissões e relatórios no automático. Pare de adivinhar e comece a lucrar.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href={COMECAR} className="btn-primary px-6 py-4 text-base">
-                Começar Teste Grátis <ArrowRight size={18} />
+              <Link href={COMECAR} className="btn-primary px-6 py-4 text-base shadow-lg shadow-brand-600/30">
+                Criar minha loja grátis <ArrowRight size={18} />
               </Link>
-              <a href="#solucao" className="btn-ghost px-6 py-4 text-base">
-                <PlayCircle size={18} /> Ver Demonstração
+              <a href="#como" className="btn-ghost px-6 py-4 text-base">
+                <PlayCircle size={18} /> Ver demonstração
               </a>
             </div>
 
-            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+            <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
               {["Sem cartão de crédito", "Pronto em 2 minutos", "Cancela quando quiser"].map((t) => (
                 <li key={t} className="flex items-center gap-1.5">
-                  <Check size={15} className="text-brand-600" /> {t}
+                  <Check size={15} className="text-brand-500" /> {t}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* visual */}
-          <div className="relative">
-            <DashboardMock />
-            <span className="absolute -bottom-4 -left-4 hidden rounded-xl border border-default surface px-3 py-2 text-xs font-semibold text-strong shadow-lg sm:block">
-              ✅ Venda registrada · estoque atualizado
-            </span>
-          </div>
+          {/* visual vivo */}
+          <Reveal delay={120}>
+            <LiveDashboard />
+          </Reveal>
         </div>
       </section>
 
-      {/* ======================= PROVA SOCIAL (números) ======================= */}
-      <section className="border-y border-default surface">
+      {/* ======================= PROVA SOCIAL ======================= */}
+      <section className="border-y border-white/5 bg-[var(--surface)]/40">
         <div className="mx-auto max-w-6xl px-5 py-10">
-          <p className="text-center text-sm font-medium text-muted">
-            Resultados de lojas que largaram o caderno e a planilha
+          <p className="text-center text-xs font-medium uppercase tracking-wider text-muted">
+            Para lojas que largaram o caderno e a planilha
           </p>
-          <div className="mt-6 grid grid-cols-2 gap-6 lg:grid-cols-4">
-            {[
-              { n: "+1.200", l: "vendas registradas na plataforma" },
-              { n: "+35%", l: "mais controle de estoque" },
-              { n: "−70%", l: "de erros no cálculo de comissão" },
-              { n: "+18h", l: "economizadas por mês no WhatsApp" },
-            ].map((s) => (
-              <div key={s.l} className="text-center">
-                <p className="text-3xl font-extrabold text-brand-600 sm:text-4xl">{s.n}</p>
-                <p className="mt-1 text-sm text-muted">{s.l}</p>
-              </div>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold text-muted/70">
+            {SEGMENTOS.map((s) => (
+              <span key={s}>{s}</span>
             ))}
           </div>
-          <p className="mt-6 text-center text-xs text-muted">
-            * Médias ilustrativas com base em micronegócios na fase inicial da plataforma.
+          <div className="mt-9 grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {[
+              { n: "+1.200", l: "vendas registradas" },
+              { n: "+300", l: "lojistas usando" },
+              { n: "−70%", l: "de erro em comissão" },
+              { n: "+18h", l: "economizadas por mês" },
+            ].map((s, i) => (
+              <Reveal key={s.l} delay={i * 80}>
+                <div className="text-center">
+                  <p className="bg-gradient-to-b from-brand-300 to-brand-600 bg-clip-text text-3xl font-extrabold text-transparent sm:text-4xl">
+                    {s.n}
+                  </p>
+                  <p className="mt-1 text-sm text-muted">{s.l}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-xs text-muted/70">
+            * Números ilustrativos da fase inicial — substituir por dados reais conforme a base cresce.
           </p>
         </div>
       </section>
 
-      {/* ======================= DOR ======================= */}
-      <section className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-strong sm:text-4xl">Isso acontece na sua loja?</h2>
-          <p className="mt-3 text-muted">
-            Se você marcar 2 ou mais, está perdendo dinheiro sem perceber.
-          </p>
-        </div>
-        <div className="mx-auto mt-10 grid max-w-4xl gap-3 sm:grid-cols-2">
-          {[
-            "Você não sabe o que ainda tem em estoque",
-            "Faz a comissão das revendedoras na calculadora",
-            "Perde venda porque esqueceu de repor um produto",
-            "Tem revendedora vendendo e você não sabe quanto deve pagar",
-            "Controla pedido, preço e fiado tudo no WhatsApp",
-            "Vende o dia todo sem saber se aquilo deu lucro",
-            "Tem produto parado há meses ocupando seu dinheiro",
-            "No fim do mês, não sabe pra onde foi o seu lucro",
-          ].map((dor) => (
-            <div key={dor} className="card flex items-start gap-3">
-              <X size={18} className="mt-0.5 shrink-0 text-red-500" />
-              <span className="text-strong">{dor}</span>
-            </div>
+      {/* ======================= DOR → SOLUÇÃO ======================= */}
+      <section className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <Reveal>
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-400">O problema</span>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-strong sm:text-4xl">
+              Você trabalha muito. Mas não enxerga seus números.
+            </h2>
+            <p className="mt-3 text-muted">
+              Cada item abaixo é dinheiro saindo do seu bolso sem você perceber. Veja como o
+              AutoManager resolve cada um.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {DORES.map((d, i) => (
+            <Reveal key={d.p} delay={(i % 3) * 90}>
+              <div className="group h-full rounded-2xl border border-white/10 bg-[var(--surface)] p-5 transition hover:-translate-y-1 hover:border-brand-500/30 hover:shadow-pop">
+                <div className="flex items-start gap-2.5 text-sm text-muted">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-red-500/10 text-red-400">
+                    <X size={12} />
+                  </span>
+                  <span className="line-through decoration-red-500/40">{d.p}</span>
+                </div>
+                <div className="mt-4 flex items-start gap-2.5">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-500/15 text-brand-400">
+                    <Check size={12} />
+                  </span>
+                  <span className="text-sm font-medium text-strong">{d.s}</span>
+                </div>
+              </div>
+            </Reveal>
           ))}
         </div>
-        <p className="mx-auto mt-10 max-w-2xl text-center text-lg font-semibold text-strong">
-          O problema não é falta de esforço. É falta de um sistema simples que mostre os seus números.
-        </p>
       </section>
 
-      {/* ======================= SOLUÇÃO ======================= */}
-      <section id="solucao" className="surface py-16 sm:py-20">
+      {/* ======================= BENEFÍCIOS ======================= */}
+      <section id="beneficios" className="border-y border-white/5 bg-[var(--surface)]/40 py-20 sm:py-28">
         <div className="mx-auto max-w-6xl px-5">
-          <div className="text-center">
-            <span className="text-sm font-semibold uppercase tracking-wide text-brand-500">
-              A solução
-            </span>
-            <h2 className="mt-2 text-3xl font-bold text-strong sm:text-4xl">
-              Tudo o que sua loja precisa, em um app que você abre no celular
-            </h2>
-          </div>
-
-          <div className="mt-12 grid items-center gap-10 lg:grid-cols-2">
-            <DashboardMock />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                { icon: Boxes, t: "Estoque", d: "Atualiza sozinho a cada venda. Alerta quando algo está acabando." },
-                { icon: Timer, t: "Vendas", d: "Registre no balcão ou pelo WhatsApp em 1 toque, com fiado e parcelas." },
-                { icon: Users, t: "Revendedoras", d: "Cada uma com login próprio, vendendo pelo celular delas." },
-                { icon: Store, t: "Loja online", d: "Uma vitrine pronta com link para mandar no Insta e no Zap." },
-                { icon: Wallet, t: "Comissões", d: "Calculadas automaticamente. Você só vê quanto pagar." },
-                { icon: LineChart, t: "Relatórios", d: "Lucro real por produto, por canal e por período. Sem achismo." },
-              ].map(({ icon: Icon, t, d }) => (
-                <div key={t} className="rounded-2xl border border-default bg-[var(--bg)] p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600">
+          <Reveal>
+            <div className="mx-auto max-w-2xl text-center">
+              <span className="text-xs font-semibold uppercase tracking-wider text-brand-400">O que você ganha</span>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-strong sm:text-4xl">
+                Não é mais um sistema de estoque. É controle do seu lucro.
+              </h2>
+            </div>
+          </Reveal>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {BENEFICIOS.map(({ icon: Icon, t, d }, i) => (
+              <Reveal key={t} delay={(i % 3) * 90}>
+                <div className="h-full rounded-2xl border border-white/10 bg-[var(--bg)] p-6 transition hover:-translate-y-1 hover:border-brand-500/30 hover:shadow-pop">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/30">
                     <Icon size={20} />
                   </div>
-                  <h3 className="mt-3 font-semibold text-strong">{t}</h3>
-                  <p className="mt-1 text-sm text-muted">{d}</p>
+                  <h3 className="mt-4 text-lg font-bold text-strong">{t}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted">{d}</p>
                 </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ======================= COMO FUNCIONA (FLUXO) ======================= */}
+      <section id="como" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <Reveal>
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-400">Como funciona</span>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-strong sm:text-4xl">
+              Você registra uma venda. O sistema faz o resto.
+            </h2>
+            <p className="mt-3 text-muted">Um toque dispara tudo — em tempo real, sem retrabalho.</p>
+          </div>
+        </Reveal>
+
+        <div className="mt-14 grid gap-12 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+          <div className="relative">
+            {/* linha conectora */}
+            <div className="absolute left-[1.4rem] top-4 bottom-4 w-px bg-gradient-to-b from-brand-500/60 to-transparent" />
+            <div className="space-y-5">
+              {FLUXO.map(({ n, icon: Icon, t, d }, i) => (
+                <Reveal key={t} delay={i * 90}>
+                  <div className="relative flex items-start gap-4">
+                    <span className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-[var(--surface)] text-brand-400 shadow-lg">
+                      <Icon size={18} />
+                      <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                        {n}
+                      </span>
+                    </span>
+                    <div className="pt-1">
+                      <h3 className="font-bold text-strong">{t}</h3>
+                      <p className="text-sm text-muted">{d}</p>
+                    </div>
+                  </div>
+                </Reveal>
               ))}
             </div>
           </div>
 
-          <div className="mt-10 text-center">
-            <Link href={COMECAR} className="btn-primary px-6 py-4 text-base">
-              Quero ver tudo isso na minha loja <ArrowRight size={18} />
-            </Link>
-          </div>
+          <Reveal delay={120}>
+            <LiveDashboard />
+          </Reveal>
         </div>
       </section>
 
       {/* ======================= DIFERENCIAL ======================= */}
-      <section className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-bold text-strong sm:text-4xl">
-            Enquanto outros sistemas só controlam estoque, o AutoManager{" "}
-            <span className="text-brand-600">ajuda você a vender mais</span>.
-          </h2>
-          <p className="mt-4 text-muted">
-            Controlar o que entra e o que sai é o mínimo. O AutoManager foi feito para o jeito que a
-            sua loja realmente vende: com revendedoras, WhatsApp e cliente esperando resposta.
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { icon: Users, t: "Revendedoras com login próprio", d: "Elas vendem pelo celular, você acompanha tudo em tempo real. Ninguém vê o número da outra." },
-            { icon: Wallet, t: "Comissão automática", d: "Define o percentual uma vez. O sistema calcula a cada venda e mostra quanto pagar." },
-            { icon: Store, t: "Loja online pronta", d: "Uma vitrine pública com seu link, sem precisar contratar quem faça site." },
-            { icon: MessageCircle, t: "Chat integrado", d: "O cliente fala com a loja direto da vitrine. Acabou perder pedido no meio do Zap." },
-            { icon: Settings2, t: "Tudo configurável do seu jeito", d: "Suas categorias, suas comissões, sua marca e suas cores. O sistema fica com a cara do seu negócio." },
-            { icon: TrendingUp, t: "Foco em lucro, não em planilha", d: "O painel mostra o que dá retorno e o que só está parado te custando dinheiro." },
-          ].map(({ icon: Icon, t, d }) => (
-            <div key={t} className="card">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white">
-                <Icon size={20} />
-              </div>
-              <h3 className="mt-3 font-semibold text-strong">{t}</h3>
-              <p className="mt-1 text-sm text-muted">{d}</p>
+      <section className="border-y border-white/5 bg-[var(--surface)]/40 py-20 sm:py-28">
+        <div className="mx-auto max-w-6xl px-5">
+          <Reveal>
+            <div className="mx-auto max-w-3xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-strong sm:text-4xl">
+                Outros sistemas controlam estoque. O AutoManager{" "}
+                <span className="bg-gradient-to-r from-brand-400 to-brand-600 bg-clip-text text-transparent">
+                  ajuda você a vender mais
+                </span>
+                .
+              </h2>
+              <p className="mt-4 text-muted">
+                Feito para o jeito que a sua loja realmente vende: com revendedoras, WhatsApp e
+                cliente esperando resposta.
+              </p>
             </div>
-          ))}
+          </Reveal>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { icon: Users, t: "Revendedoras com login próprio", d: "Elas vendem pelo celular, você acompanha em tempo real. Ninguém vê o número da outra." },
+              { icon: Wallet, t: "Comissão automática", d: "Define o percentual uma vez. O sistema calcula a cada venda e mostra quanto pagar." },
+              { icon: Store, t: "Loja online pronta", d: "Uma vitrine pública com seu link, sem contratar quem faça site." },
+              { icon: MessageCircle, t: "Chat integrado", d: "O cliente fala com a loja direto da vitrine. Acabou perder pedido no meio do Zap." },
+              { icon: Settings2, t: "Do seu jeito", d: "Suas categorias, comissões, marca e cores. O sistema fica com a cara do seu negócio." },
+              { icon: TrendingUp, t: "Foco em lucro", d: "O painel mostra o que dá retorno e o que só está parado custando dinheiro." },
+            ].map(({ icon: Icon, t, d }, i) => (
+              <Reveal key={t} delay={(i % 3) * 90}>
+                <div className="h-full rounded-2xl border border-white/10 bg-[var(--bg)] p-6 transition hover:-translate-y-1 hover:border-brand-500/30">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-600 text-white">
+                    <Icon size={20} />
+                  </div>
+                  <h3 className="mt-4 font-bold text-strong">{t}</h3>
+                  <p className="mt-1.5 text-sm text-muted">{d}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ======================= CASOS DE USO ======================= */}
-      <section className="surface py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-5">
+      <section className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <Reveal>
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-strong sm:text-4xl">Feito para o seu micronegócio</h2>
-            <p className="mt-3 text-muted">
-              Seja qual for o que você vende, o AutoManager se molda a você. Veja alguns exemplos:
-            </p>
+            <h2 className="text-3xl font-bold tracking-tight text-strong sm:text-4xl">Feito para o seu micronegócio</h2>
+            <p className="mt-3 text-muted">Seja o que for que você vende, o AutoManager se molda a você.</p>
           </div>
-          <div className="mt-10 grid gap-5 lg:grid-cols-2">
-            {[
-              {
-                icon: Candy,
-                perfil: "Doces, salgados e comida caseira",
-                dor: "Anota encomenda no Zap e calcula o preço de cabeça.",
-                uso: "Cadastra cada item com custo e preço, controla encomendas e vê quanto realmente sobra em cada venda.",
-              },
-              {
-                icon: Gem,
-                perfil: "Semijoias e bijuterias",
-                dor: "Centenas de peças parecidas e revendedoras espalhadas.",
-                uso: "Controla cada modelo com foto e variação, sabe o que gira e calcula a comissão de cada revendedora sem erro.",
-              },
-              {
-                icon: Heart,
-                perfil: "Cosméticos e perfumaria",
-                dor: "Produto com validade e reposição constante.",
-                uso: "Alerta de estoque mínimo para nunca ficar sem o que mais vende e relatório do que realmente dá margem.",
-              },
-              {
-                icon: Store,
-                perfil: "Roupas, acessórios e revendedoras",
-                dor: "Grade de tamanho/cor e gente vendendo por você sem controle.",
-                uso: "Cadastro com grade (P/M/G e cores), vitrine online e cada revendedora registrando a própria venda pelo celular.",
-              },
-            ].map(({ icon: Icon, perfil, dor, uso }) => (
-              <div key={perfil} className="card flex gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600">
+        </Reveal>
+        <div className="mt-12 grid gap-5 lg:grid-cols-2">
+          {[
+            { icon: Candy, perfil: "Doces, salgados e comida caseira", dor: "Anota encomenda no Zap e calcula o preço de cabeça.", uso: "Cadastra cada item com custo e preço, controla encomendas e vê quanto sobra em cada venda." },
+            { icon: Gem, perfil: "Semijoias e bijuterias", dor: "Centenas de peças parecidas e revendedoras espalhadas.", uso: "Controla cada modelo com foto e variação e calcula a comissão de cada revendedora sem erro." },
+            { icon: Heart, perfil: "Cosméticos e perfumaria", dor: "Produto com validade e reposição constante.", uso: "Alerta de estoque mínimo pra nunca ficar sem o que mais vende e relatório do que dá margem." },
+            { icon: Store, perfil: "Roupas, acessórios e revendedoras", dor: "Grade de tamanho/cor e gente vendendo por você sem controle.", uso: "Cadastro com grade (P/M/G e cores), vitrine online e cada revendedora registrando a venda pelo celular." },
+          ].map(({ icon: Icon, perfil, dor, uso }, i) => (
+            <Reveal key={perfil} delay={(i % 2) * 100}>
+              <div className="flex h-full gap-4 rounded-2xl border border-white/10 bg-[var(--surface)] p-5 transition hover:-translate-y-1 hover:border-brand-500/30">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-400">
                   <Icon size={22} />
                 </div>
                 <div>
                   <h3 className="font-bold text-strong">{perfil}</h3>
-                  <p className="mt-1 text-sm text-muted">
-                    <strong className="text-strong">Antes:</strong> {dor}
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                    <strong className="text-brand-600">Com o AutoManager:</strong> {uso}
-                  </p>
+                  <p className="mt-1 text-sm text-muted"><strong className="text-muted/90">Antes:</strong> {dor}</p>
+                  <p className="mt-1 text-sm text-muted"><strong className="text-brand-400">Com o AutoManager:</strong> {uso}</p>
                 </div>
               </div>
-            ))}
-          </div>
-          <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted">
-            Papelaria, pet shop, artesanato, loja de festa, mercadinho… <strong className="text-strong">qualquer
-            micronegócio</strong>. Você cria as suas categorias e deixa o sistema com a cara do seu negócio.
-          </p>
-        </div>
-      </section>
-
-      {/* ======================= DEPOIMENTOS ======================= */}
-      <section className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-strong sm:text-4xl">Quem largou o caderno não volta</h2>
-        </div>
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
-          {[
-            {
-              nome: "Aline R.",
-              loja: "Semijoias · Goiânia",
-              txt: "Eu pagava comissão errada e nem sabia. No primeiro mês descobri que estava perdendo quase R$ 400. Hoje o sistema calcula tudo sozinho.",
-            },
-            {
-              nome: "Patrícia M.",
-              loja: "Cosméticos · Sorocaba",
-              txt: "Parei de anotar venda no caderno e no Zap. Minhas 4 revendedoras registram pelo celular e eu vejo tudo num lugar só.",
-            },
-            {
-              nome: "Camila S.",
-              loja: "Moda feminina · Recife",
-              txt: "Eu não sabia quais peças davam lucro. Agora vejo o relatório e compro só o que gira. Estoque parado caiu muito.",
-            },
-          ].map((d) => (
-            <div key={d.nome} className="card flex flex-col">
-              <Quote size={24} className="text-brand-500/40" />
-              <p className="mt-2 flex-1 text-sm text-strong">{d.txt}</p>
-              <div className="mt-4 flex items-center gap-1 text-brand-500">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} size={14} className="fill-brand-500 text-brand-500" />
-                ))}
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/10 font-bold text-brand-600">
-                  {d.nome[0]}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-strong">{d.nome}</p>
-                  <p className="text-xs text-muted">{d.loja}</p>
-                </div>
-              </div>
-            </div>
+            </Reveal>
           ))}
         </div>
-        <p className="mt-6 text-center text-xs text-muted">
-          Depoimentos ilustrativos representando casos típicos de uso na fase inicial.
+        <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted">
+          Papelaria, pet shop, artesanato, loja de festa, mercadinho… <strong className="text-strong">qualquer
+          micronegócio</strong>. Você cria as categorias e deixa o sistema com a cara do seu negócio.
         </p>
       </section>
 
-      {/* ======================= PLANOS ======================= */}
-      <section id="planos" className="surface py-16 sm:py-20">
+      {/* ======================= DEPOIMENTOS ======================= */}
+      <section className="border-y border-white/5 bg-[var(--surface)]/40 py-20 sm:py-28">
         <div className="mx-auto max-w-6xl px-5">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-strong sm:text-4xl">
-              Preço de micronegócio, não de sistema caro
-            </h2>
-            <p className="mt-3 text-muted">
-              A partir de R$49/mês. Comece grátis e só escolha um plano quando já estiver vendo o resultado.
-            </p>
+          <Reveal>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 text-brand-500">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} size={18} className="fill-brand-500 text-brand-500" />
+                ))}
+              </div>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-strong sm:text-4xl">Quem largou o caderno não volta</h2>
+            </div>
+          </Reveal>
+          <div className="mt-12 grid gap-5 lg:grid-cols-3">
+            {[
+              { nome: "Aline R.", loja: "Semijoias · Goiânia", txt: "Eu pagava comissão errada e nem sabia. No primeiro mês descobri que perdia quase R$ 400. Hoje o sistema calcula tudo sozinho." },
+              { nome: "Patrícia M.", loja: "Cosméticos · Sorocaba", txt: "Parei de anotar venda no caderno e no Zap. Minhas 4 revendedoras registram pelo celular e eu vejo tudo num lugar só." },
+              { nome: "Camila S.", loja: "Moda feminina · Recife", txt: "Eu não sabia quais peças davam lucro. Agora vejo o relatório e compro só o que gira. Estoque parado caiu muito." },
+            ].map((d, i) => (
+              <Reveal key={d.nome} delay={i * 90}>
+                <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[var(--bg)] p-6">
+                  <Quote size={26} className="text-brand-500/40" />
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-strong">{d.txt}</p>
+                  <div className="mt-4 flex items-center gap-1 text-brand-500">
+                    {Array.from({ length: 5 }).map((_, k) => (
+                      <Star key={k} size={13} className="fill-brand-500 text-brand-500" />
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2.5">
+                    <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-500/10 font-bold text-brand-400">
+                      {d.nome[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-strong">{d.nome}</p>
+                      <p className="text-xs text-muted">{d.loja}</p>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
           </div>
-          <div className="mt-10">
-            <Pricing />
-          </div>
+          <p className="mt-6 text-center text-xs text-muted/70">Depoimentos ilustrativos — substituir por casos reais.</p>
         </div>
       </section>
 
+      {/* ======================= PLANOS ======================= */}
+      <section id="planos" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <Reveal>
+          <div className="text-center">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-400">Planos</span>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-strong sm:text-4xl">
+              Preço de micronegócio, não de sistema caro
+            </h2>
+            <p className="mt-3 text-muted">
+              1º mês grátis. Comece sem cartão e escolha um plano só quando já estiver vendo o resultado.
+            </p>
+          </div>
+        </Reveal>
+        <Reveal delay={100}>
+          <Pricing />
+        </Reveal>
+      </section>
+
       {/* ======================= FAQ ======================= */}
-      <section id="faq" className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-strong sm:text-4xl">Ainda com dúvida? Respondemos.</h2>
-          <p className="mt-3 text-muted">As perguntas que toda dona de loja faz antes de começar.</p>
-        </div>
-        <Faq />
-        <div className="mt-8 text-center text-sm text-muted">
-          Ficou outra dúvida?{" "}
-          <a
-            href="https://wa.me/?text=Tenho%20uma%20d%C3%BAvida%20sobre%20o%20AutoManager"
-            className="font-semibold text-brand-500 hover:underline"
-          >
-            Fale com a gente no WhatsApp
-          </a>
+      <section id="faq" className="border-t border-white/5 bg-[var(--surface)]/40 py-20 sm:py-28">
+        <div className="mx-auto max-w-6xl px-5">
+          <Reveal>
+            <div className="text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-strong sm:text-4xl">Ainda com dúvida? Respondemos.</h2>
+              <p className="mt-3 text-muted">As perguntas que toda dona de loja faz antes de começar.</p>
+            </div>
+          </Reveal>
+          <Faq itens={FAQ_LANDING} />
+          <div className="mt-8 text-center text-sm text-muted">
+            Ficou outra dúvida?{" "}
+            <a
+              href="https://wa.me/?text=Tenho%20uma%20d%C3%BAvida%20sobre%20o%20AutoManager"
+              className="font-semibold text-brand-400 transition hover:text-brand-300 hover:underline"
+            >
+              Fale com a gente no WhatsApp
+            </a>
+          </div>
         </div>
       </section>
 
       {/* ======================= CTA FINAL ======================= */}
-      <section className="px-5 pb-24 pt-4 sm:pb-20">
-        <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-brand-500/30 bg-gradient-to-br from-brand-600 to-brand-800 p-8 text-center text-white sm:p-12">
-          <h2 className="text-3xl font-extrabold sm:text-4xl">
-            O caderno é grátis. Mas ele está te custando caro.
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-brand-50">
-            Cada comissão paga errada, cada produto parado e cada venda perdida por falta de
-            reposição custam, todo mês, muito mais que uma mensalidade. A diferença é que esse
-            prejuízo você não vê - até começar a medir.
-          </p>
+      <section className="px-5 pb-28 pt-16 sm:pb-24">
+        <Reveal>
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-brand-500/30 bg-gradient-to-br from-brand-600 to-brand-800 p-8 text-center text-white shadow-2xl shadow-brand-900/40 sm:p-14">
+            <div className="pointer-events-none absolute -top-20 left-1/2 h-60 w-96 -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
+            <h2 className="relative text-3xl font-extrabold tracking-tight sm:text-4xl">
+              O caderno é grátis. Mas está te custando caro.
+            </h2>
+            <p className="relative mx-auto mt-4 max-w-2xl text-brand-50/90">
+              Cada comissão errada, cada produto parado e cada venda perdida custam, todo mês, muito
+              mais que uma mensalidade. A diferença é que esse prejuízo você só vê quando começa a medir.
+            </p>
 
-          <div className="mx-auto mt-8 grid max-w-md gap-3 text-left">
-            {[
-              { icon: NotebookPen, t: "Continuar no caderno", custo: "Prejuízo invisível todo mês", ruim: true },
-              { icon: Calculator, t: "Comissão na calculadora", custo: "Erro que sai do seu bolso", ruim: true },
-              { icon: BadgeCheck, t: "Começar no AutoManager", custo: "Grátis para testar · R$ 49/mês depois", ruim: false },
-            ].map(({ icon: Icon, t, custo, ruim }) => (
-              <div
-                key={t}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
-                  ruim ? "bg-white/10" : "bg-white text-brand-700"
-                }`}
-              >
-                <Icon size={20} className={ruim ? "text-brand-100" : "text-brand-600"} />
-                <div>
-                  <p className={`font-semibold ${ruim ? "text-white" : "text-brand-800"}`}>{t}</p>
-                  <p className={`text-sm ${ruim ? "text-brand-100" : "text-brand-600"}`}>{custo}</p>
+            <div className="relative mx-auto mt-8 grid max-w-md gap-3 text-left">
+              {[
+                { icon: NotebookPen, t: "Continuar no caderno", custo: "Prejuízo invisível todo mês", ruim: true },
+                { icon: Calculator, t: "Comissão na calculadora", custo: "Erro que sai do seu bolso", ruim: true },
+                { icon: BadgeCheck, t: "Começar no AutoManager", custo: "Grátis pra testar · a partir de R$ 20/mês", ruim: false },
+              ].map(({ icon: Icon, t, custo, ruim }) => (
+                <div
+                  key={t}
+                  className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
+                    ruim ? "bg-white/10" : "bg-white text-brand-700"
+                  }`}
+                >
+                  <Icon size={20} className={ruim ? "text-brand-100" : "text-brand-600"} />
+                  <div>
+                    <p className={`font-semibold ${ruim ? "text-white" : "text-brand-800"}`}>{t}</p>
+                    <p className={`text-sm ${ruim ? "text-brand-100" : "text-brand-600"}`}>{custo}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link
-              href={COMECAR}
-              className="btn inline-flex bg-white px-7 py-4 text-base font-bold text-brand-700 hover:bg-brand-50"
-            >
-              Começar Teste Grátis <ArrowRight size={18} />
-            </Link>
-            <a
-              href="https://wa.me/?text=Quero%20organizar%20minha%20loja%20com%20o%20AutoManager"
-              className="btn inline-flex border border-white/40 px-7 py-4 text-base font-semibold text-white hover:bg-white/10"
-            >
-              <MessageCircle size={18} /> Tirar dúvida no WhatsApp
-            </a>
+            <div className="relative mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Link href={COMECAR} className="btn inline-flex bg-white px-7 py-4 text-base font-bold text-brand-700 transition hover:bg-brand-50 active:scale-[.98]">
+                Criar minha loja grátis <ArrowRight size={18} />
+              </Link>
+              <a
+                href="https://wa.me/?text=Quero%20organizar%20minha%20loja%20com%20o%20AutoManager"
+                className="btn inline-flex border border-white/40 px-7 py-4 text-base font-semibold text-white transition hover:bg-white/10 active:scale-[.98]"
+              >
+                <MessageCircle size={18} /> Tirar dúvida no WhatsApp
+              </a>
+            </div>
+            <p className="relative mt-4 text-sm text-brand-100">Sem cartão · pronto em 2 minutos · cancela quando quiser</p>
           </div>
-          <p className="mt-4 text-sm text-brand-100">
-            Sem cartão · pronto em 2 minutos · cancela quando quiser
-          </p>
-        </div>
+        </Reveal>
       </section>
 
       {/* ======================= FOOTER ======================= */}
-      <footer className="border-t border-default py-8">
+      <footer className="border-t border-white/5 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 text-sm text-muted sm:flex-row">
           <span className="flex items-center gap-2 font-semibold text-brand-500">
             <Gem size={16} /> AutoManager
           </span>
-          <span className="text-center">
-            Estoque, vendas, comissões e revendedoras para a sua loja - em um só lugar.
+          <span className="text-center text-xs">
+            Estoque, vendas, comissões e revendedoras para a sua loja — em um só lugar.
           </span>
           <div className="flex gap-4">
-            <a href="#planos" className="hover:text-strong">Planos</a>
-            <a href="#faq" className="hover:text-strong">Dúvidas</a>
-            <Link href="/login?modo=entrar" className="hover:text-strong">Entrar</Link>
+            <a href="#planos" className="transition hover:text-strong">Planos</a>
+            <a href="#faq" className="transition hover:text-strong">Dúvidas</a>
+            <Link href="/login?modo=entrar" className="transition hover:text-strong">Entrar</Link>
           </div>
         </div>
       </footer>
