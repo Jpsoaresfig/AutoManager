@@ -287,6 +287,7 @@ interface State {
 
   addRevendedora: (r: Omit<Revendedora, "id" | "criadaEm" | "ativa" | "acessoLiberado" | "temAcesso">) => Promise<void>;
   updateRevendedora: (id: string, patch: Partial<Revendedora>) => Promise<void>;
+  removerRevendedora: (id: string) => Promise<{ ok: boolean; erro?: string }>;
   // libera o 1º acesso e devolve o código de convite (uso único) p/ o dono compartilhar
   liberarAcessoRevendedora: (id: string) => Promise<{ ok: boolean; codigo?: string; erro?: string }>;
   revogarAcessoRevendedora: (id: string) => Promise<void>;
@@ -976,6 +977,24 @@ export const useStore = create<State>()((set, get) => {
       if (patch.ativa !== undefined) row.ativa = patch.ativa;
       if (patch.acessoLiberado !== undefined) row.acesso_liberado = patch.acessoLiberado;
       await sb().from("revendedora").update(row).eq("id", id);
+    },
+
+    removerRevendedora: async (id) => {
+      const anterior = get().revendedoras.find((r) => r.id === id);
+      // otimista: some da lista
+      set((s) => ({ revendedoras: s.revendedoras.filter((r) => r.id !== id) }));
+      const res = await fetch("/api/revendedora/remover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // falhou -> devolve para a lista
+        if (anterior) set((s) => ({ revendedoras: [...s.revendedoras, anterior].sort((a, b) => a.criadaEm - b.criadaEm) }));
+        return { ok: false, erro: json?.erro || "Não foi possível remover." };
+      }
+      return { ok: true };
     },
 
     liberarAcessoRevendedora: async (id) => {

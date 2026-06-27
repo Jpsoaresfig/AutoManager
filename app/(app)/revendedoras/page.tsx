@@ -4,25 +4,76 @@ import { useStore } from "@/lib/store";
 import { brl } from "@/lib/analytics";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
-import { Plus, X, MessageCircle, BadgeDollarSign, Target, Pencil, KeyRound, Check, Mail } from "lucide-react";
+import Modal from "@/components/Modal";
+import { Plus, X, MessageCircle, BadgeDollarSign, Target, Pencil, KeyRound, Check, Mail, Trash2 } from "lucide-react";
 import type { Revendedora } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
 import { UpgradeModal } from "@/components/UpgradeGate";
 import { planoQueLibera, fmtLimite } from "@/lib/plans";
+import MembrosManager from "@/components/MembrosManager";
 
-export default function RevendedorasPage() {
+export default function EquipePage() {
   return (
     <Guard>
-      <Revendedoras />
+      <Equipe />
     </Guard>
   );
 }
 
-function Revendedoras() {
-  const { revendedoras, vendas, config, addRevendedora, updateRevendedora, marcarComissaoPaga } =
+// Página "Equipe": quem trabalha pela loja, separado por papel em abas.
+// - Revendedores(a): vendem pelo celular (catálogo + registrar venda).
+// - Entregadores: veem o balcão de entregas e fazem as entregas.
+// O dono cadastra cada um e define o perfil; cada perfil tem sua própria visão.
+function Equipe() {
+  const [aba, setAba] = useState<"revendedores" | "entregadores">("revendedores");
+
+  function tab(id: "revendedores" | "entregadores", label: string) {
+    return (
+      <button
+        onClick={() => setAba(id)}
+        className={`chip ${aba === id ? "bg-brand-600 text-white border-brand-600" : "border-default"}`}
+      >
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <header className="pt-1">
+        <h1 className="text-2xl font-bold">Equipe</h1>
+        <p className="text-sm text-muted">
+          Quem vende e quem entrega pela sua loja. Você cadastra cada um e dá o perfil.
+        </p>
+      </header>
+
+      <div className="flex gap-2">
+        {tab("revendedores", "Revendedores(a)")}
+        {tab("entregadores", "Entregadores")}
+      </div>
+
+      {aba === "revendedores" ? <RevendedoresTab /> : <EntregadoresTab />}
+    </div>
+  );
+}
+
+// Aba Entregadores: cria os logins dos entregadores (papel motoboy). Disponível
+// no plano que libera entregas; nos demais aparece o convite de upgrade.
+function EntregadoresTab() {
+  return (
+    <MembrosManager
+      apenasPapeis={["motoboy"]}
+      titulo="Entregadores"
+      descricao="Crie um login para cada entregador. Ele entra no app, vê o balcão de entregas e atualiza o status das que pegar."
+    />
+  );
+}
+
+function RevendedoresTab() {
+  const { revendedoras, vendas, config, addRevendedora, updateRevendedora, marcarComissaoPaga, removerRevendedora } =
     useStore();
   const { caps, uso, limiteAtingido } = usePlano();
-  const { prompt, confirm } = useDialog();
+  const { prompt, confirm, alerta } = useDialog();
   const [aberto, setAberto] = useState(false);
   const [upsell, setUpsell] = useState(false);
   const [nome, setNome] = useState("");
@@ -96,17 +147,33 @@ function Revendedoras() {
     if (ok) marcarComissaoPaga(id);
   }
 
+  async function removerRev(r: Revendedora) {
+    const temVendas = vendas.some((v) => v.revendedoraId === r.id);
+    const ok = await confirm({
+      titulo: `Remover ${r.nome}?`,
+      mensagem: temVendas
+        ? `As vendas registradas por ${r.nome} continuam no histórico, mas deixam de ficar vinculadas a ela. ${
+            r.temAcesso ? "O login de acesso dela também será apagado. " : ""
+          }Esta ação não pode ser desfeita.`
+        : `${r.nome} será removida da loja.${
+            r.temAcesso ? " O login de acesso dela também será apagado." : ""
+          } Esta ação não pode ser desfeita.`,
+      confirmar: "Remover",
+      perigo: true,
+    });
+    if (!ok) return;
+    const res = await removerRevendedora(r.id);
+    if (!res.ok) alerta({ titulo: "Não foi possível remover", mensagem: res.erro || "Tente novamente." });
+  }
+
   return (
     <div className="space-y-3">
-      <header className="flex items-center justify-between pt-1">
-        <div>
-          <h1 className="text-2xl font-bold">Revendedoras</h1>
-          <p className="text-xs text-muted">
-            {uso.revendedoras} / {fmtLimite(caps.maxRevendedoras)} no seu plano
-          </p>
-        </div>
+      <header className="flex items-center justify-between">
+        <p className="text-xs text-muted">
+          {uso.revendedoras} / {fmtLimite(caps.maxRevendedoras)} no seu plano
+        </p>
         <button onClick={novaRevendedora} className="btn-primary py-2 px-3 text-sm">
-          <Plus size={18} /> Nova
+          <Plus size={18} /> Novo(a)
         </button>
       </header>
 
@@ -116,7 +183,7 @@ function Revendedoras() {
           className="card w-full text-left bg-brand-500/5 border-brand-500/30 flex items-center justify-between"
         >
           <span className="text-sm">
-            Você atingiu o limite de <b>{fmtLimite(caps.maxRevendedoras)}</b> revendedoras.
+            Você atingiu o limite de <b>{fmtLimite(caps.maxRevendedoras)}</b> revendedores(a).
           </span>
           <span className="text-brand-500 text-sm font-semibold">Fazer upgrade →</span>
         </button>
@@ -125,16 +192,16 @@ function Revendedoras() {
       <UpgradeModal
         aberto={upsell}
         onClose={() => setUpsell(false)}
-        titulo="Limite de revendedoras atingido"
+        titulo="Limite de revendedores(a) atingido"
         descricao={`Seu plano permite até ${fmtLimite(
           caps.maxRevendedoras
-        )} revendedoras ativas. Faça upgrade para cadastrar mais.`}
+        )} revendedores(a) ativos. Faça upgrade para cadastrar mais.`}
         planoNecessario={planoUpgrade}
       />
 
       {revendedoras.length === 0 && (
         <div className="card text-center text-muted">
-          Cadastre suas revendedoras para acompanhar vendas e comissões.
+          Cadastre seus revendedores(a) para acompanhar vendas e comissões.
         </div>
       )}
 
@@ -153,15 +220,26 @@ function Revendedoras() {
                     {r.comissaoPercent}% · vendeu {brl(vendMes)} no mês
                   </div>
                 </div>
-                {r.whatsapp && (
-                  <a
-                    href={`https://wa.me/${r.whatsapp.replace(/\D/g, "")}`}
-                    target="_blank"
-                    className="text-green-600"
+                <div className="flex items-center gap-1 shrink-0">
+                  {r.whatsapp && (
+                    <a
+                      href={`https://wa.me/${r.whatsapp.replace(/\D/g, "")}`}
+                      target="_blank"
+                      className="grid place-items-center h-9 w-9 rounded-lg text-green-600 hover:bg-[var(--hover)] transition"
+                      title="Abrir WhatsApp"
+                    >
+                      <MessageCircle size={18} />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => removerRev(r)}
+                    className="grid place-items-center h-9 w-9 rounded-lg text-red-500 hover:bg-[var(--hover)] active:scale-90 transition"
+                    title="Remover revendedor(a)"
+                    aria-label="Remover revendedor(a)"
                   >
-                    <MessageCircle />
-                  </a>
-                )}
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* meta mensal */}
@@ -213,74 +291,71 @@ function Revendedoras() {
         })}
       </div>
 
-      {/* link de acesso das revendedoras */}
+      {/* link de acesso dos revendedores(a) */}
       {revendedoras.some((r) => r.email) && (
         <div className="card text-xs text-muted">
-          As revendedoras acessam pela página{" "}
-          <span className="font-mono text-brand-500">/acesso</span> com o e-mail cadastrado.
+          Os revendedores(a) acessam pela página{" "}
+          <span className="font-mono text-brand-500">/acesso</span> com o e-mail cadastrado e o código.
         </div>
       )}
 
       {aberto && (
-        <div className="fixed inset-0 bg-black/40 z-40 flex items-end justify-center">
-          <div className="surface w-full max-w-md rounded-t-3xl p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Nova revendedora</h2>
-              <button onClick={() => setAberto(false)}>
-                <X />
-              </button>
-            </div>
-            <div>
-              <label className="label">Nome</label>
-              <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} />
-            </div>
-            <div>
-              <label className="label">WhatsApp (opcional)</label>
-              <input
-                className="input"
-                placeholder="DDD + número"
-                inputMode="tel"
-                value={whats}
-                onChange={(e) => setWhats(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">E-mail de acesso (opcional)</label>
-              <input
-                className="input"
-                placeholder="email@dela.com"
-                type="email"
-                value={emailNova}
-                onChange={(e) => setEmailNova(e.target.value)}
-              />
-              <p className="text-xs text-muted mt-1">Com e-mail, ela pode acessar o catálogo e registrar as próprias vendas.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Comissão (%)</label>
-                <input
-                  className="input"
-                  inputMode="decimal"
-                  value={comissao}
-                  onChange={(e) => setComissao(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Meta mensal (R$)</label>
-                <input
-                  className="input"
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={meta}
-                  onChange={(e) => setMeta(e.target.value)}
-                />
-              </div>
-            </div>
-            <button onClick={salvar} className="btn-primary w-full">
+        <Modal
+          title="Novo(a) revendedor(a)"
+          onClose={() => setAberto(false)}
+          footer={
+            <button onClick={salvar} disabled={!nome.trim()} className="btn-primary w-full disabled:opacity-60">
               Salvar
             </button>
+          }
+        >
+          <div>
+            <label className="label">Nome</label>
+            <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} />
           </div>
-        </div>
+          <div>
+            <label className="label">WhatsApp (opcional)</label>
+            <input
+              className="input"
+              placeholder="DDD + número"
+              inputMode="tel"
+              value={whats}
+              onChange={(e) => setWhats(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label">E-mail de acesso (opcional)</label>
+            <input
+              className="input"
+              placeholder="email@pessoa.com"
+              type="email"
+              value={emailNova}
+              onChange={(e) => setEmailNova(e.target.value)}
+            />
+            <p className="text-xs text-muted mt-1">Com e-mail, a pessoa acessa o catálogo e registra as próprias vendas.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Comissão (%)</label>
+              <input
+                className="input"
+                inputMode="decimal"
+                value={comissao}
+                onChange={(e) => setComissao(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">Meta mensal (R$)</label>
+              <input
+                className="input"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={meta}
+                onChange={(e) => setMeta(e.target.value)}
+              />
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -347,7 +422,7 @@ function AcessoRevendedora({
     <div className="rounded-xl border border-default p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium flex items-center gap-1.5">
-          <KeyRound size={14} className="text-brand-500" /> Acesso da revendedora
+          <KeyRound size={14} className="text-brand-500" /> Acesso do(a) revendedor(a)
         </span>
         <span className={`text-xs font-semibold ${status.cls}`}>{status.txt}</span>
       </div>

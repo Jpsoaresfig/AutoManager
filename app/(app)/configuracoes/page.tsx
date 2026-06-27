@@ -11,7 +11,6 @@ import { usePlano } from "@/lib/usePlano";
 import { brlPreco } from "@/lib/plans";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
-import MembrosManager from "@/components/MembrosManager";
 import {
   Store,
   Palette,
@@ -319,7 +318,7 @@ function Configuracoes() {
           <ShoppingBag size={18} className="text-brand-500" /> Vendas
         </div>
         <label className="flex items-center justify-between">
-          <span className="text-sm">Trabalho com revendedoras</span>
+          <span className="text-sm">Trabalho com revendedores(a)</span>
           <button
             onClick={() => setUsaRev((v) => !v)}
             className={`h-6 w-11 rounded-full transition relative ${usaRev ? "bg-brand-600" : "surface-alt"}`}
@@ -367,9 +366,6 @@ function Configuracoes() {
 
       {/* Assinatura / plano */}
       <PlanoPointer />
-
-      {/* Equipe de acesso (membros) */}
-      <MembrosManager />
     </div>
   );
 }

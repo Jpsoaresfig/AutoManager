@@ -21,17 +21,27 @@ const ROLE_ICON: Record<Role, any> = {
 
 // Gestão de equipe (vendedor / entregador). O dono cria logins com e-mail e senha;
 // os papéis disponíveis dependem do plano (allowVendedores / allowMotoboys).
-// Reaproveitado em /configuracoes e /perfil.
-export default function MembrosManager() {
+// `apenasPapeis` restringe a quais papéis esta instância gerencia (ex.: só
+// entregadores na aba Entregadores da página Equipe).
+export default function MembrosManager({
+  apenasPapeis,
+  titulo = "Equipe de acesso",
+  descricao = "Crie logins de vendedor e entregador. Cada um entra no app com o próprio e-mail e enxerga só o que o papel permite.",
+}: {
+  apenasPapeis?: Role[];
+  titulo?: string;
+  descricao?: string;
+} = {}) {
   const { membros, usuarioId, criarMembro, removerMembro } = useStore();
   const { caps } = usePlano();
   const { confirm } = useDialog();
 
+  const podePapel = (r: Role) => !apenasPapeis || apenasPapeis.includes(r);
   const papeisDisponiveis: Role[] = [
-    ...(caps.allowVendedores ? ["vendedor" as Role] : []),
-    ...(caps.allowMotoboys ? ["motoboy" as Role] : []),
+    ...(caps.allowVendedores && podePapel("vendedor") ? ["vendedor" as Role] : []),
+    ...(caps.allowMotoboys && podePapel("motoboy") ? ["motoboy" as Role] : []),
   ];
-  const outros = membros.filter((m) => m.id !== usuarioId);
+  const outros = membros.filter((m) => m.id !== usuarioId && podePapel(m.role));
 
   const [aberto, setAberto] = useState(false);
   const [nome, setNome] = useState("");
@@ -64,7 +74,7 @@ export default function MembrosManager() {
     <section className="card space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 font-semibold">
-          <Users size={18} className="text-brand-500" /> Equipe de acesso
+          <Users size={18} className="text-brand-500" /> {titulo}
         </div>
         {papeisDisponiveis.length > 0 && (
           <button onClick={() => setAberto((v) => !v)} className="btn-ghost py-1.5 px-3 text-sm">
@@ -73,17 +83,15 @@ export default function MembrosManager() {
         )}
       </div>
 
-      <p className="text-sm text-muted -mt-1">
-        Crie logins de vendedor e entregador. Cada um entra no app com o próprio e-mail e enxerga só o que o papel permite.
-      </p>
+      <p className="text-sm text-muted -mt-1">{descricao}</p>
 
       {papeisDisponiveis.length === 0 && (
         <p className="text-sm text-muted">
-          Seu plano atual não inclui outros perfis.{" "}
+          Seu plano atual não inclui esses perfis.{" "}
           <Link href="/planos" className="text-brand-500 font-semibold">
             Faça upgrade
           </Link>{" "}
-          para criar logins de vendedor e entregador.
+          para criar esses acessos.
         </p>
       )}
 

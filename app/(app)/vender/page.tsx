@@ -256,7 +256,7 @@ function Vender() {
                 value={revId}
                 onChange={(e) => setRevId(e.target.value)}
               >
-                <option value="">Venda da loja (sem revendedora)</option>
+                <option value="">Venda da loja (sem revendedor(a))</option>
                 {revendedoras.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.nome} ({r.comissaoPercent}%)

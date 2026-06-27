@@ -7,6 +7,7 @@ import { brl } from "@/lib/analytics";
 import type { Entrega, StatusEntrega } from "@/lib/types";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
+import Modal from "@/components/Modal";
 import { usePlano } from "@/lib/usePlano";
 import { planoQueLibera, brlPreco } from "@/lib/plans";
 import {
@@ -589,75 +590,82 @@ function NovaEntrega({
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
+  const podeSalvar = !!(cliente.trim() || endereco.trim());
+
+  async function salvar() {
+    if (!podeSalvar) return;
+    setErro(null);
+    setSalvando(true);
+    const r = await onSalvar({
+      clienteNome: cliente,
+      endereco,
+      telefone: telefone || undefined,
+      taxa: parseFloat(taxa.replace(",", ".")) || 0,
+      motoboyId: motoboyId || null,
+      observacao: obs || undefined,
+    });
+    setSalvando(false);
+    if (!r.ok) setErro(r.erro || "Não foi possível criar a entrega.");
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 z-40 flex items-end md:items-center justify-center">
-      <div className="surface w-full max-w-md rounded-t-3xl md:rounded-3xl p-5 space-y-3 max-h-[92vh] overflow-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Nova entrega</h2>
-          <button onClick={onClose}>
-            <X />
+    <Modal
+      title={
+        <>
+          <Truck size={18} className="text-brand-500" /> Nova entrega
+        </>
+      }
+      onClose={onClose}
+      footer={
+        <>
+          {erro && <p className="text-sm text-red-500 bg-red-500/10 rounded-xl px-3 py-2">{erro}</p>}
+          <button disabled={salvando || !podeSalvar} onClick={salvar} className="btn-primary w-full disabled:opacity-60">
+            {salvando ? "Criando…" : "Criar entrega"}
           </button>
-        </div>
-        <div>
-          <label className="label">Cliente</label>
-          <input className="input" value={cliente} onChange={(e) => setCliente(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Endereço</label>
-          <input className="input" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Telefone</label>
-            <input className="input" inputMode="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Taxa (R$)</label>
-            <input className="input" inputMode="decimal" placeholder="0,00" value={taxa} onChange={(e) => setTaxa(e.target.value)} />
-          </div>
-        </div>
-        {motoboys.length > 0 && (
-          <div>
-            <label className="label">Motoboy</label>
-            <select className="input" value={motoboyId} onChange={(e) => setMotoboyId(e.target.value)}>
-              <option value="">Atribuir depois</option>
-              {motoboys.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nome || "Motoboy"}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div>
-          <label className="label">Observação</label>
-          <input className="input" value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex.: ponto de referência" />
-        </div>
-        {erro && (
-          <p className="text-sm text-red-500 bg-red-500/10 rounded-xl px-3 py-2">{erro}</p>
-        )}
-        <button
-          disabled={salvando}
-          onClick={async () => {
-            if (!cliente && !endereco) return;
-            setErro(null);
-            setSalvando(true);
-            const r = await onSalvar({
-              clienteNome: cliente,
-              endereco,
-              telefone: telefone || undefined,
-              taxa: parseFloat(taxa) || 0,
-              motoboyId: motoboyId || null,
-              observacao: obs || undefined,
-            });
-            setSalvando(false);
-            if (!r.ok) setErro(r.erro || "Não foi possível criar a entrega.");
-          }}
-          className="btn-primary w-full disabled:opacity-60"
-        >
-          {salvando ? "Criando…" : "Criar entrega"}
-        </button>
+        </>
+      }
+    >
+      <div>
+        <label className="label">Cliente</label>
+        <input className="input" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Nome de quem recebe" />
       </div>
-    </div>
+      <div>
+        <label className="label">Endereço</label>
+        <textarea
+          className="input"
+          rows={2}
+          value={endereco}
+          onChange={(e) => setEndereco(e.target.value)}
+          placeholder="Rua, número, bairro, complemento"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Telefone</label>
+          <input className="input" inputMode="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Taxa (R$)</label>
+          <input className="input" inputMode="decimal" placeholder="0,00" value={taxa} onChange={(e) => setTaxa(e.target.value)} />
+        </div>
+      </div>
+      {motoboys.length > 0 && (
+        <div>
+          <label className="label">Entregador</label>
+          <select className="input" value={motoboyId} onChange={(e) => setMotoboyId(e.target.value)}>
+            <option value="">Deixar no balcão (pegam depois)</option>
+            {motoboys.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome || "Entregador"}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div>
+        <label className="label">Observação</label>
+        <input className="input" value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex.: ponto de referência" />
+      </div>
+    </Modal>
   );
 }

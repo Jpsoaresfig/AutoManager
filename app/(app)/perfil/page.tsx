@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { usePlano } from "@/lib/usePlano";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
-import MembrosManager from "@/components/MembrosManager";
 import ThemeToggle from "@/components/ThemeToggle";
 import CountUp from "@/components/CountUp";
 import { Skeleton } from "@/components/Skeleton";
@@ -26,6 +25,7 @@ function Perfil() {
   const router = useRouter();
   const { config, produtos, vendas, role } = useStore();
   const { confirm } = useDialog();
+  const dono = role === "owner";
   const [email, setEmail] = useState("");
 
   useEffect(() => {
@@ -69,11 +69,14 @@ function Perfil() {
         <div className="flex items-center gap-2 text-sm text-muted">
           <Mail size={15} /> {email ? email : <Skeleton className="h-4 w-40" />}
         </div>
-        <div className="grid grid-cols-3 gap-2 pt-1 stagger">
-          <Stat label="Produtos" value={<CountUp value={produtos.length} />} />
-          <Stat label="Vendas" value={<CountUp value={vendas.length} />} />
-          <Stat label="Faturado" value={<CountUp value={faturamento} format={brl} />} />
-        </div>
+        {/* números do negócio só para o dono (motoboy/vendedor não veem faturamento) */}
+        {dono && (
+          <div className="grid grid-cols-3 gap-2 pt-1 stagger">
+            <Stat label="Produtos" value={<CountUp value={produtos.length} />} />
+            <Stat label="Vendas" value={<CountUp value={vendas.length} />} />
+            <Stat label="Faturado" value={<CountUp value={faturamento} format={brl} />} />
+          </div>
+        )}
       </div>
 
       {/* tema */}
@@ -85,11 +88,8 @@ function Perfil() {
         <ThemeToggle />
       </div>
 
-      {/* plano */}
-      <PlanoLinha />
-
-      {/* equipe (vendedor / entregador) — só o dono, papéis conforme o plano */}
-      {role === "owner" && <MembrosManager />}
+      {/* plano — só o dono gerencia assinatura */}
+      {dono && <PlanoLinha />}
 
       <button onClick={sair} className="btn-ghost w-full text-red-500">
         <LogOut size={18} /> Sair da conta
