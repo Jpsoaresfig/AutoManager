@@ -854,15 +854,14 @@ export const useStore = create<State>()((set, get) => {
         };
       });
 
+      const round2 = (n: number) => Math.round(n * 100) / 100;
       const bruto = vendaItens.reduce((a, i) => a + i.precoUnit * i.qtd, 0);
-      const desc = Math.min(Math.max(desconto, 0), bruto);
-      const total = bruto - desc;
-      const custoTotal = vendaItens.reduce((a, i) => a + i.custoUnit * i.qtd, 0);
-      const comissaoTotal = vendaItens.reduce(
-        (a, i) => a + (i.precoUnit * i.qtd * i.comissaoPercent) / 100,
-        0
-      );
-      const lucro = total - custoTotal - comissaoTotal;
+      const desc = round2(Math.min(Math.max(desconto, 0), bruto));
+      const total = round2(bruto - desc);
+      const custoTotal = round2(vendaItens.reduce((a, i) => a + i.custoUnit * i.qtd, 0));
+      // comissão sobre o total JÁ com desconto (igual à UI e ao RPC registrar_venda)
+      const comissaoTotal = round2((total * comissaoPercent) / 100);
+      const lucro = round2(total - custoTotal - comissaoTotal);
       const vendaId = uid();
       const data = Date.now();
       const statusPagamento = fiado ? "pendente" : "paga";
@@ -909,71 +908,37 @@ export const useStore = create<State>()((set, get) => {
 
       if (!orgId) return venda;
 
-      const supabase = sb();
-      await supabase.from("venda").insert({
-        id: vendaId,
-        org_id: orgId,
-        canal,
-        revendedora_id: revendedoraId,
-        total,
-        custo_total: custoTotal,
-        comissao_total: comissaoTotal,
-        lucro,
-        status_comissao: "pendente",
-        forma_pagamento: formaPagamento,
-        parcelas: parcelasNorm,
-        status_pagamento: statusPagamento,
-        desconto: desc,
-        data_pagamento: dataPagamento ? new Date(dataPagamento).toISOString() : null,
+      // Tudo numa transação atômica no banco (valida estoque, grava venda+itens,
+      // baixa estoque relativo e movimentos). O id vem do cliente p/ casar com o otimista.
+      const { error } = await sb().rpc("registrar_venda", {
+        p_venda_id: vendaId,
+        p_itens: itens.map((it) => ({
+          produto_id: it.produtoId,
+          variacao_id: it.variacaoId ?? null,
+          qtd: it.qtd,
+        })),
+        p_canal: canal,
+        p_revendedora_id: revendedoraId,
+        p_forma: formaPagamento,
+        p_parcelas: parcelasNorm,
+        p_desconto: desc,
+        p_fiado: fiado,
       });
-      await supabase.from("venda_item").insert(
-        vendaItens.map((i) => ({
-          venda_id: vendaId,
-          org_id: orgId,
-          produto_id: i.produtoId,
-          variacao_id: i.variacaoId || null,
-          variacao_nome: i.variacaoNome || null,
-          nome: i.nome,
-          qtd: i.qtd,
-          preco_unit: i.precoUnit,
-          custo_unit: i.custoUnit,
-          comissao_percent_aplicada: i.comissaoPercent,
-        }))
-      );
-      // baixa no agregado do produto
-      for (const [produtoId, baixa] of baixaPorProduto) {
-        const prod = s.produtos.find((p) => p.id === produtoId)!;
-        await supabase
-          .from("produto")
-          .update({ estoque_atual: prod.estoqueAtual - baixa })
-          .eq("id", produtoId);
+
+      // erro no banco (estoque, RLS, rede) -> desfaz o otimista: remove a venda
+      // e restaura o estoque dos produtos afetados ao valor anterior à venda.
+      if (error) {
+        const afetados = new Set(baixaPorProduto.keys());
+        set((st) => ({
+          vendas: st.vendas.filter((v) => v.id !== vendaId),
+          produtos: st.produtos.map((p) => {
+            if (!afetados.has(p.id)) return p;
+            const orig = s.produtos.find((o) => o.id === p.id);
+            return orig ?? p;
+          }),
+        }));
+        return null;
       }
-      // baixa nas variações
-      const baixaPorVariacao = new Map<string, number>();
-      for (const it of itens)
-        if (it.variacaoId)
-          baixaPorVariacao.set(
-            it.variacaoId,
-            (baixaPorVariacao.get(it.variacaoId) || 0) + it.qtd
-          );
-      for (const [variacaoId, baixa] of baixaPorVariacao) {
-        const prod = s.produtos.find((p) => p.variacoes.some((v) => v.id === variacaoId))!;
-        const v = prod.variacoes.find((x) => x.id === variacaoId)!;
-        await supabase
-          .from("produto_variacao")
-          .update({ estoque_atual: v.estoqueAtual - baixa })
-          .eq("id", variacaoId);
-      }
-      await supabase.from("movimento_estoque").insert(
-        vendaItens.map((i) => ({
-          org_id: orgId,
-          produto_id: i.produtoId,
-          tipo: "saida",
-          qtd: -i.qtd,
-          motivo: "Venda",
-          ref_venda_id: vendaId,
-        }))
-      );
 
       return venda;
     },
@@ -1044,46 +1009,45 @@ export const useStore = create<State>()((set, get) => {
         entradasPendentes: st.entradasPendentes.filter((e) => e.id !== entradaId),
       }));
 
-      const supabase = sb();
-      await supabase.from("venda").insert({
-        id: vendaId,
-        org_id: orgId,
-        canal: "loja",
-        revendedora_id: null,
-        total: entrada.valor,
-        custo_total: 0,
-        comissao_total: 0,
-        lucro: entrada.valor,
-        status_comissao: "paga",
-        forma_pagamento: entrada.formaPagamento,
-        parcelas: 1,
-        status_pagamento: "paga",
-        desconto: 0,
-        data: new Date(data).toISOString(),
-        data_pagamento: new Date(data).toISOString(),
+      // cria a venda e marca a entrada como confirmada na MESMA transação.
+      // Idempotente: confirmar de novo (duplo-clique/2ª aba) não duplica a venda.
+      const { error } = await sb().rpc("confirmar_entrada", {
+        p_entrada_id: entradaId,
+        p_venda_id: vendaId,
       });
-      await supabase
-        .from("entrada_pendente")
-        .update({ status: "confirmada", venda_id: vendaId, decidido_em: new Date().toISOString() })
-        .eq("id", entradaId);
 
-      // avisa o badge de não lidas para recontar
-      if (typeof window !== "undefined")
-        window.dispatchEvent(new Event("am-recebimentos-mudou"));
+      // erro -> desfaz: tira a venda otimista e devolve a entrada à caixa
+      if (error) {
+        set((st) => ({
+          vendas: st.vendas.filter((v) => v.id !== vendaId),
+          entradasPendentes: st.entradasPendentes.some((e) => e.id === entradaId)
+            ? st.entradasPendentes
+            : [entrada, ...st.entradasPendentes],
+        }));
+        return null;
+      }
+
       return venda;
     },
 
     // "Não foi da loja": só arquiva a entrada, sem gerar venda.
     recusarEntrada: async (entradaId) => {
+      const anterior = get().entradasPendentes.find((e) => e.id === entradaId);
       set((st) => ({
         entradasPendentes: st.entradasPendentes.filter((e) => e.id !== entradaId),
       }));
-      await sb()
+      const { error } = await sb()
         .from("entrada_pendente")
         .update({ status: "recusada", decidido_em: new Date().toISOString() })
-        .eq("id", entradaId);
-      if (typeof window !== "undefined")
-        window.dispatchEvent(new Event("am-recebimentos-mudou"));
+        .eq("id", entradaId)
+        .eq("status", "pendente");
+      // falhou -> devolve a entrada à caixa pra não "sumir" sem persistir
+      if (error && anterior)
+        set((st) => ({
+          entradasPendentes: st.entradasPendentes.some((e) => e.id === entradaId)
+            ? st.entradasPendentes
+            : [anterior, ...st.entradasPendentes],
+        }));
     },
 
     // Cria um recebimento de teste (enquanto não há banco conectado de verdade),

@@ -115,8 +115,9 @@ function Recebimentos() {
             ocupado={ocupado === e.id}
             onConfirmar={async () => {
               setOcupado(e.id);
-              await confirmarEntrada(e.id);
+              const v = await confirmarEntrada(e.id);
               setOcupado(null);
+              if (!v) alert("Não foi possível lançar agora. Tente de novo.");
             }}
             onRecusar={async () => {
               setOcupado(e.id);

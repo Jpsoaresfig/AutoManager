@@ -100,7 +100,7 @@ function Vender() {
       fiado,
     });
     if (!v) {
-      alert("Estoque insuficiente para algum item.");
+      alert("Não foi possível registrar a venda. Verifique o estoque e tente novamente.");
       return;
     }
     setSucesso(brl(v.total));
