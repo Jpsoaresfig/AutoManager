@@ -22,6 +22,8 @@ import {
   Ban,
   Crown,
   Loader2,
+  Power,
+  Trash2,
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -52,16 +54,25 @@ const STATUS_INFO: Record<string, { txt: string; cls: string }> = {
   canceled: { txt: "Cancelada", cls: "bg-red-500/15 text-red-600" },
 };
 
+type Acesso = "ativo" | "desativado" | "banido";
+
 type Loja = {
   orgId: string;
   nome: string;
   slug: string | null;
+  acesso: Acesso;
   plano: PlanoId;
   status: string;
   precoCentavos: number;
   ownerEmail: string | null;
   membros: number;
   desde: string | null;
+};
+
+const ACESSO_INFO: Record<Acesso, { txt: string; cls: string }> = {
+  ativo: { txt: "Ativa", cls: "bg-green-500/15 text-green-600" },
+  desativado: { txt: "Desativada", cls: "bg-amber-500/15 text-amber-600" },
+  banido: { txt: "Banida", cls: "bg-red-500/15 text-red-600" },
 };
 
 type Overview = {
@@ -268,6 +279,46 @@ function LojasView({
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState<string | null>(null);
 
+  async function moderar(l: Loja, acao: "desativar" | "banir" | "reativar" | "deletar") {
+    const dono = l.ownerEmail ?? "sem dono";
+    const confirmacoes: Record<typeof acao, string> = {
+      desativar:
+        `Desativar a loja "${l.nome}" (${dono})?\n\n` +
+        `Todos os usuários dela ficam sem conseguir entrar até você reativar.`,
+      banir:
+        `BANIR a loja "${l.nome}" (${dono})?\n\n` +
+        `O acesso de todos os usuários é bloqueado. Você ainda pode reativar depois.`,
+      reativar: `Reativar o acesso da loja "${l.nome}" (${dono})?`,
+      deletar:
+        `DELETAR a loja "${l.nome}" (${dono})?\n\n` +
+        `Isso APAGA a loja, todos os dados (produtos, vendas, etc.) e as contas dos usuários. ` +
+        `Esta ação é IRREVERSÍVEL.`,
+    };
+    if (!confirm(confirmacoes[acao])) return;
+    // segunda confirmação para a ação destrutiva
+    if (acao === "deletar" && !confirm(`Tem certeza absoluta? Digite OK na próxima. Não dá para desfazer.`))
+      return;
+
+    setSalvando(l.orgId);
+    try {
+      const res = await fetch("/api/admin/usuario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId: l.orgId, acao }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert("Não foi possível concluir: " + (json.erro || "erro"));
+        return;
+      }
+      await recarregar();
+    } catch {
+      alert("Falha de conexão.");
+    } finally {
+      setSalvando(null);
+    }
+  }
+
   async function mudarPlano(l: Loja, plano: PlanoId) {
     if (plano === l.plano) return;
     const ok = confirm(
@@ -331,11 +382,16 @@ function LojasView({
                   <Users size={12} /> {l.ownerEmail ?? "sem dono"} · {l.membros} usuário(s)
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${PLANO_CLS[l.plano]}`}>
                   {l.plano.toUpperCase()}
                 </span>
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${st.cls}`}>{st.txt}</span>
+                {l.acesso !== "ativo" && (
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${ACESSO_INFO[l.acesso].cls}`}>
+                    {ACESSO_INFO[l.acesso].txt}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-between text-xs text-muted">
@@ -370,6 +426,43 @@ function LojasView({
                 ))}
               </select>
               {salvando === l.orgId && <Loader2 size={14} className="animate-spin text-brand-600 shrink-0" />}
+            </div>
+
+            {/* moderação da conta */}
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-default/60">
+              {l.acesso === "ativo" ? (
+                <>
+                  <button
+                    onClick={() => moderar(l, "desativar")}
+                    disabled={salvando === l.orgId}
+                    className="btn-ghost text-xs py-1.5 px-3 text-amber-600 disabled:opacity-60"
+                  >
+                    <Power size={14} /> Desativar
+                  </button>
+                  <button
+                    onClick={() => moderar(l, "banir")}
+                    disabled={salvando === l.orgId}
+                    className="btn-ghost text-xs py-1.5 px-3 text-red-600 disabled:opacity-60"
+                  >
+                    <Ban size={14} /> Banir
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => moderar(l, "reativar")}
+                  disabled={salvando === l.orgId}
+                  className="btn-ghost text-xs py-1.5 px-3 text-green-600 disabled:opacity-60"
+                >
+                  <RotateCcw size={14} /> Reativar
+                </button>
+              )}
+              <button
+                onClick={() => moderar(l, "deletar")}
+                disabled={salvando === l.orgId}
+                className="btn-ghost text-xs py-1.5 px-3 text-red-600 ml-auto disabled:opacity-60"
+              >
+                <Trash2 size={14} /> Deletar
+              </button>
             </div>
           </div>
         );

@@ -28,13 +28,22 @@ async function exigirSuperadmin() {
 
 const PLANOS_IDS: PlanoId[] = ["ambulante", "solo", "equipe", "expansao"];
 
+// Busca as orgs tolerando a ausência da coluna `acesso` (migration 0025 ainda
+// não aplicada). Sem ela, todas as lojas contam como 'ativo'.
+async function buscarOrgs(a: ReturnType<typeof admin>): Promise<any[]> {
+  const comAcesso = await a.from("org").select("id, nome, slug, acesso");
+  if (!comAcesso.error) return comAcesso.data ?? [];
+  const sem = await a.from("org").select("id, nome, slug");
+  return sem.data ?? [];
+}
+
 export async function GET() {
   const su = await exigirSuperadmin();
   if (!su) return NextResponse.json({ erro: "Sem permissão" }, { status: 403 });
 
   const a = admin();
-  const [{ data: orgs }, { data: assinaturas }, { data: usuarios }] = await Promise.all([
-    a.from("org").select("id, nome, slug"),
+  const [orgs, { data: assinaturas }, { data: usuarios }] = await Promise.all([
+    buscarOrgs(a),
     a.from("assinatura").select("org_id, plano, status, preco_centavos, trial_ate, data_inicio, created_at"),
     a.from("usuario").select("email, role, org_id"),
   ]);
@@ -61,6 +70,7 @@ export async function GET() {
       orgId: o.id,
       nome: o.nome ?? "(sem nome)",
       slug: o.slug ?? null,
+      acesso: (o.acesso ?? "ativo") as "ativo" | "desativado" | "banido",
       plano,
       status,
       precoCentavos: Number(s?.preco_centavos ?? PLANOS[plano].precoCentavos),

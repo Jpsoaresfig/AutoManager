@@ -369,6 +369,89 @@ function MinhaLoja() {
             </div>
           </section>
 
+          {/* Aparência do painel */}
+          <section className="card space-y-4">
+            <div className="flex items-center gap-2 font-semibold">
+              <Brush size={18} className="text-brand-500" /> Aparência do painel
+            </div>
+            <p className="text-xs text-muted -mt-2">
+              Personalize as cores de fundo, a fonte e o arredondamento do painel (admin). Tudo aplica
+              na hora, em todo o app.
+            </p>
+
+            {/* tema base (paleta de fundo) */}
+            <div>
+              <label className="label">Tema do painel</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {TEMAS_BASE.map((t) => {
+                  const ativo = (temaBase ?? "escuro") === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => escolherTema(t.key)}
+                      className={`rounded-xl border p-2 text-left transition ${
+                        ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default"
+                      }`}
+                      style={{ background: t.bg }}
+                    >
+                      <div className="flex gap-1">
+                        <span className="h-4 w-4 rounded-full" style={{ background: t.surface, border: `1px solid ${t.border}` }} />
+                        <span className="h-4 w-4 rounded-full" style={{ background: t.surfaceAlt }} />
+                        <span className="h-4 w-4 rounded-full bg-brand-500" />
+                      </div>
+                      <span className="mt-2 block text-xs font-medium" style={{ color: t.text }}>
+                        {t.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted mt-1">Muda as cores de fundo do painel (admin) e da vitrine.</p>
+            </div>
+
+            {/* fonte do app */}
+            <div>
+              <label className="label">Fonte do app</label>
+              <select
+                className="input"
+                value={appFonte ?? "padrao"}
+                onChange={(e) => escolherFonteApp(e.target.value === "padrao" ? null : e.target.value)}
+                style={{ fontFamily: FONTES.find((f) => f.key === (appFonte ?? "padrao"))?.stack || undefined }}
+              >
+                {FONTES.map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted mt-1">Aplica a fonte em todo o painel. (A vitrine tem fonte própria, acima.)</p>
+            </div>
+
+            {/* arredondamento dos cantos */}
+            <div>
+              <label className="label">Arredondamento dos cantos</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {RAIOS.map((r) => {
+                  const ativo = (appRaio ?? "padrao") === r.key;
+                  return (
+                    <button
+                      key={r.key}
+                      onClick={() => escolherRaio(r.key === "padrao" ? null : r.key)}
+                      className={`border p-2 transition flex flex-col items-center gap-2 ${
+                        ativo ? "border-brand-500 ring-2 ring-brand-500/40" : "border-default"
+                      }`}
+                      style={{ borderRadius: r.card }}
+                    >
+                      <span className="h-8 w-12 surface-alt border border-default" style={{ borderRadius: r.btn }} />
+                      <span className="text-xs font-medium">{r.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted mt-1">Deixa os cards e botões do painel mais retos ou mais arredondados.</p>
+            </div>
+          </section>
+
           {/* Sobre */}
           <section className="card space-y-3">
             <div className="flex items-center gap-2 font-semibold">

@@ -104,6 +104,85 @@ body {
   }
 }
 
+/* ============================================================ */
+/* Onboarding — tela de geração animada ("criando sua loja…")   */
+/* ============================================================ */
+@keyframes ob-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes ob-float {
+  0%   { transform: translateY(20px) rotate(0deg); opacity: 0; }
+  12%  { opacity: var(--ob-op, 0.5); }
+  88%  { opacity: var(--ob-op, 0.5); }
+  100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+}
+@keyframes ob-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ob-ring {
+  0%   { transform: scale(0.85); opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes ob-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes ob-spin { to { transform: rotate(360deg); } }
+@keyframes ob-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+@keyframes ob-fall {
+  0%   { transform: translateY(-12vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(112vh) rotate(620deg); opacity: 0.9; }
+}
+@keyframes ob-shimmer { 100% { transform: translateX(100%); } }
+@keyframes ob-grow { from { width: 0%; } }
+@keyframes ob-in-right {
+  from { opacity: 0; transform: translateX(70px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ob-in-left {
+  from { opacity: 0; transform: translateX(-70px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ob-aurora {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(7%, -6%) scale(1.18); }
+  66%  { transform: translate(-6%, 7%) scale(0.92); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.ob-anim-gradient { background-size: 220% 220%; animation: ob-gradient 9s ease infinite; }
+.ob-anim-float { animation: ob-float linear infinite; }
+.ob-anim-pop { animation: ob-pop 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both; }
+.ob-anim-ring { animation: ob-ring 2.1s ease-out infinite; }
+.ob-anim-rise { animation: ob-rise 0.5s ease both; }
+.ob-anim-spin { animation: ob-spin 0.9s linear infinite; }
+.ob-anim-bob { animation: ob-bob 3s ease-in-out infinite; }
+.ob-anim-fall { animation: ob-fall linear forwards; }
+.ob-in-right { animation: ob-in-right 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ob-in-left { animation: ob-in-left 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ob-aurora { animation: ob-aurora 16s ease-in-out infinite; }
+.ob-shimmer { position: relative; overflow: hidden; }
+.ob-shimmer::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: translateX(-100%); animation: ob-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-anim-gradient, .ob-anim-float, .ob-anim-pop, .ob-anim-ring,
+  .ob-anim-rise, .ob-anim-spin, .ob-anim-bob, .ob-anim-fall, .ob-shimmer::after,
+  .ob-in-right, .ob-in-left, .ob-aurora {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 /* impressão / PDF: força visual claro e esconde navegação */
 @media print {
   :root,
