@@ -1,5 +1,5 @@
 -- ============================================================================
--- (D) Vitrine pública não expõe mais a QUANTIDADE exata de estoque — só um
+-- (D) Vitrine pública não expõe mais a QUANTIDADE exata de estoque - só um
 --     booleano "esgotado". Antes, loja_publica devolvia estoque_atual do produto
 --     e de cada variação, visível no DevTools de qualquer visitante (concorrente
 --     via inventário). A vitrine só usa o "Esgotado", então nada quebra.

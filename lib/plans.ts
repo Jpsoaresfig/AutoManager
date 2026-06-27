@@ -131,10 +131,10 @@ export const PLANOS: Record<PlanoId, PlanoDef> = {
 export const ORDEM_PLANOS: PlanoId[] = ["ambulante", "solo", "equipe", "expansao"];
 
 // ============================================================================
-// PLANO PERSONALIZADO — "sob consulta", FORA do fluxo de assinatura.
+// PLANO PERSONALIZADO - "sob consulta", FORA do fluxo de assinatura.
 // Propositalmente NÃO é um PlanoId: não tem preço fixo, não passa pelo Mercado
 // Pago e não entra nos guards de capacidade/limites. É um sistema feito 100% do
-// zero, com orçamento à parte conforme o tamanho do projeto — a pessoa fala
+// zero, com orçamento à parte conforme o tamanho do projeto - a pessoa fala
 // direto comigo no WhatsApp (SUPORTE_WHATSAPP em lib/admin.ts).
 // Renderizado como cartão de contato na landing, na tela de planos e no onboarding.
 // ============================================================================
@@ -144,7 +144,7 @@ export const PLANO_PERSONALIZADO = {
   preco: "Sob consulta",
   chamada: "Um sistema 100% do zero, feito só pra você.",
   descricao:
-    "Eu desenvolvo um sistema sob medida para o seu negócio — com integração direta ao seu banco e tudo o que a sua operação tiver direito. O orçamento é à parte e depende do tamanho do projeto.",
+    "Eu desenvolvo um sistema sob medida para o seu negócio - com integração direta ao seu banco e tudo o que a sua operação tiver direito. O orçamento é à parte e depende do tamanho do projeto.",
   beneficios: [
     "Sistema desenvolvido 100% do zero, sob medida",
     "Integração direta com o seu banco",
@@ -155,7 +155,7 @@ export const PLANO_PERSONALIZADO = {
   cta: "Falar comigo no WhatsApp",
   // mensagem pré-preenchida pro WhatsApp do suporte (use com linkWhatsappSuporte)
   whatsappTexto:
-    "Olá! Tenho interesse no plano Personalizado do AutoManager — quero um sistema sob medida pro meu negócio.",
+    "Olá! Tenho interesse no plano Personalizado do AutoManager - quero um sistema sob medida pro meu negócio.",
 } as const;
 
 export function planoDef(id: PlanoId | string | null | undefined): PlanoDef {

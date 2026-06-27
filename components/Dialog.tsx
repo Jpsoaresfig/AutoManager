@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { AlertTriangle, X } from "lucide-react";
 
 // Diálogos do design system (confirmar / prompt / alerta) substituindo os
-// confirm()/prompt()/alert() nativos — com backdrop blur, animação e teclado.
+// confirm()/prompt()/alert() nativos - com backdrop blur, animação e teclado.
 
 type ConfirmOpts = {
   titulo: string;

@@ -5,7 +5,7 @@
 
 > **Estado da implementação (2026-06-27):** a landing foi reconstruída em padrão premium
 > (dark **auto-contido**, hero **vivo**, scroll storytelling). Componentes atuais em
-> `components/landing/`: **`LiveDashboard`** (demonstração viva — substitui o `DashboardMock`
+> `components/landing/`: **`LiveDashboard`** (demonstração viva - substitui o `DashboardMock`
 > estático, que segue no repo como legado), **`Reveal`** (scroll-reveal por IntersectionObserver),
 > `Pricing`, `Faq` (aceita lista curada de objeções) e `StickyCta`. A estratégia/copy abaixo
 > continua válida. Resumo técnico em `DOCUMENTACAO.md` §15.

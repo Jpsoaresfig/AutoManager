@@ -24,7 +24,7 @@ create policy entrega_select on public.entrega for select to authenticated
   );
 
 -- ATUALIZAR: dono qualquer; motoboy só nas suas ou nas disponíveis, e o
--- resultado precisa ficar consigo (claim) ou solto (devolver) — nunca em outro.
+-- resultado precisa ficar consigo (claim) ou solto (devolver) - nunca em outro.
 drop policy if exists entrega_update on public.entrega;
 create policy entrega_update on public.entrega for update to authenticated
   using (

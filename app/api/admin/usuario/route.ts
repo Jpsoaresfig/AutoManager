@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   // todas as contas de auth da loja (membros + revendedoras), sem duplicatas.
   const idsAuth = Array.from(new Set([...idsMembros, ...idsRevendedoras]));
 
-  // descrição da loja p/ a trilha de auditoria (nome + e-mail do DONO — B-4).
+  // descrição da loja p/ a trilha de auditoria (nome + e-mail do DONO - B-4).
   const { data: orgRow } = await a.from("org").select("nome").eq("id", orgId).maybeSingle();
   const donoEmail =
     (usuarios ?? []).find((u) => u.role === "owner")?.email ?? (usuarios ?? [])[0]?.email ?? null;
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
 
   try {
     if (acao === "deletar") {
-      // B-5: confirmação forte no servidor — exige o nome exato da loja.
+      // B-5: confirmação forte no servidor - exige o nome exato da loja.
       const nomeEsperado = (orgRow?.nome ?? "").trim().toLowerCase();
       if (!nomeEsperado || (confirmacao ?? "").trim().toLowerCase() !== nomeEsperado)
         return NextResponse.json(
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       // A-8: a ação mais irreversível do sistema é AUDITADA ANTES de destruir, e a
-      // falha de auditoria ABORTA o delete — nunca apagamos uma loja sem deixar trace.
+      // falha de auditoria ABORTA o delete - nunca apagamos uma loja sem deixar trace.
       const trace = await registrarAdminLog(a, {
         actorEmail,
         acao: "deletar",
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 
     // bloquear (desativar/banir) ou liberar (reativar) o login. O bloqueio real na
     // camada de dados é o org.acesso (migration 0035): current_org_id() retorna NULL
-    // e as RPCs da revendedora barram — vale inclusive p/ JWTs já emitidos (M-4). O
+    // e as RPCs da revendedora barram - vale inclusive p/ JWTs já emitidos (M-4). O
     // ban_duration no auth impede novos logins/refresh; aplicamos a membros E
     // revendedoras (C-2).
     const banir = acao === "desativar" || acao === "banir";

@@ -248,7 +248,7 @@ const CHAVE_FAVICON = "favicon";
 function definirIconLink(rel: string, href: string) {
   if (typeof document === "undefined") return;
   const head = document.head;
-  // remove os links existentes desse rel e recria — força o navegador a reler o ícone
+  // remove os links existentes desse rel e recria - força o navegador a reler o ícone
   head.querySelectorAll(`link[rel="${rel}"]`).forEach((el) => el.remove());
   const link = document.createElement("link");
   link.rel = rel;

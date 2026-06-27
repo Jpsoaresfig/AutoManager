@@ -478,7 +478,7 @@ function AcessoRevendedora({
             </button>
           </div>
           <p className="text-[11px] text-muted">
-            Envie para ela junto do link <b>/acesso</b>. Some assim que ela ativar — só aparece agora.
+            Envie para ela junto do link <b>/acesso</b>. Some assim que ela ativar - só aparece agora.
           </p>
         </div>
       )}

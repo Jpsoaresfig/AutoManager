@@ -202,7 +202,7 @@ function MinhaLoja() {
     setTimeout(() => setCopiado(false), 1500);
   }
 
-  // feedback "Salvo ✓" — minha-loja persiste no onBlur, então confirmamos visualmente
+  // feedback "Salvo ✓" - minha-loja persiste no onBlur, então confirmamos visualmente
   const [salvoVisivel, setSalvoVisivel] = useState(false);
   const salvoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function flashSalvo() {

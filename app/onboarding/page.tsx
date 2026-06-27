@@ -52,7 +52,7 @@ export default function Onboarding() {
   }, [ready, hydrate]);
 
   // onboarding já concluído: sai daqui (evita re-rodar / sobrescrever a config).
-  // Durante a geração NÃO redireciona aqui — a tela de carregamento controla o
+  // Durante a geração NÃO redireciona aqui - a tela de carregamento controla o
   // momento de ir pro painel; senão o redirect cortava a animação no meio.
   useEffect(() => {
     if (ready && completo && !gerando) router.replace("/painel");
@@ -135,20 +135,20 @@ export default function Onboarding() {
       });
       await hydrate(); // recarrega a assinatura pro painel já refletir o trial
     } catch {
-      /* segue mesmo se falhar — o plano pode ser ajustado depois */
+      /* segue mesmo se falhar - o plano pode ser ajustado depois */
     }
 
     await completarOnboarding();
   }
 
-  // Passos da tela de carregamento — personalizados pelas respostas.
+  // Passos da tela de carregamento - personalizados pelas respostas.
   function montarPassos(): Passo[] {
     const segLabel = (SEGMENTOS.find((s) => s.id === segmento)?.label || "loja").toLowerCase();
     const loja = nomeLoja.trim() || "sua loja";
     const passos: Passo[] = [
       { emoji: "🔍", title: "Analisando seu perfil", sub: `Entendendo sua ${segLabel}`, ms: 1100 },
       { emoji: "🏪", title: "Criando sua loja", sub: `Montando a vitrine de ${loja}`, ms: 1200 },
-      { emoji: "🎁", title: "Ativando seu mês grátis", sub: `Plano ${plano.nome} — 30 dias por nossa conta`, ms: 1100 },
+      { emoji: "🎁", title: "Ativando seu mês grátis", sub: `Plano ${plano.nome} - 30 dias por nossa conta`, ms: 1100 },
     ];
     if (usaRevendedoras)
       passos.push({ emoji: "💸", title: "Configurando comissões", sub: "Cálculo automático das revendedoras", ms: 1050 });
@@ -213,7 +213,7 @@ export default function Onboarding() {
                 Vamos dar vida ao seu negócio 🚀
               </h1>
               <p className="text-muted">
-                Em 2 minutos seu estoque, suas vendas e seu lucro ficam no controle —
+                Em 2 minutos seu estoque, suas vendas e seu lucro ficam no controle -
                 do seu jeito, sem planilha.
               </p>
               <div>
@@ -225,7 +225,7 @@ export default function Onboarding() {
                   onChange={(e) => setNomeLoja(e.target.value)}
                   autoFocus
                 />
-                <p className="text-xs text-muted mt-1.5">Pode trocar depois — esse nome é seu. ✨</p>
+                <p className="text-xs text-muted mt-1.5">Pode trocar depois - esse nome é seu. ✨</p>
               </div>
             </div>
           )}
@@ -314,7 +314,7 @@ export default function Onboarding() {
                 })}
               </div>
 
-              {/* plano personalizado — sob consulta, falar direto comigo */}
+              {/* plano personalizado - sob consulta, falar direto comigo */}
               <a
                 href={linkWhatsappSuporte(PLANO_PERSONALIZADO.whatsappTexto)}
                 target="_blank"
@@ -329,7 +329,7 @@ export default function Onboarding() {
                   <MessageCircle size={16} className="text-brand-500 ml-auto" />
                 </div>
                 <p className="text-xs text-muted mt-1">
-                  Precisa de um sistema 100% do zero, sob medida? Fale comigo no WhatsApp — orçamento à parte.
+                  Precisa de um sistema 100% do zero, sob medida? Fale comigo no WhatsApp - orçamento à parte.
                 </p>
               </a>
             </div>
@@ -341,7 +341,7 @@ export default function Onboarding() {
               <div>
                 <h2 className="text-xl font-bold">Quem vende junto com você?</h2>
                 <p className="text-sm text-muted mt-1">
-                  Sua rede de revendedoras — o plano {plano.nome} inclui até{" "}
+                  Sua rede de revendedoras - o plano {plano.nome} inclui até{" "}
                   <b>{fmtLimite(plano.maxRevendedoras)}</b>.
                 </p>
               </div>
@@ -363,7 +363,7 @@ export default function Onboarding() {
               <p className="text-sm text-muted">
                 {usaRevendedoras
                   ? "Combinado! Eu calculo a comissão e quanto cada uma te deve, no automático. ✨"
-                  : "Tranquilo — você toca tudo, e dá pra adicionar sua equipe quando quiser. 💪"}
+                  : "Tranquilo - você toca tudo, e dá pra adicionar sua equipe quando quiser. 💪"}
               </p>
             </div>
           )}
@@ -483,7 +483,7 @@ export default function Onboarding() {
 }
 
 // ============================================================================
-// Tela de carregamento — toca após "Concluir". Minimalista e mobile-first:
+// Tela de carregamento - toca após "Concluir". Minimalista e mobile-first:
 // um ícone de carregamento girando + uma barra de progresso, com o texto do
 // passo atual trocando enquanto o store grava de verdade.
 // ============================================================================

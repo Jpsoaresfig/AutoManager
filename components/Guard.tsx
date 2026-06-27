@@ -46,10 +46,10 @@ export default function Guard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (jaMontado || !ready) return;
-    // loja suspensa/banida (C-2): não redireciona — mostra aviso abaixo.
+    // loja suspensa/banida (C-2): não redireciona - mostra aviso abaixo.
     if (suspenso) return;
     // autenticado mas sem loja própria (revendedora/visitante que caiu no painel):
-    // não pertence ao painel do dono — manda para o acesso da revendedora.
+    // não pertence ao painel do dono - manda para o acesso da revendedora.
     if (semOrg) {
       router.replace("/acesso");
       return;
@@ -80,7 +80,7 @@ export default function Guard({ children }: { children: React.ReactNode }) {
 }
 
 // Aviso de conta suspensa/banida (C-2): a org não é mais legível na camada de
-// dados. Não há dados a mostrar — só a orientação de contato.
+// dados. Não há dados a mostrar - só a orientação de contato.
 function ContaSuspensa() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -95,7 +95,7 @@ function ContaSuspensa() {
   );
 }
 
-// Skeleton da aplicação inteira (sidebar + conteúdo) enquanto hidrata — mantém
+// Skeleton da aplicação inteira (sidebar + conteúdo) enquanto hidrata - mantém
 // o layout estável e transmite carregamento premium, sem spinner solto.
 function AppLoadingSkeleton() {
   return (

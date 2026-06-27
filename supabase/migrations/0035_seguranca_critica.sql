@@ -1,5 +1,5 @@
 -- ============================================================================
--- LOTE 1 — CORREÇÕES CRÍTICAS DE SEGURANÇA
+-- LOTE 1 - CORREÇÕES CRÍTICAS DE SEGURANÇA
 --
 -- C-1  Tomada de conta cross-tenant via signup.
 --      private.handle_new_user() confiava em raw_user_meta_data->>'org_id'/'role',
@@ -7,17 +7,17 @@
 --      Qualquer anônimo virava OWNER de qualquer loja sabendo o org_id (que vaza
 --      em loja_publica). Correção: o vínculo de membro/revendedora passa a vir
 --      EXCLUSIVAMENTE de raw_app_meta_data (app_metadata), que o cliente NÃO
---      consegue definir no signUp — só o service_role (rotas /api/membros e
+--      consegue definir no signUp - só o service_role (rotas /api/membros e
 --      /api/revendedora/ativar). owner JAMAIS é criado por metadata.
 --
 -- C-2  Banimento decorativo. org.acesso ('ativo'|'desativado'|'banido') não era
 --      consultado por nenhuma policy/RPC, e o "ban" só atingia public.usuario
 --      (revendedoras vivem em revendedora.user_id, plano de auth paralelo). Loja
 --      banida seguia vendendo (revendedoras) e com vitrine pública no ar.
---      Correção: org.acesso vira AUTORITATIVO na camada de dados —
+--      Correção: org.acesso vira AUTORITATIVO na camada de dados -
 --        * private.current_org_id() retorna NULL se a org não está ativa
 --          (bloqueio imediato de todos os membros, inclusive com JWT já emitido
---          — também resolve M-4);
+--          - também resolve M-4);
 --        * RPCs da revendedora barram org inativa (via revendedora_no_limite);
 --        * loja_publica() não serve loja inativa.
 -- ============================================================================

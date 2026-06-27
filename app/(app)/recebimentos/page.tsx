@@ -87,7 +87,7 @@ function Recebimentos() {
 
       <p className="text-sm text-muted">
         Quando cai dinheiro numa conta conectada, ele aparece aqui. Confirme se foi venda da
-        loja — aí entra automaticamente no seu caixa.
+        loja - aí entra automaticamente no seu caixa.
       </p>
 
       {entradasPendentes.length > 0 && (

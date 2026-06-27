@@ -88,7 +88,7 @@ function Perfil() {
         <ThemeToggle />
       </div>
 
-      {/* plano — só o dono gerencia assinatura */}
+      {/* plano - só o dono gerencia assinatura */}
       {dono && <PlanoLinha />}
 
       <button onClick={sair} className="btn-ghost w-full text-red-500">

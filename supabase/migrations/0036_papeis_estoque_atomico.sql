@@ -1,5 +1,5 @@
 -- ============================================================================
--- LOTE 2 — ALTO: vazamento de custo/lucro (A-1), oversell (A-2), vendedor
+-- LOTE 2 - ALTO: vazamento de custo/lucro (A-1), oversell (A-2), vendedor
 -- operando após downgrade (A-4).
 --
 -- A-1  As policies de SELECT geradas no 0001 (org-wide, sem papel) sobreviveram
@@ -93,7 +93,7 @@ drop policy if exists movimento_estoque_select on public.movimento_estoque;
 create policy movimento_estoque_select on public.movimento_estoque for select to authenticated
   using (org_id = private.current_org_id() and private.current_role() = 'owner');
 
--- entrada_pendente / conta_pagar: idem (tabelas de 0024/0033 — guard p/ idempotência).
+-- entrada_pendente / conta_pagar: idem (tabelas de 0024/0033 - guard p/ idempotência).
 do $$
 begin
   if to_regclass('public.entrada_pendente') is not null then

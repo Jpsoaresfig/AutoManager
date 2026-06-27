@@ -1,5 +1,5 @@
 -- ============================================================================
--- LOTE 5 — BAIXOS.
+-- LOTE 5 - BAIXOS.
 -- B-3  Divergência de duração do trial: criar_assinatura_org dava 14 dias, mas o
 --      onboarding concede 1 mês. Alinha o trial inicial a 30 dias.
 -- ============================================================================

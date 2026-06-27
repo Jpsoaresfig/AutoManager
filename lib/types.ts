@@ -94,7 +94,7 @@ export interface EntradaPendente {
   decididoEm: number | null;
 }
 
-// Conta a pagar (despesa) — o lado que SAI do fluxo de caixa.
+// Conta a pagar (despesa) - o lado que SAI do fluxo de caixa.
 export interface ContaPagar {
   id: string;
   descricao: string;

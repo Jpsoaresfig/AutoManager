@@ -331,7 +331,7 @@ function LojasView({
     const t = textos[acao];
     const ok = await confirm({ ...t, perigo: acao !== "reativar" });
     if (!ok) return;
-    // B-5: confirmação forte da ação destrutiva — exige digitar o nome exato da loja.
+    // B-5: confirmação forte da ação destrutiva - exige digitar o nome exato da loja.
     let confirmacao: string | undefined;
     if (acao === "deletar") {
       const digitado = await prompt({
@@ -371,7 +371,7 @@ function LojasView({
     if (plano === l.plano) return;
     const ok = await confirm({
       titulo: `Mudar para ${PLANOS[plano].nome}?`,
-      mensagem: `"${l.nome}" — de ${PLANOS[l.plano].nome} para ${PLANOS[plano].nome}.\n\nA troca é aplicada na hora, sem cobrança pelo Mercado Pago. Se a loja tiver uma assinatura ativa no MP, ela continua valendo lá.`,
+      mensagem: `"${l.nome}" - de ${PLANOS[l.plano].nome} para ${PLANOS[plano].nome}.\n\nA troca é aplicada na hora, sem cobrança pelo Mercado Pago. Se a loja tiver uma assinatura ativa no MP, ela continua valendo lá.`,
       confirmar: "Mudar plano",
     });
     if (!ok) return;
@@ -561,7 +561,7 @@ function AuditoriaView({ logs }: { logs: AdminLog[] | null }) {
               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${info.cls}`}>{info.txt}</span>
               <span className="text-xs text-muted">{quando(l.criadoEm)}</span>
             </div>
-            <div className="text-sm font-medium truncate">{l.alvoDescricao ?? "—"}</div>
+            <div className="text-sm font-medium truncate">{l.alvoDescricao ?? "-"}</div>
             <div className="text-xs text-muted">
               por {l.actorEmail}
               {det ? ` · ${det}` : ""}

@@ -2,7 +2,7 @@
 -- Fecha o acesso da revendedora quando o PLANO não permite revendedoras.
 --
 -- Contexto: no plano AMBULANTE (0023) o limite de revendedoras é 0. O trigger
--- de 0013 só barra INSERT/reativação acima do limite — revendedoras que já
+-- de 0013 só barra INSERT/reativação acima do limite - revendedoras que já
 -- existiam antes do downgrade continuam `ativa` e conseguiam logar pelo /acesso,
 -- porque TODO o acesso delas passa por RPCs SECURITY DEFINER (0011) que filtravam
 -- apenas `user_id = auth.uid() and ativa`, sem olhar o plano.
@@ -21,7 +21,7 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- ----------------------------------------------------------- RPCs (0011) + plano
--- Identidade da revendedora — é o gate do /acesso (se vier null, faz signOut).
+-- Identidade da revendedora - é o gate do /acesso (se vier null, faz signOut).
 create or replace function public.revendedora_me()
 returns json
 language sql
@@ -105,7 +105,7 @@ as $$
 $$;
 grant execute on function public.revendedora_minhas_vendas() to authenticated;
 
--- Registro de venda pela revendedora — só seleciona a revendedora se o plano permite.
+-- Registro de venda pela revendedora - só seleciona a revendedora se o plano permite.
 create or replace function public.revendedora_registrar_venda(
   p_itens jsonb,
   p_forma text default 'dinheiro',

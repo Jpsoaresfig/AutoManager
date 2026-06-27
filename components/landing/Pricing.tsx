@@ -118,7 +118,7 @@ export default function Pricing() {
         })}
       </div>
 
-      {/* plano personalizado — destaque logo abaixo dos cards (sob consulta) */}
+      {/* plano personalizado - destaque logo abaixo dos cards (sob consulta) */}
       <div className="relative mt-6 overflow-hidden rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-600/15 via-brand-500/10 to-transparent p-6 shadow-pop sm:p-8">
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/20 blur-3xl" />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -128,7 +128,7 @@ export default function Pricing() {
             </span>
             <h3 className="mt-3 text-2xl font-extrabold text-strong">
               {PLANO_PERSONALIZADO.nome}{" "}
-              <span className="text-brand-500">— {PLANO_PERSONALIZADO.preco}</span>
+              <span className="text-brand-500">- {PLANO_PERSONALIZADO.preco}</span>
             </h3>
             <p className="mt-1 text-base font-semibold text-strong">{PLANO_PERSONALIZADO.chamada}</p>
             <p className="mt-2 max-w-xl text-sm text-muted">{PLANO_PERSONALIZADO.descricao}</p>

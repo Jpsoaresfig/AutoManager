@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-// Revela o conteúdo (fade + slide up) quando ele entra na viewport — scroll
+// Revela o conteúdo (fade + slide up) quando ele entra na viewport - scroll
 // storytelling em toda a landing. `delay` escalona itens de uma mesma seção.
 export default function Reveal({
   children,

@@ -238,7 +238,7 @@ interface State {
   role: Role;
   // autenticado, porém sem loja própria (revendedora/visitante): não pertence ao painel
   semOrg: boolean;
-  // true quando o usuário tem vínculo (usuario) mas a org não é legível — loja
+  // true quando o usuário tem vínculo (usuario) mas a org não é legível - loja
   // suspensa/banida (current_org_id retorna NULL). Ver C-2.
   suspenso: boolean;
   config: Config;
@@ -342,7 +342,7 @@ interface State {
 const JANELA_VENDAS_DIAS = 180;
 const PAGINA_VENDAS = 500;
 // teto do histórico carregado no cliente (2ª fase). Períodos além disso devem ser
-// agregados no servidor — o navegador nunca baixa o histórico inteiro (A-5).
+// agregados no servidor - o navegador nunca baixa o histórico inteiro (A-5).
 const HISTORICO_MAX_DIAS = 540;
 
 export const useStore = create<State>()((set, get) => {
@@ -476,7 +476,7 @@ export const useStore = create<State>()((set, get) => {
       // 2ª fase: histórico anterior à janela, paginado e mesclado em segundo plano.
       // Só o owner tem leitura de venda; demais papéis não entram aqui. A janela é
       // LIMITADA (HISTORICO_MAX_DIAS) para o navegador nunca baixar histórico
-      // ilimitado — relatórios além disso devem ser agregados no servidor (A-5).
+      // ilimitado - relatórios além disso devem ser agregados no servidor (A-5).
       const limiteHistoricoISO = new Date(Date.now() - HISTORICO_MAX_DIAS * 86_400_000).toISOString();
       if (isOwner) void (async () => {
         for (let offset = 0; ; offset += PAGINA_VENDAS) {
@@ -542,7 +542,7 @@ export const useStore = create<State>()((set, get) => {
         ({ error } = await sb().from("org").update(patch).eq("id", orgId));
       }
       if (error) {
-        set({ config: anterior }); // desfaz o otimista — sem falso "Salvo"
+        set({ config: anterior }); // desfaz o otimista - sem falso "Salvo"
         return { ok: false, erro: error.message };
       }
       return { ok: true };
@@ -1175,7 +1175,7 @@ export const useStore = create<State>()((set, get) => {
       });
 
       // M-6: se o id já existe (reenvio após timeout onde o RPC tinha sucedido),
-      // a venda já está gravada — trata como sucesso em vez de duplicar.
+      // a venda já está gravada - trata como sucesso em vez de duplicar.
       const jaGravada = !!error && /duplicate key|already exists|venda_pkey/i.test(error.message);
 
       // erro real no banco (estoque, RLS, rede) -> desfaz o otimista: remove a venda

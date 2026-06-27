@@ -198,7 +198,7 @@ function PitchEntregas() {
     {
       icon: Route,
       titulo: "Atribuição em 1 toque",
-      desc: "Distribua as entregas para o motoboy certo direto da tela. Quem está livre, quem está na rua — tudo organizado.",
+      desc: "Distribua as entregas para o motoboy certo direto da tela. Quem está livre, quem está na rua - tudo organizado.",
     },
     {
       icon: Clock,
@@ -241,7 +241,7 @@ function PitchEntregas() {
           <p className="text-sm md:text-base text-muted max-w-lg mx-auto">
             Print no grupo, áudio de 3 minutos, “qual era mesmo o endereço?”. Cada entrega bagunçada é
             cliente irritado e dinheiro escapando. Coloque seus motoboys, suas rotas e suas taxas dentro
-            da plataforma — e durma tranquilo sabendo onde está cada pedido.
+            da plataforma - e durma tranquilo sabendo onde está cada pedido.
           </p>
           <Link href="/planos" className="btn-primary inline-flex w-auto px-7 mx-auto">
             <Zap size={16} />

@@ -1,11 +1,11 @@
-// Blocos de carregamento (shimmer) — substituem spinners e mantêm o layout
+// Blocos de carregamento (shimmer) - substituem spinners e mantêm o layout
 // estável. Use as variações prontas ou componha com <Skeleton className=…/>.
 
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`skeleton ${className}`} aria-hidden />;
 }
 
-// Card genérico com algumas linhas — bom placeholder de itens de lista.
+// Card genérico com algumas linhas - bom placeholder de itens de lista.
 export function SkeletonCard({ lines = 2 }: { lines?: number }) {
   return (
     <div className="card space-y-3">

@@ -19,7 +19,7 @@ const PRODUTOS = [
 
 type Toast = { id: number; tipo: "venda" | "comissao"; produto: string; valor: number };
 
-// Demonstração viva do painel: a cada poucos segundos uma "venda" entra —
+// Demonstração viva do painel: a cada poucos segundos uma "venda" entra -
 // faturamento sobe, estoque baixa, comissão é calculada e um aviso aparece.
 export default function LiveDashboard() {
   const [faturamento, setFaturamento] = useState(14380);

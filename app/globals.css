@@ -152,7 +152,7 @@ body {
 }
 
 /* ============================================================ */
-/* Design system de movimento — usado em TODO o app             */
+/* Design system de movimento - usado em TODO o app             */
 /* ============================================================ */
 
 /* foco visível e acessível (teclado) */
@@ -238,6 +238,9 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
+/* carrossel de depoimentos - esconde a barra de rolagem mantendo o arraste */
+.lp-carousel::-webkit-scrollbar { display: none; }
+.lp-carousel { -ms-overflow-style: none; }
 @keyframes lp-toast-in {
   0% { opacity: 0; transform: translateX(24px) scale(0.96); }
   100% { opacity: 1; transform: translateX(0) scale(1); }
@@ -290,7 +293,7 @@ body {
 }
 
 /* ============================================================ */
-/* Onboarding — tela de geração animada ("criando sua loja…")   */
+/* Onboarding - tela de geração animada ("criando sua loja…")   */
 /* ============================================================ */
 @keyframes ob-gradient {
   0%, 100% { background-position: 0% 50%; }

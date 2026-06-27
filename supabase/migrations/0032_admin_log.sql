@@ -1,8 +1,8 @@
 -- ============================================================================
 -- Trilha de auditoria do SUPER-ADMIN (append-only).
 --
--- As ações sensíveis da plataforma — moderar conta (desativar/banir/reativar/
--- deletar) e trocar plano manualmente — passavam sem registro. Aqui guardamos
+-- As ações sensíveis da plataforma - moderar conta (desativar/banir/reativar/
+-- deletar) e trocar plano manualmente - passavam sem registro. Aqui guardamos
 -- quem fez, quando, sobre qual loja e o quê. As rotas /api/admin/* gravam via
 -- service_role (ignora RLS); só o super-admin LÊ; ninguém atualiza/apaga
 -- (append-only de verdade: sem grant de update/delete e sem policy para isso).

@@ -235,7 +235,7 @@ function Relatorios() {
       {/* fluxo de caixa */}
       <div className="card">
         <div className="flex items-center gap-2 font-semibold">
-          <Wallet size={18} className="text-brand-500" /> Fluxo de Caixa — entradas no período
+          <Wallet size={18} className="text-brand-500" /> Fluxo de Caixa - entradas no período
         </div>
         <CountUp value={r.fluxoTotal} format={brl} className="text-2xl font-bold mt-1 block" />
         <div className="grid grid-cols-3 gap-2 my-3">

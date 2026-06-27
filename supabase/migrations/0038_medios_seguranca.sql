@@ -1,5 +1,5 @@
 -- ============================================================================
--- LOTE 4 — MÉDIOS de segurança/escala.
+-- LOTE 4 - MÉDIOS de segurança/escala.
 --
 -- M-1   Entregas existentes continuavam operáveis pelo motoboy após o plano cair
 --       abaixo de Expansão (a criação já era barrada por trg_entrega_plano, mas

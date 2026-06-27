@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
   if (!rev) return naoElegivel;
 
-  // código de convite: precisa bater e não estar expirado (uso único — limpo no fim).
+  // código de convite: precisa bater e não estar expirado (uso único - limpo no fim).
   const expira = rev.acesso_codigo_expira ? new Date(rev.acesso_codigo_expira).getTime() : 0;
   if (!rev.acesso_codigo || rev.acesso_codigo.toUpperCase() !== cod || expira < Date.now())
     return naoElegivel;
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
   if (capacidades(assinatura).maxRevendedoras === 0) return naoElegivel;
 
   // cria o login (role 'revendedora' -> trigger NÃO cria org/usuario)
-  // role em app_metadata (não-gravável pelo cliente) — o trigger só lê dali.
+  // role em app_metadata (não-gravável pelo cliente) - o trigger só lê dali.
   const { data: created, error: errCreate } = await sb.auth.admin.createUser({
     email: mail,
     password: senha,

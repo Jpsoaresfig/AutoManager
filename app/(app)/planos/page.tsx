@@ -146,7 +146,7 @@ function Planos() {
         })}
       </div>
 
-      {/* plano personalizado — sob consulta, fora do checkout (contato direto) */}
+      {/* plano personalizado - sob consulta, fora do checkout (contato direto) */}
       <div className="card border-brand-500/30 bg-brand-500/5">
         <div className="flex flex-wrap items-center gap-2">
           <Sparkles size={18} className="text-brand-500" />

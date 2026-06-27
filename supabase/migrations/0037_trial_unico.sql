@@ -1,5 +1,5 @@
 -- ============================================================================
--- LOTE 3 — A-3: trial único.
+-- LOTE 3 - A-3: trial único.
 -- /api/onboarding/plano reescrevia status='trialing' + trial_ate=now()+1mês a
 -- cada chamada, sem checar consumo. Qualquer owner renovava Expansão grátis
 -- indefinidamente. Agora o período gratuito é concedido UMA vez (flag

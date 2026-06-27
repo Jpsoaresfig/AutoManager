@@ -137,7 +137,7 @@ grant execute on function public.registrar_venda(uuid, jsonb, text, uuid, text, 
 -- ---------------------------------------------------------------- confirmar_entrada
 -- "Sim, foi venda da loja": cria a venda avulsa e marca a entrada como confirmada,
 -- tudo na mesma transação. Idempotente: se a entrada já foi decidida (reenvio,
--- duplo-clique, segunda aba), NÃO cria outra venda — devolve a existente.
+-- duplo-clique, segunda aba), NÃO cria outra venda - devolve a existente.
 create or replace function public.confirmar_entrada(p_entrada_id uuid, p_venda_id uuid)
 returns json
 language plpgsql

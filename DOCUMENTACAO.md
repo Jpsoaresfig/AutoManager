@@ -42,9 +42,9 @@ contra o banco real**.
 | Módulo | Status | Observação |
 |---|---|---|
 | **Planos & assinatura** (Ambulante/Solo/Equipe/Expansão + Personalizado sob consulta) + trial + enforcement | ✅ Pronto | Tabela `assinatura`, limites em `lib/plans.ts`, triggers no banco |
-| **Pagamento (Mercado Pago)** — checkout + webhook (assinatura + recebimentos) | ✅ Integrado | `/planos` → checkout; `api/mercadopago/*`; webhook valida `x-signature` |
-| **Caixa de recebimentos** (`/recebimentos`) — confirma "foi venda?" → vira venda | ✅ Pronto | Tabela `entrada_pendente`, webhook MP grava, dono confirma (atômico/idempotente) |
-| **Financeiro / contas a pagar** (`/financeiro`) — o que sai + a receber + saldo projetado | ✅ Pronto | Tabela `conta_pagar`; fecha o fluxo de caixa (a receber − a pagar) |
+| **Pagamento (Mercado Pago)** - checkout + webhook (assinatura + recebimentos) | ✅ Integrado | `/planos` → checkout; `api/mercadopago/*`; webhook valida `x-signature` |
+| **Caixa de recebimentos** (`/recebimentos`) - confirma "foi venda?" → vira venda | ✅ Pronto | Tabela `entrada_pendente`, webhook MP grava, dono confirma (atômico/idempotente) |
+| **Financeiro / contas a pagar** (`/financeiro`) - o que sai + a receber + saldo projetado | ✅ Pronto | Tabela `conta_pagar`; fecha o fluxo de caixa (a receber − a pagar) |
 | **Painel da plataforma** (super-admin): MRR/ARR, lojas, moderar contas, trocar plano | ✅ Pronto | `/admin` (resumo/lojas/chamados/**auditoria**) + `api/admin/*` |
 | **Trilha de auditoria do super-admin** (append-only) | ✅ Pronto | Tabela `admin_log`; ações sensíveis registradas (§12) |
 | **Convite de uso único da revendedora** | ✅ Pronto | Liberar acesso gera código com validade; ativação exige e-mail + código (§7) |
@@ -53,7 +53,7 @@ contra o banco real**.
 | **Onboarding premium** (escolha de plano + 1º mês grátis + tela de geração) | ✅ Pronto | `/onboarding` → `api/onboarding/plano` (trial 30d do plano escolhido) |
 | **Landing premium** (dark, hero vivo, scroll storytelling) | ✅ Pronto | `app/page.tsx` + `components/landing/*` (ver `LANDING.md`) |
 | **Chat persistente por cliente** + badges de não lidas (loja e cliente) | ✅ Pronto | Token no localStorage + RPC de recuperação |
-| **Admin/suporte** (superadmin) — chamados | ✅ Pronto | `/admin` restrito por e-mail (ver §12) |
+| **Admin/suporte** (superadmin) - chamados | ✅ Pronto | `/admin` restrito por e-mail (ver §12) |
 | Cadastro/onboarding + multi-tenant (RLS) | ✅ Pronto | Trigger cria a org no signup |
 | Produto completo (marca, imposto, preço "de", fotos, variações/grade) | ✅ Pronto | |
 | Estoque (entrada, ajuste, mínimo, baixa na venda) | ✅ Pronto | |
@@ -73,17 +73,17 @@ contra o banco real**.
 - **Segurança operacional:** rotacionar o token de management `sbp_…` e a `service_role`
   usados em desenvolvimento (foram digitados em texto puro durante o build).
 - **Webhook do MP:** definir `MP_WEBHOOK_SECRET` em produção (sem ele, a validação de
-  assinatura é pulada por retrocompat — ver §13).
+  assinatura é pulada por retrocompat - ver §13).
 - **Cobrança pós-trial:** o onboarding concede 1 mês grátis (trial do plano escolhido); a
   assinatura recorrente no Mercado Pago ainda é iniciada na tela de Plano (checkout). Falta
   um lembrete/CTA ao fim do trial para o cliente confirmar o pagamento e não perder o acesso.
 - **Recebimentos:** só o Mercado Pago grava entradas hoje; integração com o **Banco Inter**
   (origem `inter`) está modelada mas não conectada. A tela tem um modo "Testar o fluxo"
   para simular entradas enquanto não há banco conectado.
-- **Prova social da landing:** números/depoimentos estão marcados como ilustrativos —
+- **Prova social da landing:** números/depoimentos estão marcados como ilustrativos -
   substituir por dados reais conforme a base cresce.
 - **Resolvido recentemente:** janela de ativação da revendedora (agora há **código de
-  convite** de uso único — §7); auditoria das ações do super-admin (`admin_log` — §12).
+  convite** de uso único - §7); auditoria das ações do super-admin (`admin_log` - §12).
 
 ---
 
@@ -107,20 +107,20 @@ Scripts: `npm run dev` · `npm run build` · `npm start` · `npm run lint`.
 ## 4. Papéis, planos e assinatura
 
 Papel mora em `public.usuario.role`; o plano vive em **`public.assinatura`** (fonte da
-verdade — a coluna antiga `org.plano` foi removida).
+verdade - a coluna antiga `org.plano` foi removida).
 
 **Papéis:** `owner` · `vendedor` · `motoboy` · *(revendedora é externa, ver §7)*.
-Há ainda um **superadmin** do produto (suporte), fora das lojas — ver §12.
+Há ainda um **superadmin** do produto (suporte), fora das lojas - ver §12.
 
 **Planos (assinatura):**
-1. **Ambulante — R$ 20/mês** — entrada para vendedor de rua: estoque, vendas, lojinha + chat e
+1. **Ambulante - R$ 20/mês** - entrada para vendedor de rua: estoque, vendas, lojinha + chat e
    relatórios básicos. **Sem** revendedoras, vendedores internos, motoboys/entregas nem analytics.
-2. **Solo — R$ 49/mês** — só o dono, até 3 revendedoras, loja online, relatórios básicos.
-3. **Equipe — R$ 99/mês** ⭐ — + vendedores internos, até 15 revendedoras, ranking, analytics, chat.
-4. **Expansão — R$ 199/mês** — + motoboys/entregas, revendedoras ilimitadas, analytics avançado (tendência + ruptura).
-5. **Personalizado — sob consulta** — sistema feito 100% do zero, sob medida, com integração direta ao
+2. **Solo - R$ 49/mês** - só o dono, até 3 revendedoras, loja online, relatórios básicos.
+3. **Equipe - R$ 99/mês** ⭐ - + vendedores internos, até 15 revendedoras, ranking, analytics, chat.
+4. **Expansão - R$ 199/mês** - + motoboys/entregas, revendedoras ilimitadas, analytics avançado (tendência + ruptura).
+5. **Personalizado - sob consulta** - sistema feito 100% do zero, sob medida, com integração direta ao
    banco da pessoa e tudo o que a operação tiver direito. Orçamento à parte, conforme o tamanho do projeto.
-   **Não é um `PlanoId`** — fica fora do fluxo de assinatura (sem preço fixo, sem Mercado Pago, sem entrar
+   **Não é um `PlanoId`** - fica fora do fluxo de assinatura (sem preço fixo, sem Mercado Pago, sem entrar
    nos guards de limite/capacidade): é puramente um **cartão de contato** que leva ao WhatsApp do suporte.
    Conteúdo na fonte única `PLANO_PERSONALIZADO` (`lib/plans.ts`); link via `linkWhatsappSuporte` (`lib/admin.ts`).
    Renderizado na **landing** (`components/landing/Pricing.tsx`, banner em destaque abaixo dos cards), na tela
@@ -131,16 +131,16 @@ plano e ganha **1 mês grátis** (a rota `POST /api/onboarding/plano` grava o pl
 `status = trialing` e `trial_ate = hoje + 30 dias`, via service role após checar que é o dono).
 Os limites/permissões são fonte única em **`lib/plans.ts`** (consumidos pelo hook
 `lib/usePlano.ts`) e **espelhados em triggers/funções no banco** (enforcement real: bloqueia revendedora acima do limite, criação de
-vendedor/motoboy fora do plano e criação de entrega fora do Expansão — ver §13). Pagamento pelo
+vendedor/motoboy fora do plano e criação de entrega fora do Expansão - ver §13). Pagamento pelo
 **Mercado Pago**; a troca de plano efetiva acontece via webhook (RPC `mudar_plano` está revogada
 para o cliente desde `0021`, e o super-admin pode trocar manualmente em `/admin`).
 
 **Plano efetivo** (`planoEfetivo` em `lib/plans.ts` e `private.plano_efetivo` no banco):
 durante o trial valem as capacidades de **Expansão**; assinatura **cancelada/inadimplente**
 (`canceled`/`past_due`) cai no **piso Ambulante** (perde recursos, mas não apaga dados);
-caso contrário vale o plano contratado. Downgrade é **não destrutivo** — os dados ficam e os
+caso contrário vale o plano contratado. Downgrade é **não destrutivo** - os dados ficam e os
 recursos voltam ao subir de plano. Revendedoras criadas no trial e que excedam o limite do
-plano novo são bloqueadas **por posição** (só as N mais antigas operam — ver §7 e §13).
+plano novo são bloqueadas **por posição** (só as N mais antigas operam - ver §7 e §13).
 
 Navegação e rotas se adaptam ao papel e às **capacidades do plano**
 (`lib/permissoes.ts`, `components/Guard.tsx`, `components/AppShell.tsx`).
@@ -158,7 +158,7 @@ Navegação e rotas se adaptam ao papel e às **capacidades do plano**
 | `/produtos` | Estoque: cadastro completo, variações/grade, entrada/ajuste, **filtro por categoria**. |
 | `/vender` | Venda rápida: carrinho, canal, revendedora, desconto, fiado, **pagamento + parcelas**. |
 | `/revendedoras` | Comissão/meta por revendedora + **gestão de acesso** (e-mail, liberar 1ª senha). |
-| `/entregas` | Entregas (dono gerencia; motoboy vê/atualiza as suas **e pega do pool** as sem dono — claim/devolver, `0034`). Aba sempre visível: fora do Expansão mostra pitch de upgrade. |
+| `/entregas` | Entregas (dono gerencia; motoboy vê/atualiza as suas **e pega do pool** as sem dono - claim/devolver, `0034`). Aba sempre visível: fora do Expansão mostra pitch de upgrade. |
 | `/recebimentos` | **Caixa de recebimentos** (só dono): entradas de conta conectada (MP) para confirmar "foi venda?" → vira venda. Badge de pendentes no menu. |
 | `/financeiro` | **Contas a pagar** (só dono): fornecedores, aluguel, energia etc., com categorias e filtro (pendentes/pagas/todas) + resumo **a receber − a pagar = saldo projetado**. |
 | `/reposicao` | Sugestões de compra (média de venda dos últimos 30 dias; ciente de grade/variações). |
@@ -169,7 +169,7 @@ Navegação e rotas se adaptam ao papel e às **capacidades do plano**
 | `/planos` | Escolha/assinatura de plano (checkout Mercado Pago). |
 | `/configuracoes` | Loja, identidade, **categorias**, aparência, equipe de acesso, atalho da loja. |
 | `/configuracoes/plano` | Assinatura: plano atual, status, **uso × limites**. |
-| `/admin` | **Superadmin** do produto: 4 abas — **Resumo** (MRR/ARR, lojas por status, mix de planos), **Lojas** (moderar conta + trocar plano), **Chamados** de suporte e **Auditoria** (trilha append-only das ações sensíveis) — ver §12. |
+| `/admin` | **Superadmin** do produto: 4 abas - **Resumo** (MRR/ARR, lojas por status, mix de planos), **Lojas** (moderar conta + trocar plano), **Chamados** de suporte e **Auditoria** (trilha append-only das ações sensíveis) - ver §12. |
 | `/perfil` | Dados do usuário logado. |
 
 ### Público / externo
@@ -188,10 +188,10 @@ Navegação e rotas se adaptam ao papel e às **capacidades do plano**
 | `POST /api/revendedora/ativar` | Revendedora ativa o acesso com o e-mail liberado + **código de convite** + senha escolhida (§7). |
 | `POST /api/mercadopago/assinar` | Inicia o checkout de assinatura no Mercado Pago. |
 | `POST /api/mercadopago/confirmar` | Pós-checkout: re-consulta a preapproval e aplica o plano na hora (valida que é da org do dono). |
-| `POST,GET /api/mercadopago/webhook` | Notificações do MP — **preapproval** (aplica plano) e **payment** (grava recebimento). Re-consulta o ID na API do MP e valida `x-signature` (ver §13). |
+| `POST,GET /api/mercadopago/webhook` | Notificações do MP - **preapproval** (aplica plano) e **payment** (grava recebimento). Re-consulta o ID na API do MP e valida `x-signature` (ver §13). |
 | `GET /api/admin/overview` | Super-admin: agregados da plataforma (MRR/ARR, lojas, planos). Service role após checar o e-mail. |
 | `POST /api/admin/plano` | Super-admin: troca manual de plano de uma loja (cortesia/suporte; sem cobrança no MP). |
-| `POST /api/admin/usuario` | Super-admin: moderar conta da loja — `desativar`/`banir`/`reativar` (ban no `auth.users`) ou `deletar` (apaga org + contas). Nunca age sobre o próprio super-admin. |
+| `POST /api/admin/usuario` | Super-admin: moderar conta da loja - `desativar`/`banir`/`reativar` (ban no `auth.users`) ou `deletar` (apaga org + contas). Nunca age sobre o próprio super-admin. |
 
 ---
 
@@ -230,11 +230,11 @@ lucros da loja. Em vez disso:
 então cada uma checa `private.revendedora_no_limite(id)`. Se o **plano efetivo** não permite
 revendedoras (ex.: **Ambulante** = 0, ou assinatura cancelada → piso Ambulante), **nenhuma**
 loga, lê catálogo, vê vendas ou registra venda. Quando há limite (Solo = 3, Equipe = 15),
-operam apenas as **N revendedoras mais antigas** (`order by criada_em`); as demais — tipicamente
-criadas no trial Expansão — ficam bloqueadas até a loja subir de plano. **Nada é apagado**: o
+operam apenas as **N revendedoras mais antigas** (`order by criada_em`); as demais - tipicamente
+criadas no trial Expansão - ficam bloqueadas até a loja subir de plano. **Nada é apagado**: o
 acesso volta sozinho ao regularizar.
 
-**Fluxo de ativação (com código de convite — `0031`):** o dono cadastra o e-mail e clica em
+**Fluxo de ativação (com código de convite - `0031`):** o dono cadastra o e-mail e clica em
 **"Liberar acesso"**, o que gera um **código curto de uso único com validade**. O dono passa
 esse código (junto do link `/acesso`) para a revendedora, que informa **e-mail + código** e
 **cria a própria senha** (1º acesso). A rota `/api/revendedora/ativar` só cria o login se o
@@ -307,15 +307,15 @@ enforcement de plano: `plano_efetivo()`, `limite_revendedoras()`, `permite_reven
 | `0026_registrar_venda_owner` | RPCs atômicas `registrar_venda` (dono/vendedor) e `confirmar_entrada` (recebimento → venda, idempotente). Ver §13. |
 | `0027_plano_downgrade` | `plano_efetivo`: cancelado/inadimplente cai no piso Ambulante; gate da revendedora vira **por posição** (`revendedora_no_limite`). |
 | `0028_chat_hardening` | Hardening do chat público (conversa só p/ loja ativa, `org_id`/`cliente_id` imutáveis, `autor_tipo` amarrado ao papel, cap de texto) + limite de tipo/tamanho nos buckets de imagem. |
-| `0029_estoque_publico_e_vendedores` | (D) `loja_publica` deixa de expor a **quantidade** de estoque — só um booleano `esgotado` (antes vazava inventário no DevTools). (B) Limite de **vendedores internos** por plano (Equipe = 3, Expansão = ∞). |
-| `0030_org_acesso` | Coluna `org.acesso` (`ativo`/`desativado`/`banido`) — rótulo de moderação do super-admin (o ban real é no `auth.users`). Substitui o antigo `0025_org_acesso`. |
+| `0029_estoque_publico_e_vendedores` | (D) `loja_publica` deixa de expor a **quantidade** de estoque - só um booleano `esgotado` (antes vazava inventário no DevTools). (B) Limite de **vendedores internos** por plano (Equipe = 3, Expansão = ∞). |
+| `0030_org_acesso` | Coluna `org.acesso` (`ativo`/`desativado`/`banido`) - rótulo de moderação do super-admin (o ban real é no `auth.users`). Substitui o antigo `0025_org_acesso`. |
 | `0031_revendedora_convite` | **Código de convite** de uso único + validade para a 1ª ativação da revendedora (fecha a janela do §7). |
 | `0032_admin_log` | **Trilha de auditoria** do super-admin (`admin_log`, append-only): registra moderar conta e trocar plano. Só o super-admin lê; ninguém atualiza/apaga. |
 | `0033_contas_pagar` | Tabela `conta_pagar` (financeiro: o que **sai**) + RLS por org (leitura da equipe, escrita do dono). Fecha o fluxo de caixa com os recebimentos. |
 | `0034_entrega_pool` | **Pool de entregas** (fluxo "pegar / devolver"): o motoboy também vê as entregas **sem dono** da loja e pode **reivindicá-las** (claim) ou devolvê-las; a trava de escrita garante que ele só deixa a entrega consigo mesmo ou solta (nunca atribui a outro). Realtime ligado. |
 
 > **Numeração:** as migrations do chat foram renumeradas (`0017`–`0019`) para não colidir
-> com o fluxo paralelo de aparência/chamados (`0014`/`0016`). Por isso há um **gap no `0015`** —
+> com o fluxo paralelo de aparência/chamados (`0014`/`0016`). Por isso há um **gap no `0015`** -
 > inofensivo, já que o Supabase CLI ordena por nome. **Há dois arquivos `0025_*`** (`org_acesso`
 > e `revendedora_plano`): são independentes e ordenados por nome, sem conflito. A ordem de
 > dependência do chat (`token → criada_em → conversa_ultima_cliente`) foi preservada. Tudo já
@@ -331,14 +331,14 @@ cp .env.local.example .env.local   # preencher com as chaves do Supabase
 npm run dev                         # http://localhost:3000
 ```
 
-**Variáveis de ambiente** (`.env.local`, fora do git — ver `.env.local.example`):
+**Variáveis de ambiente** (`.env.local`, fora do git - ver `.env.local.example`):
 - `NEXT_PUBLIC_SUPABASE_URL` - URL do projeto.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - chave pública (segura no browser).
 - `SUPABASE_SERVICE_ROLE_KEY` - **secreta, só no servidor** (rotas `/api`). Nunca commitar.
 - **Mercado Pago:** `MP_ACCESS_TOKEN` e `MP_CLIENT_SECRET` (secretos, server-only), `MP_CLIENT_ID`,
   `NEXT_PUBLIC_MP_PUBLIC_KEY`, `NEXT_PUBLIC_APP_URL` (domínio público).
 - `MP_WEBHOOK_SECRET` - segredo do webhook do MP. Se ausente, a validação de `x-signature` é
-  **pulada** (retrocompat) — **defina em produção** para rejeitar notificações forjadas (§13).
+  **pulada** (retrocompat) - **defina em produção** para rejeitar notificações forjadas (§13).
 
 Build de produção: `npm run build && npm start`.
 
@@ -387,7 +387,7 @@ components/
   ThemeToggle.tsx → tema claro/escuro; Reporte.tsx → abrir chamado de suporte
   charts/         → VendasArea (gráfico de vendas; usa a cor da marca, tooltip e animação)
   landing/        → LiveDashboard (hero vivo), Reveal (scroll-reveal), Pricing, Faq,
-                    StickyCta, DashboardMock (mock legado) — ver LANDING.md
+                    StickyCta, DashboardMock (mock legado) - ver LANDING.md
 scripts/criar-admin.mjs → cria/reseta a conta superadmin
 supabase/migrations/  → SQL versionado (§9)
 ```
@@ -397,14 +397,14 @@ supabase/migrations/  → SQL versionado (§9)
 ## 12. Admin / superadmin (plataforma + suporte)
 
 O AutoManager tem uma área de **plataforma** separada das lojas, para o time do produto operar
-o SaaS — não é o "admin" de uma loja (esse é o `owner`). Tudo nas rotas `/api/admin/*` roda com
+o SaaS - não é o "admin" de uma loja (esse é o `owner`). Tudo nas rotas `/api/admin/*` roda com
 `service_role` (ignora RLS) **só depois** de confirmar, pelo e-mail da sessão, que quem chama é
 o super-admin.
 
 - **Quem acessa:** uma única conta, definida em `lib/admin.ts` →
   `SUPERADMIN_EMAIL = "admin@automanager.com"`. Só esse e-mail vê o item **"Admin"** no menu e
   abre `/admin`.
-- **Criar a conta (uma vez):** na raiz do projeto, `node scripts/criar-admin.mjs` — cria
+- **Criar a conta (uma vez):** na raiz do projeto, `node scripts/criar-admin.mjs` - cria
   `admin@automanager.com` com senha provisória **`123mudar`** (precisa do `.env.local` com
   `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Se já existir, **redefine a senha**.
 - **Entrar:** `/login` com esse e-mail → o item **"Admin"** aparece. **Troque a senha** depois
@@ -415,15 +415,15 @@ o super-admin.
   contagem de lojas por status (ativas/trial/canceladas) e o **mix de planos** (ativas e MRR por
   plano). A rota tolera o banco sem a coluna `org.acesso` (conta tudo como `ativo`).
 - **Lojas:** lista todas as lojas (dono, plano, status, membros). Por loja o super-admin pode
-  **trocar o plano** (`POST /api/admin/plano` — cortesia/suporte, sem cobrança no MP) e **moderar
+  **trocar o plano** (`POST /api/admin/plano` - cortesia/suporte, sem cobrança no MP) e **moderar
   a conta** (`POST /api/admin/usuario`): `desativar`/`banir` (bane todos os logins da loja no
   `auth.users` e marca `org.acesso`), `reativar` (remove o ban) ou `deletar` (apaga a org em
-  cascata + as contas de auth — **irreversível**). Trava de segurança: nunca age sobre a própria
+  cascata + as contas de auth - **irreversível**). Trava de segurança: nunca age sobre a própria
   conta do super-admin.
 - **Chamados:** suporte das lojas. Tabela `chamado` (migration `0016_chamados.sql`) com RLS que
   libera **só** o e-mail do superadmin; o lojista abre chamado pelo componente `Reporte.tsx`.
 - **Auditoria** (`GET /api/admin/logs`): trilha **append-only** das ações sensíveis (moderar
-  conta e trocar plano) — quem, quando, sobre qual loja e o quê. As rotas `/api/admin/*` gravam
+  conta e trocar plano) - quem, quando, sobre qual loja e o quê. As rotas `/api/admin/*` gravam
   via `lib/adminAudit.ts` (tabela `admin_log`, `0032`); ninguém atualiza nem apaga.
 
 - **Trocar quem é admin:** edite `SUPERADMIN_EMAIL` em `lib/admin.ts` **e** o e-mail no RLS de
@@ -438,38 +438,38 @@ o super-admin.
 Revisão de segurança/robustez aplicada em quatro lotes (commits `c23cd53`, `7da24a8`,
 `9860d5f`, `880504e`), por gravidade. Tudo já no banco e com build verde.
 
-**Lote 1 — críticos: atomicidade e idempotência.**
+**Lote 1 - críticos: atomicidade e idempotência.**
 - **Venda atômica** (`0026`): o caminho do dono em `lib/store.ts` fazia vários
-  `INSERT/UPDATE` soltos no cliente, sem transação — dava para "confirmar" uma venda sem nada
+  `INSERT/UPDATE` soltos no cliente, sem transação - dava para "confirmar" uma venda sem nada
   gravado, venda sem itens, estoque divergente e oversell. Agora `store.ts` chama a RPC
   `registrar_venda(...)` (`SECURITY DEFINER`), que valida estoque, grava venda + itens +
   movimentos e baixa estoque de forma **relativa** (`estoque_atual = estoque_atual - qtd`) numa
   só transação. O `id` vem do cliente para casar com o update otimista.
 - **Recebimento → venda idempotente** (`0026`): `confirmar_entrada(entrada, venda)` trava a
   linha (`for update`), cria a venda e marca a entrada `confirmada` juntas; se a entrada já foi
-  decidida (reenvio, duplo-clique, 2ª aba), **não cria outra venda** — devolve a existente.
+  decidida (reenvio, duplo-clique, 2ª aba), **não cria outra venda** - devolve a existente.
 - **Webhook idempotente** (`0024`): `entrada_pendente` tem índice único
   `(org_id, provider_pagamento_id)` (não-parcial, para o upsert do PostgREST), então o mesmo
   pagamento do MP não entra duas vezes.
 
-**Lote 2 — altos: enforcement de plano no banco.** A UI já mostrava o paywall, mas as regras
+**Lote 2 - altos: enforcement de plano no banco.** A UI já mostrava o paywall, mas as regras
 de `lib/plans.ts` precisavam existir **no banco** (senão eram furáveis via API direta):
 entregas só no Expansão (`0022`), Ambulante com 0 revendedoras (`0023`), e o gate da
 revendedora **por posição** quando o plano encolhe (`0027`, ver §7). Inclui também correção da
 grade/variações na reposição e do papel/role no onboarding.
 
-**Lote 3 — médios/segurança: hardening do chat, upload e webhook.**
+**Lote 3 - médios/segurança: hardening do chat, upload e webhook.**
 - **Chat** (`0028`): visitante só cria conversa para **loja existente e ativa** (sem
   spam cross-tenant); `org_id`/`cliente_id` viram **imutáveis** (trigger) para impedir sequestro
   de conversa para outro inbox; `autor_tipo` é amarrado ao papel (cliente só `cliente`, dono só
   `loja`), com `org_id` batendo a conversa e **cap de texto** (4000 no banco, 2000 na policy).
 - **Upload** (`0028` + `lib/imagem.ts`): buckets `lojas`/`produtos` limitados a
-  **5 MB** e a `jpeg/png/webp/gif` (bloqueia SVG inline) — validado no cliente **e** no servidor.
+  **5 MB** e a `jpeg/png/webp/gif` (bloqueia SVG inline) - validado no cliente **e** no servidor.
 - **Webhook** (`mercadopago/webhook`): valida a assinatura `x-signature` do MP (HMAC, manifesto
   `id;request-id;ts`) quando `MP_WEBHOOK_SECRET` está definido, e **re-consulta** o ID na API do
-  MP antes de aplicar plano/recebimento — uma notificação forjada não ativa nada.
+  MP antes de aplicar plano/recebimento - uma notificação forjada não ativa nada.
 
-**Lote 4 — baixos: robustez.** Realtime mais resiliente (re-subscribe/reconexão) e **estoque
+**Lote 4 - baixos: robustez.** Realtime mais resiliente (re-subscribe/reconexão) e **estoque
 não-negativo** como defesa adicional na baixa.
 
 ---
@@ -494,15 +494,15 @@ respeita `prefers-reduced-motion`.
 - **Landing:** `.lp-grid-bg`, `.lp-reveal`, `.lp-toast`, `.lp-live-dot`.
 
 **Componentes de apoio:**
-- `components/Dialog.tsx` — **`DialogProvider` + `useDialog()`** (`confirm`/`prompt`/`alerta`),
+- `components/Dialog.tsx` - **`DialogProvider` + `useDialog()`** (`confirm`/`prompt`/`alerta`),
   montado no `AppShell`. Substituiu **todos** os `confirm()/alert()/prompt()` nativos
   (produtos, revendedoras, planos, admin, configurações, minha-loja, vender, recebimentos,
   perfil) por diálogos com backdrop blur, animação, teclado (Esc/Enter) e variante de perigo.
-- `components/Skeleton.tsx` — usado no **Guard** (skeleton da app inteira na hidratação) e por
+- `components/Skeleton.tsx` - usado no **Guard** (skeleton da app inteira na hidratação) e por
   rota (conversas, admin, gráficos) em vez de “Carregando…”.
-- `components/CountUp.tsx` — números animando (painel, relatórios, analytics, perfil e o hero
+- `components/CountUp.tsx` - números animando (painel, relatórios, analytics, perfil e o hero
   vivo da landing).
-- `components/PageTransition.tsx` — fade entre rotas (re-chaveia pelo pathname).
+- `components/PageTransition.tsx` - fade entre rotas (re-chaveia pelo pathname).
 
 **Telas com correções de UX relevantes:**
 - **Vender** e **Reposição:** trava de **duplo clique** (venda/entrada duplicada) + spinner.
@@ -522,11 +522,11 @@ respeita `prefers-reduced-motion`.
 Reconstrução **nível Stripe/Linear**: dark premium **auto-contido** (a landing força um tema
 dark próprio via CSS vars, independente do tema salvo do visitante), com:
 - **Hero vivo** (`LiveDashboard`): faturamento contando, venda registrada, estoque baixando,
-  comissão calculada e notificações aparecendo — demonstra valor sem texto.
+  comissão calculada e notificações aparecendo - demonstra valor sem texto.
 - **Scroll storytelling** (`Reveal`, via IntersectionObserver) em todas as seções.
 - Estrutura: nav glass → hero → prova social → dor→solução → benefícios (feature→resultado) →
   como funciona (fluxo) → diferencial → casos de uso → depoimentos → planos → FAQ curada → CTA.
 - **Pricing** com destaque do plano Equipe e banner do plano **Personalizado** (sob consulta → WhatsApp) logo abaixo dos cards; **Faq** aceita lista curada de objeções.
 
 > A estratégia, a copy e as variações de headline ficam em **`LANDING.md`**. Números e
-> depoimentos estão marcados como **ilustrativos** — trocar por dados reais.
+> depoimentos estão marcados como **ilustrativos** - trocar por dados reais.

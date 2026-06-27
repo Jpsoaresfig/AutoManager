@@ -13,7 +13,6 @@ import {
   MessageCircle,
   NotebookPen,
   PlayCircle,
-  Quote,
   Sparkles,
   Star,
   Store,
@@ -29,9 +28,10 @@ import Pricing from "@/components/landing/Pricing";
 import StickyCta from "@/components/landing/StickyCta";
 import LiveDashboard from "@/components/landing/LiveDashboard";
 import Reveal from "@/components/landing/Reveal";
+import Testimonials from "@/components/landing/Testimonials";
 
 export const metadata = {
-  title: "AutoManager — Saiba quanto sua loja vende e lucra, todo dia",
+  title: "AutoManager - Saiba quanto sua loja vende e lucra, todo dia",
   description:
     "O sistema de gestão para micronegócios do Brasil: estoque, vendas, comissões, revendedoras e relatórios de lucro em um app só. Troque o caderno, a planilha e o WhatsApp por um painel. Teste grátis, sem cartão.",
 };
@@ -62,9 +62,9 @@ const TEMA_DARK = {
 const SEGMENTOS = ["Semijoias", "Roupas", "Cosméticos", "Doces", "Bijuterias", "Papelaria", "Artesanato", "Pet shop"];
 
 const DORES = [
-  { p: "Produto acabou e você só viu quando o cliente pediu.", s: "Alerta de estoque baixo antes de faltar — você repõe a tempo." },
+  { p: "Produto acabou e você só viu quando o cliente pediu.", s: "Alerta de estoque baixo antes de faltar - você repõe a tempo." },
   { p: "Cliente pagou e você esqueceu de registrar.", s: "Recebimentos e fiado anotados no automático. Nada se perde." },
-  { p: "Comissão calculada de cabeça — e quase sempre errada.", s: "Comissão exata por venda, sem calculadora e sem briga." },
+  { p: "Comissão calculada de cabeça - e quase sempre errada.", s: "Comissão exata por venda, sem calculadora e sem briga." },
   { p: "Dinheiro entrando e você sem saber se deu lucro.", s: "Lucro real por produto, por canal e por período." },
   { p: "Tudo espalhado entre caderno, WhatsApp e planilha.", s: "Um painel só, no seu celular, sempre atualizado." },
   { p: "Revendedora vendendo e você sem saber quanto deve.", s: "Cada uma com login próprio; você acompanha em tempo real." },
@@ -72,7 +72,7 @@ const DORES = [
 
 const BENEFICIOS = [
   { icon: Boxes, t: "Nunca mais perca venda por falta de estoque", d: "O estoque baixa sozinho a cada venda e te avisa quando algo está acabando." },
-  { icon: Timer, t: "Registre a venda em segundos", d: "No balcão ou pelo WhatsApp, com fiado e parcelas — em 1 toque." },
+  { icon: Timer, t: "Registre a venda em segundos", d: "No balcão ou pelo WhatsApp, com fiado e parcelas - em 1 toque." },
   { icon: Wallet, t: "Comissão certa, no automático", d: "Defina o percentual uma vez. O sistema calcula e mostra quanto pagar." },
   { icon: LineChart, t: "Saiba o lucro real, sem achismo", d: "Relatório por produto, canal e período. Descubra o que dá retorno." },
   { icon: Store, t: "Uma loja online pronta", d: "Vitrine com link próprio pra mandar no Insta e no Zap, com chat." },
@@ -88,7 +88,7 @@ const FLUXO = [
 ];
 
 const FAQ_LANDING = [
-  { q: "Preciso colocar cartão para testar?", a: "Não. O teste grátis começa sem cartão. Você só decide pagar se gostar — e aí escolhe o plano do tamanho da sua loja." },
+  { q: "Preciso colocar cartão para testar?", a: "Não. O teste grátis começa sem cartão. Você só decide pagar se gostar - e aí escolhe o plano do tamanho da sua loja." },
   { q: "Funciona no celular?", a: "Funciona e foi feito pensando primeiro no celular. Dá pra adicionar à tela inicial e usar como um aplicativo, inclusive pra registrar venda no balcão." },
   { q: "Posso cancelar quando quiser?", a: "Sim. Sem fidelidade, sem multa e sem ligação pra te 'segurar'. Cancelou, paramos de cobrar no fim do período e seus dados ficam disponíveis pra exportar." },
   { q: "Preciso instalar algum programa?", a: "Não. Abre direto no navegador do celular ou do computador. Nada pra baixar, nada pra atualizar." },
@@ -140,7 +140,7 @@ export default function Landing() {
               <span className="bg-gradient-to-r from-brand-400 via-brand-500 to-brand-700 bg-clip-text text-transparent">
                 vende e lucra
               </span>{" "}
-              — todo dia.
+              - todo dia.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
               O AutoManager troca o caderno, a planilha e o WhatsApp por um painel só: estoque,
@@ -201,7 +201,7 @@ export default function Landing() {
             ))}
           </div>
           <p className="mt-6 text-center text-xs text-muted/70">
-            * Números ilustrativos da fase inicial — substituir por dados reais conforme a base cresce.
+            * Números ilustrativos da fase inicial - substituir por dados reais conforme a base cresce.
           </p>
         </div>
       </section>
@@ -278,7 +278,7 @@ export default function Landing() {
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-strong sm:text-4xl">
               Você registra uma venda. O sistema faz o resto.
             </h2>
-            <p className="mt-3 text-muted">Um toque dispara tudo — em tempo real, sem retrabalho.</p>
+            <p className="mt-3 text-muted">Um toque dispara tudo - em tempo real, sem retrabalho.</p>
           </div>
         </Reveal>
 
@@ -401,35 +401,7 @@ export default function Landing() {
               <h2 className="mt-3 text-3xl font-bold tracking-tight text-strong sm:text-4xl">Quem largou o caderno não volta</h2>
             </div>
           </Reveal>
-          <div className="mt-12 grid gap-5 lg:grid-cols-3">
-            {[
-              { nome: "Aline R.", loja: "Semijoias · Goiânia", txt: "Eu pagava comissão errada e nem sabia. No primeiro mês descobri que perdia quase R$ 400. Hoje o sistema calcula tudo sozinho." },
-              { nome: "Patrícia M.", loja: "Cosméticos · Sorocaba", txt: "Parei de anotar venda no caderno e no Zap. Minhas 4 revendedoras registram pelo celular e eu vejo tudo num lugar só." },
-              { nome: "Camila S.", loja: "Moda feminina · Recife", txt: "Eu não sabia quais peças davam lucro. Agora vejo o relatório e compro só o que gira. Estoque parado caiu muito." },
-            ].map((d, i) => (
-              <Reveal key={d.nome} delay={i * 90}>
-                <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[var(--bg)] p-6">
-                  <Quote size={26} className="text-brand-500/40" />
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-strong">{d.txt}</p>
-                  <div className="mt-4 flex items-center gap-1 text-brand-500">
-                    {Array.from({ length: 5 }).map((_, k) => (
-                      <Star key={k} size={13} className="fill-brand-500 text-brand-500" />
-                    ))}
-                  </div>
-                  <div className="mt-3 flex items-center gap-2.5">
-                    <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-500/10 font-bold text-brand-400">
-                      {d.nome[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-strong">{d.nome}</p>
-                      <p className="text-xs text-muted">{d.loja}</p>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-          <p className="mt-6 text-center text-xs text-muted/70">Depoimentos ilustrativos — substituir por casos reais.</p>
+          <Testimonials />
         </div>
       </section>
 
@@ -530,7 +502,7 @@ export default function Landing() {
             <Gem size={16} /> AutoManager
           </span>
           <span className="text-center text-xs">
-            Estoque, vendas, comissões e revendedoras para a sua loja — em um só lugar.
+            Estoque, vendas, comissões e revendedoras para a sua loja - em um só lugar.
           </span>
           <div className="flex gap-4">
             <a href="#planos" className="transition hover:text-strong">Planos</a>

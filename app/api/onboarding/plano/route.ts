@@ -3,7 +3,7 @@ import { createClient as createServer } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { PLANOS, type PlanoId } from "@/lib/plans";
 
-// Define o plano escolhido no onboarding como TRIAL de 1 mês (grátis) — depois
+// Define o plano escolhido no onboarding como TRIAL de 1 mês (grátis) - depois
 // começa a cobrar (o ciclo pago é configurado no Mercado Pago ao fim do trial).
 // Só o DONO (owner) da org pode definir, e a escrita usa service_role (a tabela
 // `assinatura` não é gravável via RLS pelo usuário comum).
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   const sb = admin();
 
   // A-3: o período gratuito é concedido UMA vez. Se já foi consumido, não reabre
-  // nem estende — durante o trial vigente permite só trocar o plano escolhido.
+  // nem estende - durante o trial vigente permite só trocar o plano escolhido.
   const { data: cur } = await sb
     .from("assinatura")
     .select("status, trial_consumido")
