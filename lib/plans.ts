@@ -150,7 +150,10 @@ export function diasDeTrial(a: Assinatura | null): number {
 
 // Durante o trial valem as capacidades de EXPANSAO.
 export function planoEfetivo(a: Assinatura | null): PlanoId {
-  if (!a) return "solo";
+  // sem assinatura carregada: assume o mais restritivo (o banco enforça de qualquer jeito)
+  if (!a) return "ambulante";
+  // parou de pagar (cancelado/inadimplente): perde as capacidades, cai no piso
+  if (a.status === "canceled" || a.status === "past_due") return "ambulante";
   return trialAtivo(a) ? "expansao" : a.plano;
 }
 

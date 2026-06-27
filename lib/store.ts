@@ -219,6 +219,8 @@ interface State {
   usuarioId: string | null;
   email: string | null;
   role: Role;
+  // autenticado, porém sem loja própria (revendedora/visitante): não pertence ao painel
+  semOrg: boolean;
   config: Config;
   assinatura: Assinatura | null;
   produtos: Produto[];
@@ -306,6 +308,7 @@ export const useStore = create<State>()((set, get) => {
     usuarioId: null,
     email: null,
     role: "owner",
+    semOrg: false,
     config: configInicial,
     assinatura: null,
     produtos: [],
@@ -377,6 +380,8 @@ export const useStore = create<State>()((set, get) => {
         usuarioId: user.id,
         email: user.email ?? null,
         role: (eu?.role as Role) ?? "owner",
+        // sem linha em usuario = não é dono nem membro desta loja (revendedora/visitante)
+        semOrg: !eu,
         assinatura,
         config: org
           ? {
@@ -738,6 +743,9 @@ export const useStore = create<State>()((set, get) => {
       const { orgId } = get();
       const prod = get().produtos.find((x) => x.id === id);
       if (!prod) return;
+      // grade: o estoque é a soma das variações; dar entrada no agregado
+      // criaria estoque "fantasma" invendável. Reposição vai na tela do produto.
+      if (prod.variacoes.length > 0) return;
       const novoEstoque = prod.estoqueAtual + qtd;
       set((s) => ({
         produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: novoEstoque } : x)),
@@ -757,6 +765,8 @@ export const useStore = create<State>()((set, get) => {
       const { orgId } = get();
       const prod = get().produtos.find((x) => x.id === id);
       if (!prod) return;
+      // grade: ajuste é por variação (na tela do produto); não mexe no agregado.
+      if (prod.variacoes.length > 0) return;
       const delta = novaQtd - prod.estoqueAtual;
       set((s) => ({
         produtos: s.produtos.map((x) => (x.id === id ? { ...x, estoqueAtual: novaQtd } : x)),

@@ -29,6 +29,9 @@ export function sugestoesReposicao(
   const out: SugestaoReposicao[] = [];
   for (const p of produtos) {
     if (!p.ativo) continue;
+    // produto com grade tem estoque por variação: reposição é feita na tela do
+    // produto (dar entrada no agregado corromperia a soma das variações).
+    if (p.variacoes.length > 0) continue;
     const vendido30d = vendidoUltimosDias(vendas, p.id, 30);
     const velocidadeDia = vendido30d / 30;
     const diasCobertura = velocidadeDia > 0 ? p.estoqueAtual / velocidadeDia : Infinity;
