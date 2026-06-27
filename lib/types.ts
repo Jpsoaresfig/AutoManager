@@ -8,6 +8,7 @@ export type FormaPagamento = "dinheiro" | "pix" | "credito" | "debito" | "boleto
 export type StatusPagamento = "paga" | "pendente" | "cancelada";
 export type OrigemRecebimento = "mercadopago" | "inter" | "manual";
 export type StatusEntrada = "pendente" | "confirmada" | "recusada";
+export type StatusContaPagar = "pendente" | "paga";
 
 export interface Variacao {
   id: string;
@@ -91,6 +92,21 @@ export interface EntradaPendente {
   vendaId: string | null;
   recebidoEm: number;
   decididoEm: number | null;
+}
+
+// Conta a pagar (despesa) — o lado que SAI do fluxo de caixa.
+export interface ContaPagar {
+  id: string;
+  descricao: string;
+  categoria: string | null;
+  fornecedor: string | null;
+  valor: number;
+  vencimento: string; // "YYYY-MM-DD" (data, sem fuso)
+  status: StatusContaPagar;
+  pagoEm: number | null;
+  recorrente: boolean;
+  observacao: string | null;
+  criadoEm: number;
 }
 
 export interface Movimento {

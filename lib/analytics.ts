@@ -1,4 +1,4 @@
-import type { Produto, Venda } from "./types";
+import type { Produto, Venda, ContaPagar } from "./types";
 
 const DIA = 24 * 60 * 60 * 1000;
 
@@ -157,6 +157,7 @@ const FORMA_LABEL: Record<string, string> = {
   pix: "Pix",
   credito: "Crédito",
   debito: "Débito",
+  boleto: "Boleto",
 };
 
 export interface Relatorio {
@@ -218,7 +219,7 @@ export function calcularRelatorio(vendas: Venda[], deMs: number, ateMs: number):
   // por forma de pagamento (caixa)
   const formaMap = new Map<string, number>();
   for (const v of pagasCaixa) formaMap.set(v.formaPagamento, (formaMap.get(v.formaPagamento) || 0) + v.total);
-  const porForma = ["dinheiro", "credito", "debito", "pix"]
+  const porForma = ["dinheiro", "pix", "credito", "debito", "boleto"]
     .map((forma) => ({ forma, label: FORMA_LABEL[forma], valor: formaMap.get(forma) || 0 }))
     .filter((x) => x.valor > 0);
 
@@ -260,6 +261,57 @@ export function calcularRelatorio(vendas: Venda[], deMs: number, ateMs: number):
     fluxoMedia,
     fluxoPico: { valor: pico.valor, dia: pico.dia },
     tendencia,
+  };
+}
+
+// ----------------------------------------------------- contas a pagar / fluxo
+export interface ResumoContas {
+  aPagar: number; // total pendente
+  qtdPendentes: number;
+  vencidasValor: number; // pendentes já vencidas
+  vencidasQtd: number;
+  aPagarMes: number; // pendentes que vencem no mês corrente
+  pagasMes: number; // pagas no mês corrente
+  porCategoria: { categoria: string; valor: number }[]; // pendentes agrupados
+}
+
+function ymdHoje(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+export function resumoContas(contas: ContaPagar[]): ResumoContas {
+  const hoje = ymdHoje();
+  const mes = hoje.slice(0, 7); // "YYYY-MM"
+  const inicioMes = inicioDoMes(0);
+
+  const pendentes = contas.filter((c) => c.status === "pendente");
+  const aPagar = pendentes.reduce((a, c) => a + c.valor, 0);
+
+  const vencidas = pendentes.filter((c) => c.vencimento < hoje);
+  const aPagarMes = pendentes.filter((c) => c.vencimento.slice(0, 7) === mes).reduce((a, c) => a + c.valor, 0);
+  const pagasMes = contas
+    .filter((c) => c.status === "paga" && c.pagoEm != null && c.pagoEm >= inicioMes)
+    .reduce((a, c) => a + c.valor, 0);
+
+  const catMap = new Map<string, number>();
+  for (const c of pendentes) {
+    const k = c.categoria || "Outros";
+    catMap.set(k, (catMap.get(k) || 0) + c.valor);
+  }
+  const porCategoria = [...catMap.entries()]
+    .map(([categoria, valor]) => ({ categoria, valor }))
+    .sort((a, b) => b.valor - a.valor);
+
+  return {
+    aPagar,
+    qtdPendentes: pendentes.length,
+    vencidasValor: vencidas.reduce((a, c) => a + c.valor, 0),
+    vencidasQtd: vencidas.length,
+    aPagarMes,
+    pagasMes,
+    porCategoria,
   };
 }
 

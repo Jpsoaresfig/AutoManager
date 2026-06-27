@@ -83,6 +83,18 @@ function Relatorios() {
     [vendas, revendedoras, deMs, ateMs]
   );
 
+  // resumo de parcelamento (crédito) no período
+  const parcelado = useMemo(() => {
+    const parceladas = vendas.filter(
+      (v) => v.data >= deMs && v.data <= ateMs && v.statusPagamento !== "cancelada" && v.parcelas > 1
+    );
+    return {
+      qtd: parceladas.length,
+      total: parceladas.reduce((a, v) => a + v.total, 0),
+      maxParcelas: parceladas.reduce((m, v) => Math.max(m, v.parcelas), 0),
+    };
+  }, [vendas, deMs, ateMs]);
+
   function exportarExcel() {
     const noPeriodo = vendas
       .filter((v) => v.data >= deMs && v.data <= ateMs)
@@ -94,6 +106,7 @@ function Relatorios() {
       pix: "Pix",
       credito: "Crédito",
       debito: "Débito",
+      boleto: "Boleto",
     };
     const statusLabel: Record<string, string> = {
       paga: "Paga",
@@ -109,6 +122,7 @@ function Relatorios() {
         hora,
         v.canal,
         formaLabel[v.formaPagamento] || v.formaPagamento,
+        v.parcelas > 1 ? `${v.parcelas}x` : "À vista",
         statusLabel[v.statusPagamento] || v.statusPagamento,
         nome(v.revendedoraId),
         itens,
@@ -127,6 +141,7 @@ function Relatorios() {
         "Hora",
         "Canal",
         "Pagamento",
+        "Parcelas",
         "Status",
         "Vendedora",
         "Itens",
@@ -245,6 +260,22 @@ function Relatorios() {
               <span className="font-semibold">{brl(f.valor)}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* parcelamento (crédito) */}
+      {parcelado.qtd > 0 && (
+        <div className="card flex items-center justify-between">
+          <div>
+            <div className="font-semibold">Vendas parceladas</div>
+            <div className="text-xs text-muted">
+              {parcelado.qtd} venda(s) · até {parcelado.maxParcelas}x
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="font-bold">{brl(parcelado.total)}</div>
+            <div className="text-[11px] text-muted">no crédito</div>
+          </div>
         </div>
       )}
 

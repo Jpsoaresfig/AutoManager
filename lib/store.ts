@@ -18,6 +18,7 @@ import type {
   TipoChamado,
   EntradaPendente,
   OrigemRecebimento,
+  ContaPagar,
 } from "./types";
 import type { Assinatura, PlanoId } from "./plans";
 
@@ -135,6 +136,22 @@ function mapEntradaPendente(r: any): EntradaPendente {
   };
 }
 
+function mapContaPagar(r: any): ContaPagar {
+  return {
+    id: r.id,
+    descricao: r.descricao,
+    categoria: r.categoria ?? null,
+    fornecedor: r.fornecedor ?? null,
+    valor: Number(r.valor ?? 0),
+    vencimento: r.vencimento, // já vem "YYYY-MM-DD"
+    status: r.status ?? "pendente",
+    pagoEm: r.pago_em ? new Date(r.pago_em).getTime() : null,
+    recorrente: !!r.recorrente,
+    observacao: r.observacao ?? null,
+    criadoEm: new Date(r.criado_em).getTime(),
+  };
+}
+
 // ----------------------------------------------------- mapeadores row -> tipo
 function mapVariacao(r: any): Variacao {
   return {
@@ -230,6 +247,7 @@ interface State {
   membros: Membro[];
   entregas: Entrega[];
   entradasPendentes: EntradaPendente[];
+  contasPagar: ContaPagar[];
 
   hydrate: () => Promise<void>;
 
@@ -258,12 +276,16 @@ interface State {
   setStatusEntrega: (entregaId: string, status: StatusEntrega) => Promise<void>;
 
   addProduto: (p: NovoProduto) => Promise<void>;
+  importarProdutos: (linhas: NovoProduto[]) => Promise<{ ok: boolean; inseridos: number; erro?: string }>;
   updateProduto: (id: string, patch: EditarProduto) => Promise<void>;
   entradaEstoque: (id: string, qtd: number) => Promise<void>;
   ajustarEstoque: (id: string, novaQtd: number, motivo: string) => Promise<void>;
 
   addRevendedora: (r: Omit<Revendedora, "id" | "criadaEm" | "ativa" | "acessoLiberado" | "temAcesso">) => Promise<void>;
   updateRevendedora: (id: string, patch: Partial<Revendedora>) => Promise<void>;
+  // libera o 1º acesso e devolve o código de convite (uso único) p/ o dono compartilhar
+  liberarAcessoRevendedora: (id: string) => Promise<{ ok: boolean; codigo?: string; erro?: string }>;
+  revogarAcessoRevendedora: (id: string) => Promise<void>;
 
   registrarVenda: (args: {
     itens: { produtoId: string; variacaoId?: string | null; qtd: number }[];
@@ -276,6 +298,19 @@ interface State {
   }) => Promise<Venda | null>;
   marcarComissaoPaga: (revendedoraId: string) => Promise<void>;
   marcarVendaRecebida: (vendaId: string) => Promise<void>;
+
+  // contas a pagar (financeiro)
+  addContaPagar: (c: {
+    descricao: string;
+    valor: number;
+    vencimento: string;
+    categoria?: string | null;
+    fornecedor?: string | null;
+    recorrente?: boolean;
+    observacao?: string | null;
+  }) => Promise<{ ok: boolean; erro?: string }>;
+  marcarContaPaga: (id: string, paga: boolean) => Promise<void>;
+  removerContaPagar: (id: string) => Promise<void>;
 
   // caixa de entrada de recebimentos
   confirmarEntrada: (entradaId: string) => Promise<Venda | null>;
@@ -318,6 +353,7 @@ export const useStore = create<State>()((set, get) => {
     membros: [],
     entregas: [],
     entradasPendentes: [],
+    contasPagar: [],
 
     hydrate: async () => {
       const supabase = sb();
@@ -341,6 +377,7 @@ export const useStore = create<State>()((set, get) => {
         { data: membros },
         { data: entregas },
         { data: entradas },
+        { data: contas },
         { data: assin },
       ] = await Promise.all([
         supabase.from("org").select("*").limit(1).maybeSingle(),
@@ -359,6 +396,8 @@ export const useStore = create<State>()((set, get) => {
           .select("*")
           .eq("status", "pendente")
           .order("recebido_em", { ascending: false }),
+        // contas a pagar (tabela pode não existir se 0033 não rodou)
+        supabase.from("conta_pagar").select("*").order("vencimento", { ascending: true }),
         supabase.from("assinatura").select("*").limit(1).maybeSingle(),
       ]);
 
@@ -419,6 +458,7 @@ export const useStore = create<State>()((set, get) => {
         membros: (membros || []).map(mapMembro),
         entregas: (entregas || []).map(mapEntrega),
         entradasPendentes: (entradas || []).map(mapEntradaPendente),
+        contasPagar: (contas || []).map(mapContaPagar),
       });
 
       // 2ª fase: histórico anterior à janela, paginado e mesclado em segundo plano.
@@ -663,6 +703,76 @@ export const useStore = create<State>()((set, get) => {
       }
     },
 
+    // Importação em lote (CSV): grava todos os produtos numa tacada só, sem
+    // variações (a grade é cadastrada produto a produto). Registra a entrada de
+    // estoque inicial dos que vieram com quantidade.
+    importarProdutos: async (linhas) => {
+      if (linhas.length === 0) return { ok: true, inseridos: 0 };
+      const { orgId } = get();
+      const agora = Date.now();
+      const novos: Produto[] = linhas.map((p) => ({
+        id: uid(),
+        nome: p.nome,
+        categoria: p.categoria,
+        sku: p.sku,
+        marca: p.marca,
+        custo: p.custo,
+        precoVenda: p.precoVenda,
+        precoComparativo: p.precoComparativo,
+        impostoPercent: p.impostoPercent ?? 0,
+        descricao: p.descricao,
+        imagens: [],
+        estoqueAtual: p.estoqueAtual,
+        estoqueMinimo: p.estoqueMinimo,
+        variacoes: [],
+        ativo: true,
+        criadoEm: agora,
+      }));
+      set((s) => ({ produtos: [...s.produtos, ...novos] }));
+      if (!orgId) return { ok: true, inseridos: novos.length };
+
+      const supabase = sb();
+      const { error } = await supabase.from("produto").insert(
+        novos.map((p) => ({
+          id: p.id,
+          org_id: orgId,
+          nome: p.nome,
+          categoria: p.categoria,
+          sku: p.sku || null,
+          marca: p.marca || null,
+          custo: p.custo,
+          preco_venda: p.precoVenda,
+          preco_comparativo: p.precoComparativo ?? null,
+          imposto_percent: p.impostoPercent ?? 0,
+          descricao: p.descricao || null,
+          imagens: [],
+          estoque_atual: p.estoqueAtual,
+          estoque_minimo: p.estoqueMinimo,
+          ativo: true,
+        }))
+      );
+      // falhou -> desfaz o otimista
+      if (error) {
+        const ids = new Set(novos.map((p) => p.id));
+        set((s) => ({ produtos: s.produtos.filter((p) => !ids.has(p.id)) }));
+        return { ok: false, inseridos: 0, erro: error.message };
+      }
+
+      const comEstoque = novos.filter((p) => p.estoqueAtual > 0);
+      if (comEstoque.length > 0) {
+        await supabase.from("movimento_estoque").insert(
+          comEstoque.map((p) => ({
+            org_id: orgId,
+            produto_id: p.id,
+            tipo: "entrada",
+            qtd: p.estoqueAtual,
+            motivo: "Importação inicial",
+          }))
+        );
+      }
+      return { ok: true, inseridos: novos.length };
+    },
+
     updateProduto: async (id, patch) => {
       const { orgId } = get();
       const atual = get().produtos.find((p) => p.id === id);
@@ -826,6 +936,29 @@ export const useStore = create<State>()((set, get) => {
       await sb().from("revendedora").update(row).eq("id", id);
     },
 
+    liberarAcessoRevendedora: async (id) => {
+      const { data, error } = await sb().rpc("liberar_revendedora", { p_id: id });
+      if (error) {
+        const erro = /sem_email/.test(error.message)
+          ? "Cadastre o e-mail dela antes de liberar o acesso."
+          : /ja_ativada/.test(error.message)
+          ? "Essa revendedora já ativou o acesso."
+          : "Não foi possível liberar o acesso agora.";
+        return { ok: false, erro };
+      }
+      set((s) => ({
+        revendedoras: s.revendedoras.map((r) => (r.id === id ? { ...r, acessoLiberado: true } : r)),
+      }));
+      return { ok: true, codigo: (data as any)?.codigo };
+    },
+
+    revogarAcessoRevendedora: async (id) => {
+      set((s) => ({
+        revendedoras: s.revendedoras.map((r) => (r.id === id ? { ...r, acessoLiberado: false } : r)),
+      }));
+      await sb().rpc("revogar_revendedora", { p_id: id });
+    },
+
     registrarVenda: async ({ itens, canal, revendedoraId, formaPagamento, parcelas = 1, desconto = 0, fiado = false }) => {
       const parcelasNorm = formaPagamento === "credito" ? Math.max(1, parcelas) : 1;
       const s = get();
@@ -983,6 +1116,71 @@ export const useStore = create<State>()((set, get) => {
         .from("venda")
         .update({ status_pagamento: "paga", data_pagamento: new Date(agora).toISOString() })
         .eq("id", vendaId);
+    },
+
+    addContaPagar: async (c) => {
+      const { orgId } = get();
+      if (!c.descricao.trim()) return { ok: false, erro: "Informe a descrição da conta." };
+      if (!c.valor || c.valor <= 0) return { ok: false, erro: "Informe um valor válido." };
+      if (!c.vencimento) return { ok: false, erro: "Informe a data de vencimento." };
+      const id = uid();
+      const nova: ContaPagar = {
+        id,
+        descricao: c.descricao.trim(),
+        categoria: c.categoria?.trim() || null,
+        fornecedor: c.fornecedor?.trim() || null,
+        valor: c.valor,
+        vencimento: c.vencimento,
+        status: "pendente",
+        pagoEm: null,
+        recorrente: !!c.recorrente,
+        observacao: c.observacao?.trim() || null,
+        criadoEm: Date.now(),
+      };
+      set((s) => ({ contasPagar: [...s.contasPagar, nova] }));
+      if (!orgId) return { ok: true };
+      const { error } = await sb().from("conta_pagar").insert({
+        id,
+        org_id: orgId,
+        descricao: nova.descricao,
+        categoria: nova.categoria,
+        fornecedor: nova.fornecedor,
+        valor: nova.valor,
+        vencimento: nova.vencimento,
+        recorrente: nova.recorrente,
+        observacao: nova.observacao,
+        status: "pendente",
+      });
+      if (error) {
+        set((s) => ({ contasPagar: s.contasPagar.filter((x) => x.id !== id) }));
+        return { ok: false, erro: error.message };
+      }
+      return { ok: true };
+    },
+
+    marcarContaPaga: async (id, paga) => {
+      const pagoEm = paga ? Date.now() : null;
+      set((s) => ({
+        contasPagar: s.contasPagar.map((c) =>
+          c.id === id ? { ...c, status: paga ? "paga" : "pendente", pagoEm } : c
+        ),
+      }));
+      const { orgId } = get();
+      if (!orgId) return;
+      await sb()
+        .from("conta_pagar")
+        .update({
+          status: paga ? "paga" : "pendente",
+          pago_em: pagoEm ? new Date(pagoEm).toISOString() : null,
+        })
+        .eq("id", id);
+    },
+
+    removerContaPagar: async (id) => {
+      const anterior = get().contasPagar.find((c) => c.id === id);
+      set((s) => ({ contasPagar: s.contasPagar.filter((c) => c.id !== id) }));
+      const { error } = await sb().from("conta_pagar").delete().eq("id", id);
+      if (error && anterior) set((s) => ({ contasPagar: [...s.contasPagar, anterior] }));
     },
 
     // "Sim, foi venda da loja": transforma o recebimento numa venda avulsa (sem itens,

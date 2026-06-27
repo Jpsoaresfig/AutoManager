@@ -4,10 +4,12 @@ import { useStore } from "@/lib/store";
 import { categoriasDaLoja } from "@/lib/seed";
 import { brl } from "@/lib/analytics";
 import { uploadProdutoImagem } from "@/lib/uploadProdutoImagem";
+import { parseProdutosCSV, CSV_MODELO_HEADER, CSV_MODELO_EXEMPLO, type LinhaImport } from "@/lib/csvProdutos";
+import { baixarCSV } from "@/lib/export";
 import type { Produto, Variacao } from "@/lib/types";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
-import { Plus, X, PackagePlus, Pencil, ImagePlus, Trash2, Layers, SlidersHorizontal } from "lucide-react";
+import { Plus, X, PackagePlus, Pencil, ImagePlus, Trash2, Layers, SlidersHorizontal, Search, Upload, FileSpreadsheet, AlertTriangle } from "lucide-react";
 
 export default function ProdutosPage() {
   return (
@@ -51,8 +53,17 @@ function Produtos() {
     open: false,
     editar: null,
   });
+  const [importar, setImportar] = useState(false);
   const [filtroCat, setFiltroCat] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
   const cats = categoriasDaLoja(config);
+
+  // contagem de produtos por categoria (chips mostram quantos há em cada uma)
+  const contagemPorCat = (() => {
+    const m = new Map<string, number>();
+    for (const p of produtos) if (p.categoria) m.set(p.categoria, (m.get(p.categoria) || 0) + 1);
+    return m;
+  })();
 
   // categorias realmente presentes nos produtos (na ordem da loja, sobras no fim)
   const catsPresentes = (() => {
@@ -62,19 +73,40 @@ function Produtos() {
     return [...ordenadas, ...extras];
   })();
 
-  const produtosFiltrados = filtroCat ? produtos.filter((p) => p.categoria === filtroCat) : produtos;
+  // busca + filtro de categoria combinados
+  const termo = busca.trim().toLowerCase();
+  const produtosFiltrados = produtos.filter((p) => {
+    if (filtroCat && p.categoria !== filtroCat) return false;
+    if (!termo) return true;
+    return (
+      p.nome.toLowerCase().includes(termo) ||
+      (p.marca ?? "").toLowerCase().includes(termo) ||
+      (p.categoria ?? "").toLowerCase().includes(termo) ||
+      (p.sku ?? "").toLowerCase().includes(termo) ||
+      p.variacoes.some((v) => (v.sku ?? "").toLowerCase().includes(termo))
+    );
+  });
 
   return (
     <div className="space-y-3">
       <header className="flex items-center justify-between pt-1">
         <h1 className="text-2xl font-bold">Estoque</h1>
         {podeEditar && (
-          <button
-            onClick={() => setForm({ open: true, editar: null })}
-            className="btn-primary py-2 px-3 text-sm"
-          >
-            <Plus size={18} /> Produto
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setImportar(true)}
+              className="btn-ghost py-2 px-3 text-sm"
+              title="Importar de planilha (CSV)"
+            >
+              <Upload size={16} /> Importar
+            </button>
+            <button
+              onClick={() => setForm({ open: true, editar: null })}
+              className="btn-primary py-2 px-3 text-sm"
+            >
+              <Plus size={18} /> Produto
+            </button>
+          </div>
         )}
       </header>
 
@@ -101,7 +133,29 @@ function Produtos() {
           );
         })()}
 
-      {/* filtro por categoria */}
+      {/* busca */}
+      {produtos.length > 0 && (
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+          <input
+            className="input pl-9"
+            placeholder="Buscar por nome, marca, categoria ou SKU…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+          {busca && (
+            <button
+              onClick={() => setBusca("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted p-1"
+              aria-label="Limpar busca"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* filtro por categoria (com contador) */}
       {catsPresentes.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           <button
@@ -110,7 +164,7 @@ function Produtos() {
               filtroCat === null ? "bg-brand-600 text-white border-brand-600" : "border-default"
             }`}
           >
-            Todas
+            Todas <span className="opacity-70">({produtos.length})</span>
           </button>
           {catsPresentes.map((c) => (
             <button
@@ -120,15 +174,19 @@ function Produtos() {
                 filtroCat === c ? "bg-brand-600 text-white border-brand-600" : "border-default"
               }`}
             >
-              {c}
+              {c} <span className="opacity-70">({contagemPorCat.get(c) || 0})</span>
             </button>
           ))}
         </div>
       )}
 
       <div className="space-y-2 stagger">
-        {produtosFiltrados.length === 0 && filtroCat && (
-          <div className="card text-center text-muted">Nenhum produto em “{filtroCat}”.</div>
+        {produtosFiltrados.length === 0 && (filtroCat || termo) && (
+          <div className="card text-center text-muted">
+            {termo
+              ? `Nenhum produto encontrado para “${busca.trim()}”${filtroCat ? ` em “${filtroCat}”` : ""}.`
+              : `Nenhum produto em “${filtroCat}”.`}
+          </div>
         )}
         {produtosFiltrados.map((p) => {
           const baixo = p.estoqueAtual <= p.estoqueMinimo;
@@ -209,6 +267,145 @@ function Produtos() {
           onClose={() => setForm({ open: false, editar: null })}
         />
       )}
+
+      {importar && <ImportarProdutos onClose={() => setImportar(false)} />}
+    </div>
+  );
+}
+
+function ImportarProdutos({ onClose }: { onClose: () => void }) {
+  const { importarProdutos } = useStore();
+  const { alerta } = useDialog();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [linhas, setLinhas] = useState<LinhaImport[]>([]);
+  const [erros, setErros] = useState<{ linha: number; motivo: string }[]>([]);
+  const [nomeArq, setNomeArq] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  function processar(texto: string, nome: string) {
+    const r = parseProdutosCSV(texto);
+    setLinhas(r.linhas);
+    setErros(r.erros);
+    setNomeArq(nome);
+  }
+
+  async function onArquivo(files: FileList | null) {
+    const f = files?.[0];
+    if (!f) return;
+    const texto = await f.text();
+    processar(texto, f.name);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function baixarModelo() {
+    baixarCSV("modelo_produtos.csv", CSV_MODELO_HEADER, CSV_MODELO_EXEMPLO);
+  }
+
+  async function confirmar() {
+    if (linhas.length === 0) return;
+    setSalvando(true);
+    // descarta os campos de controle (_linha) antes de gravar
+    const res = await importarProdutos(linhas.map(({ _linha, ...rest }) => rest));
+    setSalvando(false);
+    if (!res.ok) {
+      alerta({ titulo: "Falha ao importar", mensagem: res.erro || "Tente novamente." });
+      return;
+    }
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-40 flex items-end md:items-center justify-center">
+      <div className="surface w-full max-w-lg rounded-t-3xl md:rounded-3xl p-5 space-y-3 max-h-[92vh] overflow-auto">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <FileSpreadsheet size={20} className="text-brand-500" /> Importar produtos
+          </h2>
+          <button onClick={onClose}>
+            <X />
+          </button>
+        </div>
+
+        <p className="text-sm text-muted">
+          Envie uma planilha <b>.csv</b> com as colunas <b>nome</b> e <b>preço</b> (e, se quiser,
+          categoria, custo, estoque, estoque mínimo, sku e marca).
+        </p>
+
+        <div className="flex gap-2">
+          <button onClick={() => fileRef.current?.click()} className="btn-primary flex-1 py-2 text-sm">
+            <Upload size={16} /> Escolher arquivo
+          </button>
+          <button onClick={baixarModelo} className="btn-ghost py-2 px-3 text-sm whitespace-nowrap">
+            Baixar modelo
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            className="hidden"
+            onChange={(e) => onArquivo(e.target.files)}
+          />
+        </div>
+
+        {nomeArq && (
+          <div className="text-xs text-muted">
+            Arquivo: <b>{nomeArq}</b> · {linhas.length} produto(s) prontos
+            {erros.length > 0 ? ` · ${erros.length} com problema` : ""}
+          </div>
+        )}
+
+        {erros.length > 0 && (
+          <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-3 space-y-1">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-red-600">
+              <AlertTriangle size={15} /> Linhas ignoradas
+            </div>
+            {erros.slice(0, 6).map((e, i) => (
+              <div key={i} className="text-xs text-muted">
+                Linha {e.linha}: {e.motivo}
+              </div>
+            ))}
+            {erros.length > 6 && <div className="text-xs text-muted">…e mais {erros.length - 6}.</div>}
+          </div>
+        )}
+
+        {linhas.length > 0 && (
+          <div className="rounded-xl border border-default overflow-hidden">
+            <div className="surface-alt text-[11px] font-semibold text-muted grid grid-cols-12 px-3 py-2">
+              <span className="col-span-5">Produto</span>
+              <span className="col-span-3">Categoria</span>
+              <span className="col-span-2 text-right">Preço</span>
+              <span className="col-span-2 text-right">Estoque</span>
+            </div>
+            <div className="max-h-52 overflow-auto divide-y divide-[var(--border)]">
+              {linhas.slice(0, 50).map((l) => (
+                <div key={l._linha} className="grid grid-cols-12 px-3 py-1.5 text-sm">
+                  <span className="col-span-5 truncate">{l.nome}</span>
+                  <span className="col-span-3 truncate text-muted">{l.categoria}</span>
+                  <span className="col-span-2 text-right">{brl(l.precoVenda)}</span>
+                  <span className="col-span-2 text-right">{l.estoqueAtual}</span>
+                </div>
+              ))}
+            </div>
+            {linhas.length > 50 && (
+              <div className="surface-alt text-[11px] text-muted px-3 py-1.5 text-center">
+                Mostrando 50 de {linhas.length}. Todos serão importados.
+              </div>
+            )}
+          </div>
+        )}
+
+        <button
+          onClick={confirmar}
+          disabled={salvando || linhas.length === 0}
+          className="btn-primary w-full disabled:opacity-60"
+        >
+          {salvando
+            ? "Importando…"
+            : linhas.length > 0
+            ? `Importar ${linhas.length} produto(s)`
+            : "Escolha um arquivo"}
+        </button>
+      </div>
     </div>
   );
 }

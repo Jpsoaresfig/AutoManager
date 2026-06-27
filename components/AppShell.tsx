@@ -19,6 +19,7 @@ import {
   Crown,
   ShieldCheck,
   Inbox,
+  Wallet,
 } from "lucide-react";
 import type { Role } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
@@ -52,6 +53,7 @@ const ITENS: Item[] = [
   { href: "/revendedoras", label: "Equipe", icon: Users, roles: ["owner"] },
   { href: "/conversas", label: "Conversas", icon: MessageCircle, roles: ["owner"] },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, roles: ["owner"] },
+  { href: "/financeiro", label: "Financeiro", icon: Wallet, roles: ["owner"] },
   { href: "/analytics", label: "Inteligência", icon: PieChart, roles: ["owner"] },
   { href: "/planos", label: "Planos", icon: Crown, roles: ["owner"] },
   { href: "/configuracoes", label: "Configurações", icon: Settings, roles: ["owner"] },

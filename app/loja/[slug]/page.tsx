@@ -199,6 +199,9 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
               const categorias = Array.from(
                 new Set(loja.produtos.map((p) => p.categoria).filter((c): c is string => !!c))
               );
+              const contagem = new Map<string, number>();
+              for (const p of loja.produtos)
+                if (p.categoria) contagem.set(p.categoria, (contagem.get(p.categoria) || 0) + 1);
               const lista = filtroCat ? loja.produtos.filter((p) => p.categoria === filtroCat) : loja.produtos;
               return (
                 <>
@@ -210,7 +213,7 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
                           filtroCat === null ? "bg-brand-600 text-white border-brand-600" : "border-default"
                         }`}
                       >
-                        Tudo
+                        Tudo <span className="opacity-70">({loja.produtos.length})</span>
                       </button>
                       {categorias.map((c) => (
                         <button
@@ -220,7 +223,7 @@ export default function LojaPage({ params }: { params: { slug: string } }) {
                             filtroCat === c ? "bg-brand-600 text-white border-brand-600" : "border-default"
                           }`}
                         >
-                          {c}
+                          {c} <span className="opacity-70">({contagem.get(c) || 0})</span>
                         </button>
                       ))}
                     </div>

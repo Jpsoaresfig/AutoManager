@@ -9,6 +9,7 @@ export default function AcessoPage() {
   const [modo, setModo] = useState<"ativar" | "entrar">("ativar");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +36,7 @@ export default function AcessoPage() {
         const res = await fetch("/api/revendedora/ativar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: mail, senha }),
+          body: JSON.stringify({ email: mail, senha, codigo: codigo.trim().toUpperCase() }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -84,7 +85,7 @@ export default function AcessoPage() {
 
           <p className="text-xs text-muted">
             {modo === "ativar"
-              ? "Use o e-mail que a loja cadastrou e crie a sua senha agora."
+              ? "Use o e-mail que a loja cadastrou, o código de acesso que ela te enviou e crie a sua senha agora."
               : "Entre com o e-mail e a senha que você criou."}
           </p>
 
@@ -93,6 +94,22 @@ export default function AcessoPage() {
               <label className="label">E-mail</label>
               <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
             </div>
+            {modo === "ativar" && (
+              <div>
+                <label className="label">Código de acesso</label>
+                <input
+                  className="input tracking-[0.3em] font-mono uppercase"
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+                  required
+                  maxLength={6}
+                  placeholder="ABC123"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted mt-1">A loja te passa esse código junto com o link de acesso.</p>
+              </div>
+            )}
             <div>
               <label className="label">{modo === "ativar" ? "Crie sua senha" : "Senha"}</label>
               <input

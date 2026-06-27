@@ -26,6 +26,7 @@ import {
   Loader2,
   Power,
   Trash2,
+  ScrollText,
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -77,6 +78,16 @@ const ACESSO_INFO: Record<Acesso, { txt: string; cls: string }> = {
   banido: { txt: "Banida", cls: "bg-red-500/15 text-red-600" },
 };
 
+type AdminLog = {
+  id: string;
+  actorEmail: string;
+  acao: string;
+  alvoOrgId: string | null;
+  alvoDescricao: string | null;
+  detalhe: Record<string, unknown> | null;
+  criadoEm: number;
+};
+
 type Overview = {
   resumo: {
     totalLojas: number;
@@ -111,22 +122,27 @@ function Admin() {
 
   const autorizado = ehSuperadmin(email);
 
-  const [aba, setAba] = useState<"resumo" | "lojas" | "chamados">("resumo");
+  const [aba, setAba] = useState<"resumo" | "lojas" | "chamados" | "auditoria">("resumo");
   const [chamados, setChamados] = useState<Chamado[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [logs, setLogs] = useState<AdminLog[] | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [filtro, setFiltro] = useState<"abertos" | "todos">("abertos");
 
   async function carregar() {
     setCarregando(true);
-    const [lista, res] = await Promise.all([
+    const [lista, res, logsRes] = await Promise.all([
       listarChamados(),
       fetch("/api/admin/overview")
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+      fetch("/api/admin/logs")
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
     ]);
     setChamados(lista);
     setOverview(res);
+    setLogs(logsRes?.logs ?? null);
     setCarregando(false);
   }
 
@@ -184,6 +200,7 @@ function Admin() {
           ["resumo", "Resumo"],
           ["lojas", "Lojas & usuários"],
           ["chamados", `Chamados${abertos ? ` (${abertos})` : ""}`],
+          ["auditoria", "Auditoria"],
         ] as const).map(([id, label]) => (
           <button
             key={id}
@@ -206,6 +223,8 @@ function Admin() {
         <ResumoView overview={overview} />
       ) : aba === "lojas" ? (
         <LojasView overview={overview} recarregar={carregar} />
+      ) : aba === "auditoria" ? (
+        <AuditoriaView logs={logs} />
       ) : (
         <ChamadosView
           chamados={chamados}
@@ -488,6 +507,60 @@ function LojasView({
               >
                 <Trash2 size={14} /> Deletar
               </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- AUDITORIA */
+const ACAO_INFO: Record<string, { txt: string; cls: string }> = {
+  desativar: { txt: "Desativou", cls: "bg-amber-500/15 text-amber-600" },
+  banir: { txt: "Baniu", cls: "bg-red-500/15 text-red-600" },
+  reativar: { txt: "Reativou", cls: "bg-green-500/15 text-green-600" },
+  deletar: { txt: "Deletou", cls: "bg-red-500/15 text-red-600" },
+  mudar_plano: { txt: "Mudou plano", cls: "bg-brand-500/15 text-brand-600" },
+};
+
+function detalheTexto(acao: string, d: Record<string, unknown> | null): string | null {
+  if (!d) return null;
+  if (acao === "mudar_plano" && (d.de || d.para)) return `${d.de ?? "?"} → ${d.para ?? "?"}`;
+  if (typeof d.usuarios_removidos === "number") return `${d.usuarios_removidos} usuário(s) removido(s)`;
+  if (typeof d.usuarios_afetados === "number") return `${d.usuarios_afetados} usuário(s) afetado(s)`;
+  return null;
+}
+
+function AuditoriaView({ logs }: { logs: AdminLog[] | null }) {
+  if (!logs)
+    return <div className="card text-center text-muted py-10">Não foi possível carregar a auditoria.</div>;
+  if (logs.length === 0)
+    return (
+      <div className="card text-center text-muted py-10 flex flex-col items-center gap-2">
+        <ScrollText size={32} />
+        Nenhuma ação registrada ainda.
+      </div>
+    );
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted">
+        Registro das ações sensíveis da plataforma (moderação de contas e troca de plano). Somente leitura.
+      </p>
+      {logs.map((l) => {
+        const info = ACAO_INFO[l.acao] ?? { txt: l.acao, cls: "bg-slate-500/15 text-slate-500" };
+        const det = detalheTexto(l.acao, l.detalhe);
+        return (
+          <div key={l.id} className="card space-y-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${info.cls}`}>{info.txt}</span>
+              <span className="text-xs text-muted">{quando(l.criadoEm)}</span>
+            </div>
+            <div className="text-sm font-medium truncate">{l.alvoDescricao ?? "—"}</div>
+            <div className="text-xs text-muted">
+              por {l.actorEmail}
+              {det ? ` · ${det}` : ""}
             </div>
           </div>
         );
