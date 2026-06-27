@@ -151,9 +151,9 @@ export default function Landing() {
               <Link href={COMECAR} className="btn-primary px-6 py-4 text-base shadow-lg shadow-brand-600/30">
                 Criar minha loja grátis <ArrowRight size={18} />
               </Link>
-              <a href="#como" className="btn-ghost px-6 py-4 text-base">
+              <Link href="/demonstracao" className="btn-ghost px-6 py-4 text-base">
                 <PlayCircle size={18} /> Ver demonstração
-              </a>
+              </Link>
             </div>
 
             <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
