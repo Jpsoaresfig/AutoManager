@@ -297,6 +297,10 @@ begin
     values (v_org, v_prod.id, 'saida', v_qtd, 'Venda', p_venda_id);
   end loop;
 
+  -- A-1 (defesa em profundidade): vendedor não recebe custo/lucro nem no retorno do RPC.
+  if v_role = 'vendedor' then
+    return json_build_object('id', p_venda_id, 'total', v_total, 'comissao_total', v_comissao);
+  end if;
   return json_build_object('id', p_venda_id, 'total', v_total, 'custo_total', v_custo,
     'comissao_total', v_comissao, 'lucro', round(v_total - v_custo - v_comissao, 2));
 end;
