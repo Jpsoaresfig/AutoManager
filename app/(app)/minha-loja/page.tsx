@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import { aplicarCorMarca } from "@/lib/brand";
+import { aplicarAparencia, TEMAS_BASE, RAIOS } from "@/lib/aparencia";
 import { uploadLogo, uploadCapa } from "@/lib/uploadLogo";
 import { brl } from "@/lib/analytics";
 import { slugSugerido } from "@/lib/slug";
@@ -33,6 +33,7 @@ import {
   AtSign,
   ImagePlus,
   Trash2,
+  Brush,
 } from "lucide-react";
 
 export default function MinhaLojaPage() {
@@ -54,6 +55,9 @@ function MinhaLoja() {
   const [descricao, setDescricao] = useState(config.lojaDescricao ?? "");
   const [slug, setSlug] = useState(config.slug ?? "");
   const [cor, setCor] = useState<string | null>(config.corMarca);
+  const [temaBase, setTemaBase] = useState<string | null>(config.temaBase);
+  const [appFonte, setAppFonte] = useState<string | null>(config.appFonte);
+  const [appRaio, setAppRaio] = useState<string | null>(config.appRaio);
   const [logoUrl, setLogoUrl] = useState<string | null>(config.logoUrl);
   const [capaUrl, setCapaUrl] = useState<string | null>(config.lojaCapaUrl);
   const [enviandoCapa, setEnviandoCapa] = useState(false);
@@ -115,10 +119,38 @@ function MinhaLoja() {
     else setSlug(limpo);
   }
 
+  // Pré-visualização ao vivo da aparência do painel (cor + tema + fonte + raio).
+  function previewAparencia(over: { cor?: string | null; tema?: string | null; fonte?: string | null; raio?: string | null }) {
+    aplicarAparencia({
+      corMarca: over.cor !== undefined ? over.cor : cor,
+      temaBase: over.tema !== undefined ? over.tema : temaBase,
+      appFonte: over.fonte !== undefined ? over.fonte : appFonte,
+      appRaio: over.raio !== undefined ? over.raio : appRaio,
+    });
+  }
+
   function escolherCor(hex: string | null) {
     setCor(hex);
-    aplicarCorMarca(hex);
+    previewAparencia({ cor: hex });
     setConfig({ corMarca: hex });
+  }
+
+  function escolherTema(key: string | null) {
+    setTemaBase(key);
+    previewAparencia({ tema: key });
+    setConfig({ temaBase: key });
+  }
+
+  function escolherFonteApp(key: string | null) {
+    setAppFonte(key);
+    previewAparencia({ fonte: key });
+    setConfig({ appFonte: key });
+  }
+
+  function escolherRaio(key: string | null) {
+    setAppRaio(key);
+    previewAparencia({ raio: key });
+    setConfig({ appRaio: key });
   }
 
   function escolherFonte(k: string) {

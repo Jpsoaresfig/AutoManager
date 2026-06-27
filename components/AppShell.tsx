@@ -18,10 +18,12 @@ import {
   Store,
   Crown,
   ShieldCheck,
+  Inbox,
 } from "lucide-react";
 import type { Role } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
 import { useConversasNaoLidas } from "@/lib/useConversasNaoLidas";
+import { useRecebimentosPendentes } from "@/lib/useRecebimentos";
 import type { PlanoDef } from "@/lib/plans";
 import { ehSuperadmin } from "@/lib/admin";
 
@@ -41,6 +43,7 @@ const ITENS: Item[] = [
   { href: "/produtos", label: "Estoque", icon: Package, roles: ["owner", "vendedor"], mobile: true },
   { href: "/vender", label: "Vender", icon: PlusCircle, roles: ["owner", "vendedor"], primary: true, mobile: true },
   // sem `cap`: a aba aparece sempre p/ o dono — sem o plano, a página mostra o pitch de upgrade
+  { href: "/recebimentos", label: "Recebimentos", icon: Inbox, roles: ["owner"] },
   { href: "/entregas", label: "Entregas", icon: Truck, roles: ["owner", "motoboy"], mobile: true },
   { href: "/reposicao", label: "Repor", icon: TrendingUp, roles: ["owner"], mobile: true },
   { href: "/minha-loja", label: "Minha Loja", icon: Store, roles: ["owner"] },
@@ -71,6 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { caps } = usePlano();
   const admin = ehSuperadmin(email);
   const conversasNaoLidas = useConversasNaoLidas();
+  const recebimentosPendentes = useRecebimentosPendentes();
 
   const navDesktop = ITENS.filter((it) => visivel(it, role, caps, admin));
   const nav = ITENS.filter((it) => visivel(it, role, caps, admin) && it.mobile).slice(0, 5);
@@ -112,6 +116,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     }`}
                   >
                     {conversasNaoLidas > 99 ? "99+" : conversasNaoLidas}
+                  </span>
+                )}
+                {n.href === "/recebimentos" && recebimentosPendentes > 0 && (
+                  <span
+                    className={`text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 grid place-items-center ${
+                      active ? "bg-white text-brand-600" : "bg-red-500 text-white"
+                    }`}
+                  >
+                    {recebimentosPendentes > 99 ? "99+" : recebimentosPendentes}
                   </span>
                 )}
               </Link>

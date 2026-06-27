@@ -6,6 +6,8 @@ export type StatusComissao = "pendente" | "paga";
 export type TipoMovimento = "entrada" | "saida" | "ajuste";
 export type FormaPagamento = "dinheiro" | "pix" | "credito" | "debito" | "boleto";
 export type StatusPagamento = "paga" | "pendente" | "cancelada";
+export type OrigemRecebimento = "mercadopago" | "inter" | "manual";
+export type StatusEntrada = "pendente" | "confirmada" | "recusada";
 
 export interface Variacao {
   id: string;
@@ -75,6 +77,20 @@ export interface Venda {
   statusPagamento: StatusPagamento;
   desconto: number;
   dataPagamento: number | null;
+}
+
+// Recebimento detectado numa conta conectada, aguardando o dono confirmar se foi venda.
+export interface EntradaPendente {
+  id: string;
+  valor: number;
+  origem: OrigemRecebimento;
+  descricao: string | null;
+  pagador: string | null;
+  formaPagamento: FormaPagamento;
+  status: StatusEntrada;
+  vendaId: string | null;
+  recebidoEm: number;
+  decididoEm: number | null;
 }
 
 export interface Movimento {

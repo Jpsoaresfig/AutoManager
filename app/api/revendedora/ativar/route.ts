@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
+import { capacidades, type Assinatura, type PlanoId, type StatusAssinatura } from "@/lib/plans";
 
 // Ativação self-service da revendedora: ela informa o e-mail que a loja liberou e
 // escolhe a própria senha no 1º acesso. Só funciona se o dono liberou o acesso
@@ -33,6 +34,30 @@ export async function POST(req: Request) {
   if (!rev)
     return NextResponse.json(
       { erro: "Este e-mail não está liberado para acesso. Fale com a loja." },
+      { status: 403 }
+    );
+
+  // o plano atual da loja inclui revendedoras? (Ambulante = 0 -> bloqueia o acesso).
+  // espelha private.permite_revendedoras; evita criar login que não vai conseguir entrar.
+  const { data: assin } = await sb
+    .from("assinatura")
+    .select("plano, status, trial_ate")
+    .eq("org_id", rev.org_id)
+    .maybeSingle();
+  const assinatura: Assinatura | null = assin
+    ? {
+        plano: assin.plano as PlanoId,
+        status: assin.status as StatusAssinatura,
+        precoCentavos: 0,
+        periodo: "mensal",
+        dataInicio: null,
+        dataFim: null,
+        trialAte: assin.trial_ate ? new Date(assin.trial_ate).getTime() : null,
+      }
+    : null;
+  if (capacidades(assinatura).maxRevendedoras === 0)
+    return NextResponse.json(
+      { erro: "O plano atual da loja não inclui revendedoras. Fale com a loja." },
       { status: 403 }
     );
 

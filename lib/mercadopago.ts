@@ -86,6 +86,94 @@ export async function criarPreapproval(params: {
   return json as Preapproval;
 }
 
+// ============================================================================
+// Recebimentos (pagamentos avulsos) -> caixa de entrada da loja.
+// Quando um pagamento cai numa conta conectada, o MP chama o webhook com
+// type=payment. Consultamos o pagamento real e, se aprovado, gravamos uma
+// "entrada_pendente" para o dono confirmar se foi venda da loja.
+//
+// Como o MP sabe de qual org é o pagamento: a cobrança precisa carregar o
+// external_reference = orgId (ex.: ao gerar o QR/Point da loja). Sem isso não
+// há como atribuir o dinheiro a uma loja, então a entrada é ignorada.
+// ============================================================================
+
+export interface Pagamento {
+  id: number | string;
+  status?: string; // approved | pending | rejected | ...
+  transaction_amount?: number;
+  description?: string;
+  external_reference?: string;
+  payment_method_id?: string; // pix | master | visa | ...
+  payment_type_id?: string; // credit_card | debit_card | account_money | bank_transfer
+  payer?: { email?: string; first_name?: string; last_name?: string };
+}
+
+// consulta o pagamento real na API do MP (fonte da verdade, não confiar no webhook)
+export async function buscarPagamento(id: string): Promise<Pagamento> {
+  const res = await fetch(`${MP_BASE}/v1/payments/${id}`, {
+    headers: { Authorization: `Bearer ${mpToken()}` },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.message || `Mercado Pago retornou ${res.status}`);
+  return json as Pagamento;
+}
+
+// extrai o orgId do external_reference, ignorando o formato de assinatura (orgId:plano)
+function orgIdDoPagamento(ref: string | null | undefined): string | null {
+  if (!ref) return null;
+  if (ref.includes(":")) return null; // é uma assinatura (preapproval), não um recebimento
+  return ref;
+}
+
+// mapeia o meio de pagamento do MP para a forma_pagamento interna
+function formaPagamentoMP(p: Pagamento): string {
+  if (p.payment_method_id === "pix" || p.payment_type_id === "bank_transfer") return "pix";
+  if (p.payment_type_id === "credit_card") return "credito";
+  if (p.payment_type_id === "debit_card") return "debito";
+  if (p.payment_type_id === "ticket") return "boleto";
+  return "pix";
+}
+
+// grava o pagamento aprovado como entrada pendente (idempotente pelo id do MP).
+// Retorna true se gravou, false se ignorou (não aprovado / sem org / duplicado).
+export async function registrarRecebimentoMP(p: Pagamento): Promise<boolean> {
+  if (p.status !== "approved") return false;
+  const orgId = orgIdDoPagamento(p.external_reference);
+  if (!orgId) return false;
+  const valor = Number(p.transaction_amount || 0);
+  if (!valor) return false;
+
+  const admin = createAdmin(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const pagador =
+    p.payer?.email ||
+    [p.payer?.first_name, p.payer?.last_name].filter(Boolean).join(" ") ||
+    null;
+
+  // onConflict no índice único (org_id, provider_pagamento_id) evita duplicar em reenvio
+  const { error } = await admin
+    .from("entrada_pendente")
+    .upsert(
+      {
+        org_id: orgId,
+        valor,
+        origem: "mercadopago",
+        descricao: p.description || "Pagamento via Mercado Pago",
+        pagador,
+        forma_pagamento: formaPagamentoMP(p),
+        provider_pagamento_id: String(p.id),
+        status: "pendente",
+      },
+      { onConflict: "org_id,provider_pagamento_id", ignoreDuplicates: true }
+    );
+  if (error) throw new Error(error.message);
+  return true;
+}
+
 // ---- consulta o status real de uma assinatura no MP (fonte da verdade) ----
 export async function buscarPreapproval(id: string): Promise<Preapproval> {
   const res = await fetch(`${MP_BASE}/preapproval/${id}`, {

@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
-import { buscarPreapproval, aplicarPreapproval } from "@/lib/mercadopago";
+import {
+  buscarPreapproval,
+  aplicarPreapproval,
+  buscarPagamento,
+  registrarRecebimentoMP,
+} from "@/lib/mercadopago";
 
-// Webhook do Mercado Pago para assinaturas (preapproval).
+// Webhook do Mercado Pago. Trata dois tipos de evento:
+//  - preapproval: assinatura de plano -> aplica o plano.
+//  - payment: pagamento avulso recebido -> grava na caixa de entrada da loja.
 // Segurança: NÃO confiamos no corpo da notificação. Pegamos só o ID e
-// re-consultamos o status real na API do MP com nosso access token - assim
-// uma notificação forjada não consegue ativar um plano.
+// re-consultamos o estado real na API do MP com nosso access token - assim
+// uma notificação forjada não consegue ativar plano nem lançar recebimento.
 
 export async function POST(req: Request) {
   let body: any = {};
@@ -19,16 +26,22 @@ export async function POST(req: Request) {
   const id =
     body?.data?.id || body?.id || url.searchParams.get("data.id") || url.searchParams.get("id");
 
-  // só tratamos eventos de assinatura (preapproval)
   const ehPreapproval = typeof tipo === "string" && tipo.includes("preapproval");
-  if (!ehPreapproval || !id) {
+  // "payment" cobre os topics de pagamento avulso do MP
+  const ehPagamento = typeof tipo === "string" && tipo.includes("payment");
+  if ((!ehPreapproval && !ehPagamento) || !id) {
     // responde 200 para o MP não reenviar eventos que não nos interessam
     return NextResponse.json({ ignorado: true });
   }
 
   try {
-    const pre = await buscarPreapproval(String(id));
-    await aplicarPreapproval(pre);
+    if (ehPreapproval) {
+      const pre = await buscarPreapproval(String(id));
+      await aplicarPreapproval(pre);
+    } else {
+      const pag = await buscarPagamento(String(id));
+      await registrarRecebimentoMP(pag);
+    }
   } catch (e) {
     // 500 faz o MP reenviar mais tarde (retry) - bom para falhas transitórias
     const msg = e instanceof Error ? e.message : "erro";

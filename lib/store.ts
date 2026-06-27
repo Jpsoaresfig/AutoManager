@@ -16,6 +16,8 @@ import type {
   StatusEntrega,
   Chamado,
   TipoChamado,
+  EntradaPendente,
+  OrigemRecebimento,
 } from "./types";
 import type { Assinatura, PlanoId } from "./plans";
 
@@ -118,6 +120,21 @@ function mapEntrega(r: any): Entrega {
   };
 }
 
+function mapEntradaPendente(r: any): EntradaPendente {
+  return {
+    id: r.id,
+    valor: Number(r.valor ?? 0),
+    origem: (r.origem ?? "manual") as OrigemRecebimento,
+    descricao: r.descricao ?? null,
+    pagador: r.pagador ?? null,
+    formaPagamento: r.forma_pagamento ?? "pix",
+    status: r.status ?? "pendente",
+    vendaId: r.venda_id ?? null,
+    recebidoEm: new Date(r.recebido_em).getTime(),
+    decididoEm: r.decidido_em ? new Date(r.decidido_em).getTime() : null,
+  };
+}
+
 // ----------------------------------------------------- mapeadores row -> tipo
 function mapVariacao(r: any): Variacao {
   return {
@@ -210,6 +227,7 @@ interface State {
   movimentos: Movimento[];
   membros: Membro[];
   entregas: Entrega[];
+  entradasPendentes: EntradaPendente[];
 
   hydrate: () => Promise<void>;
 
@@ -257,6 +275,11 @@ interface State {
   marcarComissaoPaga: (revendedoraId: string) => Promise<void>;
   marcarVendaRecebida: (vendaId: string) => Promise<void>;
 
+  // caixa de entrada de recebimentos
+  confirmarEntrada: (entradaId: string) => Promise<Venda | null>;
+  recusarEntrada: (entradaId: string) => Promise<void>;
+  simularRecebimento: (args: { valor: number; descricao?: string }) => Promise<{ ok: boolean; erro?: string }>;
+
   // suporte / chamados
   abrirChamado: (args: {
     tipo: TipoChamado;
@@ -291,6 +314,7 @@ export const useStore = create<State>()((set, get) => {
     movimentos: [],
     membros: [],
     entregas: [],
+    entradasPendentes: [],
 
     hydrate: async () => {
       const supabase = sb();
@@ -313,6 +337,7 @@ export const useStore = create<State>()((set, get) => {
         { data: vendas },
         { data: membros },
         { data: entregas },
+        { data: entradas },
         { data: assin },
       ] = await Promise.all([
         supabase.from("org").select("*").limit(1).maybeSingle(),
@@ -325,6 +350,12 @@ export const useStore = create<State>()((set, get) => {
         supabase.from("venda").select("*, venda_item(*)").gte("data", corteISO).order("data", { ascending: false }),
         supabase.from("usuario").select("id, nome, email, role"),
         supabase.from("entrega").select("*").order("criada_em", { ascending: false }),
+        // recebimentos pendentes de confirmação (tabela pode não existir se 0024 não rodou)
+        supabase
+          .from("entrada_pendente")
+          .select("*")
+          .eq("status", "pendente")
+          .order("recebido_em", { ascending: false }),
         supabase.from("assinatura").select("*").limit(1).maybeSingle(),
       ]);
 
@@ -382,6 +413,7 @@ export const useStore = create<State>()((set, get) => {
         vendas: (vendas || []).map(mapVenda),
         membros: (membros || []).map(mapMembro),
         entregas: (entregas || []).map(mapEntrega),
+        entradasPendentes: (entradas || []).map(mapEntradaPendente),
       });
 
       // 2ª fase: histórico anterior à janela, paginado e mesclado em segundo plano.
@@ -976,6 +1008,121 @@ export const useStore = create<State>()((set, get) => {
         .from("venda")
         .update({ status_pagamento: "paga", data_pagamento: new Date(agora).toISOString() })
         .eq("id", vendaId);
+    },
+
+    // "Sim, foi venda da loja": transforma o recebimento numa venda avulsa (sem itens,
+    // só o valor) e marca a entrada como confirmada, ligando-a à venda criada.
+    confirmarEntrada: async (entradaId) => {
+      const s = get();
+      const { orgId } = s;
+      const entrada = s.entradasPendentes.find((e) => e.id === entradaId);
+      if (!entrada || !orgId) return null;
+
+      const vendaId = uid();
+      const data = entrada.recebidoEm || Date.now();
+      const venda: Venda = {
+        id: vendaId,
+        data,
+        canal: "loja",
+        revendedoraId: null,
+        itens: [],
+        total: entrada.valor,
+        custoTotal: 0,
+        comissaoTotal: 0,
+        lucro: entrada.valor,
+        statusComissao: "paga",
+        formaPagamento: entrada.formaPagamento,
+        parcelas: 1,
+        statusPagamento: "paga",
+        desconto: 0,
+        dataPagamento: data,
+      };
+
+      // otimista: a venda entra na lista e a entrada sai da caixa
+      set((st) => ({
+        vendas: [venda, ...st.vendas],
+        entradasPendentes: st.entradasPendentes.filter((e) => e.id !== entradaId),
+      }));
+
+      const supabase = sb();
+      await supabase.from("venda").insert({
+        id: vendaId,
+        org_id: orgId,
+        canal: "loja",
+        revendedora_id: null,
+        total: entrada.valor,
+        custo_total: 0,
+        comissao_total: 0,
+        lucro: entrada.valor,
+        status_comissao: "paga",
+        forma_pagamento: entrada.formaPagamento,
+        parcelas: 1,
+        status_pagamento: "paga",
+        desconto: 0,
+        data: new Date(data).toISOString(),
+        data_pagamento: new Date(data).toISOString(),
+      });
+      await supabase
+        .from("entrada_pendente")
+        .update({ status: "confirmada", venda_id: vendaId, decidido_em: new Date().toISOString() })
+        .eq("id", entradaId);
+
+      // avisa o badge de não lidas para recontar
+      if (typeof window !== "undefined")
+        window.dispatchEvent(new Event("am-recebimentos-mudou"));
+      return venda;
+    },
+
+    // "Não foi da loja": só arquiva a entrada, sem gerar venda.
+    recusarEntrada: async (entradaId) => {
+      set((st) => ({
+        entradasPendentes: st.entradasPendentes.filter((e) => e.id !== entradaId),
+      }));
+      await sb()
+        .from("entrada_pendente")
+        .update({ status: "recusada", decidido_em: new Date().toISOString() })
+        .eq("id", entradaId);
+      if (typeof window !== "undefined")
+        window.dispatchEvent(new Event("am-recebimentos-mudou"));
+    },
+
+    // Cria um recebimento de teste (enquanto não há banco conectado de verdade),
+    // pra você ver a caixa de entrada e o fluxo de confirmação funcionando.
+    simularRecebimento: async ({ valor, descricao }) => {
+      const { orgId } = get();
+      if (!orgId) return { ok: false, erro: "Loja não carregada" };
+      if (!valor || valor <= 0) return { ok: false, erro: "Informe um valor válido." };
+      const id = uid();
+      const recebidoEm = Date.now();
+      const { error } = await sb().from("entrada_pendente").insert({
+        id,
+        org_id: orgId,
+        valor,
+        origem: "manual",
+        descricao: descricao || "Recebimento de teste",
+        forma_pagamento: "pix",
+        status: "pendente",
+        recebido_em: new Date(recebidoEm).toISOString(),
+      });
+      if (error) return { ok: false, erro: error.message };
+      set((st) => ({
+        entradasPendentes: [
+          {
+            id,
+            valor,
+            origem: "manual",
+            descricao: descricao || "Recebimento de teste",
+            pagador: null,
+            formaPagamento: "pix",
+            status: "pendente",
+            vendaId: null,
+            recebidoEm,
+            decididoEm: null,
+          },
+          ...st.entradasPendentes,
+        ],
+      }));
+      return { ok: true };
     },
 
     abrirChamado: async ({ tipo, assunto, mensagem, emailContato, whatsapp }) => {

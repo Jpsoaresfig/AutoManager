@@ -25,6 +25,7 @@ import {
   PackageX,
   Crown,
   Sparkles,
+  Inbox,
 } from "lucide-react";
 
 export default function PainelPage() {
@@ -37,6 +38,7 @@ export default function PainelPage() {
 
 function Painel() {
   const { produtos, vendas, revendedoras, config } = useStore();
+  const recebimentosPendentes = useStore((s) => s.entradasPendentes.length);
   const { caps } = usePlano();
   const m = useMemo(() => calcularMetricas(produtos, vendas, revendedoras), [produtos, vendas, revendedoras]);
 
@@ -67,6 +69,14 @@ function Painel() {
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <Link href="/recebimentos" className="relative text-muted hover:opacity-70 p-1" title="Recebimentos">
+            <Inbox size={22} />
+            {recebimentosPendentes > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">
+                {recebimentosPendentes > 9 ? "9+" : recebimentosPendentes}
+              </span>
+            )}
+          </Link>
           <Link href="/relatorios" className="text-muted hover:opacity-70 p-1" title="Relatórios">
             <BarChart3 size={22} />
           </Link>
