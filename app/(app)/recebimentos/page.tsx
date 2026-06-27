@@ -107,7 +107,7 @@ function Recebimentos() {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2 stagger">
         {entradasPendentes.map((e) => (
           <EntradaCard
             key={e.id}

@@ -98,7 +98,7 @@ function Produtos() {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2 stagger">
         {produtosFiltrados.length === 0 && filtroCat && (
           <div className="card text-center text-muted">Nenhum produto em “{filtroCat}”.</div>
         )}

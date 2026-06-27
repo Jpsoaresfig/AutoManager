@@ -81,7 +81,7 @@ function Entregas() {
       )}
 
       {ativas.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 stagger">
           <h2 className="text-sm font-semibold text-muted">Em aberto ({ativas.length})</h2>
           {ativas.map((e) => (
             <EntregaCard
@@ -98,7 +98,7 @@ function Entregas() {
       )}
 
       {concluidas.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 stagger">
           <h2 className="text-sm font-semibold text-muted">Entregues ({concluidas.length})</h2>
           {concluidas.map((e) => (
             <EntregaCard

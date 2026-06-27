@@ -120,7 +120,7 @@ function Revendedoras() {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2 stagger">
         {revendedoras.map((r) => {
           const pend = pendentePara(r.id);
           const vendMes = vendidoNoMes(r.id);

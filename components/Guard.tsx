@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import { aplicarAparencia, aplicarFavicon } from "@/lib/aparencia";
 import { homeDe, podeAcessar } from "@/lib/permissoes";
 import AppShell from "./AppShell";
+import { Skeleton, SkeletonMetrics, SkeletonList } from "./Skeleton";
 
 // Sinaliza que já existe um Guard/AppShell montado acima (layout persistente).
 // Assim o <Guard> que cada página ainda usa vira passthrough e não remonta a shell.
@@ -62,16 +63,43 @@ export default function Guard({ children }: { children: React.ReactNode }) {
   // Já há um Guard/AppShell acima (no layout) -> não duplica, só repassa.
   if (jaMontado) return <>{children}</>;
 
-  if (!ready) {
-    return (
-      <div className="min-h-screen grid place-items-center text-brand-600">
-        <div className="animate-pulse font-semibold">Carregando…</div>
-      </div>
-    );
-  }
+  // continua abaixo: estados de loading / shell
+
+  if (!ready) return <AppLoadingSkeleton />;
+
   return (
     <GuardMontado.Provider value={true}>
       <AppShell>{children}</AppShell>
     </GuardMontado.Provider>
+  );
+}
+
+// Skeleton da aplicação inteira (sidebar + conteúdo) enquanto hidrata — mantém
+// o layout estável e transmite carregamento premium, sem spinner solto.
+function AppLoadingSkeleton() {
+  return (
+    <div className="min-h-screen md:flex">
+      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-60 surface border-r border-default p-4 gap-2">
+        <div className="flex items-center gap-2 px-2 py-3">
+          <Skeleton className="h-7 w-7 rounded-lg" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <div className="mt-2 space-y-1.5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-xl" />
+          ))}
+        </div>
+      </aside>
+      <div className="flex-1 md:pl-60">
+        <main className="max-w-3xl mx-auto px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-12 space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-44" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <SkeletonMetrics count={4} />
+          <SkeletonList count={3} />
+        </main>
+      </div>
+    </div>
   );
 }

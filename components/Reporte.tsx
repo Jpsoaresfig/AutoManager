@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { SUPORTE_WHATSAPP_LABEL, linkWhatsappSuporte } from "@/lib/admin";
 import type { TipoChamado } from "@/lib/types";
-import { LifeBuoy, X, Send, MessageCircle, CheckCircle2, Zap } from "lucide-react";
+import { LifeBuoy, X, Send, MessageCircle, CheckCircle2, Zap, Loader2 } from "lucide-react";
 
 const TIPOS: { id: TipoChamado; label: string }[] = [
   { id: "erro", label: "Erro / bug" },
@@ -83,18 +83,24 @@ export default function Reporte() {
       {/* modal */}
       {aberto && (
         <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="modal-backdrop fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={fechar}
+          role="dialog"
+          aria-modal="true"
         >
           <div
-            className="surface w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl border border-default max-h-[92vh] overflow-y-auto"
+            className="sheet-panel sm:modal-panel surface shadow-pop w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl border border-default max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-default sticky top-0 surface">
+            <div className="flex items-center justify-between p-4 border-b border-default sticky top-0 surface z-10">
               <div className="flex items-center gap-2 font-bold">
                 <LifeBuoy size={18} className="text-brand-600" /> Suporte AutoManager
               </div>
-              <button onClick={fechar} className="text-muted hover:opacity-70 p-1">
+              <button
+                onClick={fechar}
+                aria-label="Fechar"
+                className="grid place-items-center h-9 w-9 -mr-1 rounded-full text-muted hover:bg-[var(--hover)] hover:text-strong active:scale-90 transition"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -102,7 +108,7 @@ export default function Reporte() {
             {enviado ? (
               <div className="p-6 text-center space-y-3">
                 <CheckCircle2 size={40} className="text-green-600 mx-auto" />
-                <div className="font-semibold text-lg">Ticket registrado! ✅</div>
+                <div className="font-semibold text-lg">Ticket registrado!</div>
                 <p className="text-sm text-muted">
                   Recebemos seu chamado e vamos analisar. Se for urgente, chame também no
                   WhatsApp.
@@ -213,7 +219,7 @@ export default function Reporte() {
                     disabled={enviando}
                     className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
                   >
-                    <Send size={16} />
+                    {enviando ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                     {enviando ? "Enviando…" : "Registrar ticket"}
                   </button>
                 </div>

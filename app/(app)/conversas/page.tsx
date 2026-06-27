@@ -149,7 +149,7 @@ function Conversas() {
 
       {/* lista */}
       {!sel && (
-        <div className="space-y-2">
+        <div className="space-y-2 stagger">
           {conversas.length === 0 && (
             <div className="card text-center text-muted">
               Nenhuma conversa ainda. Ative a mini-loja em Configurações e compartilhe o link.

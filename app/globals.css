@@ -27,6 +27,14 @@
   --r-card: 1rem;
   --r-btn: 0.75rem;
   --r-input: 0.75rem;
+
+  /* hierarquia de sombras (suave / média / destaque) */
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 6px 16px rgb(0 0 0 / 0.10), 0 2px 6px rgb(0 0 0 / 0.06);
+  --shadow-pop: 0 16px 40px rgb(0 0 0 / 0.18), 0 6px 12px rgb(0 0 0 / 0.08);
+
+  /* overlay de hover sensível ao tema (clareia no escuro, escurece no claro) */
+  --hover: rgb(255 255 255 / 0.06);
   color-scheme: dark;
 }
 
@@ -37,6 +45,10 @@ html.light {
   --text: #1f2937;
   --text-muted: #6b7280;
   --border: #ececf1;
+  --shadow-soft: 0 1px 2px rgb(17 24 39 / 0.05), 0 1px 3px rgb(17 24 39 / 0.06);
+  --shadow-md: 0 6px 16px rgb(17 24 39 / 0.08), 0 2px 6px rgb(17 24 39 / 0.05);
+  --shadow-pop: 0 16px 40px rgb(17 24 39 / 0.14), 0 6px 12px rgb(17 24 39 / 0.06);
+  --hover: rgb(17 24 39 / 0.04);
   color-scheme: light;
 }
 
@@ -52,7 +64,23 @@ body {
     border-radius: var(--r-card);
     background: var(--surface);
     border-color: var(--border);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+    box-shadow: var(--shadow-soft);
+  }
+  /* cards clicáveis (renderizados como <a>/<button>) ganham hover/feedback */
+  a.card,
+  button.card {
+    @apply cursor-pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease,
+      background 0.18s ease;
+  }
+  a.card:hover,
+  button.card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  a.card:active,
+  button.card:active {
+    transform: translateY(0) scale(0.99);
   }
   /* superfícies / utilitários temáticos */
   .surface {
@@ -83,12 +111,23 @@ body {
     background: var(--surface-alt);
     color: var(--text);
   }
+  .btn-ghost:hover {
+    background-image: linear-gradient(var(--hover), var(--hover));
+    box-shadow: var(--shadow-soft);
+  }
+  .btn-primary:hover {
+    box-shadow: var(--shadow-md);
+  }
   .input {
     @apply w-full border px-3 py-3 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
     border-radius: var(--r-input);
     background: var(--surface);
     border-color: var(--border);
     color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .input:hover:not(:focus) {
+    border-color: var(--text-muted);
   }
   .input::placeholder {
     color: var(--text-muted);
@@ -101,6 +140,109 @@ body {
     @apply px-3 py-2 rounded-full border text-sm font-medium cursor-pointer select-none;
     border-color: var(--border);
     color: var(--text);
+    transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .chip:hover {
+    background-image: linear-gradient(var(--hover), var(--hover));
+  }
+  .chip:active {
+    transform: scale(0.95);
+  }
+}
+
+/* ============================================================ */
+/* Design system de movimento — usado em TODO o app             */
+/* ============================================================ */
+
+/* foco visível e acessível (teclado) */
+:focus-visible {
+  outline: 2px solid rgb(var(--brand-500) / 0.75);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* hierarquia de sombras como utilitários */
+.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-card { box-shadow: var(--shadow-md); }
+.shadow-pop { box-shadow: var(--shadow-pop); }
+
+/* barras de progresso animam o preenchimento em vez de "saltar" */
+.progress-fill { transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ---- entrada de componentes (fade + slide up) ---- */
+@keyframes ui-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal { animation: ui-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* stagger: filhos diretos surgem em sequência (até 12 itens) */
+.stagger > * { animation: ui-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.09s; }
+.stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger > *:nth-child(4) { animation-delay: 0.19s; }
+.stagger > *:nth-child(5) { animation-delay: 0.24s; }
+.stagger > *:nth-child(6) { animation-delay: 0.29s; }
+.stagger > *:nth-child(7) { animation-delay: 0.34s; }
+.stagger > *:nth-child(8) { animation-delay: 0.39s; }
+.stagger > *:nth-child(9) { animation-delay: 0.44s; }
+.stagger > *:nth-child(10) { animation-delay: 0.49s; }
+.stagger > *:nth-child(11) { animation-delay: 0.54s; }
+.stagger > *:nth-child(12) { animation-delay: 0.59s; }
+
+/* ---- transição entre rotas ---- */
+@keyframes ui-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: ui-page-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---- modais: backdrop + painel ---- */
+@keyframes ui-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ui-modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-backdrop { animation: ui-backdrop-in 0.2s ease both; }
+.modal-panel { animation: ui-modal-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes ui-sheet-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sheet-panel { animation: ui-sheet-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---- skeleton / shimmer ---- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-alt);
+  border-radius: var(--r-input);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--hover), transparent);
+  animation: ui-skeleton 1.4s ease-in-out infinite;
+}
+@keyframes ui-skeleton { 100% { transform: translateX(100%); } }
+
+/* respeita quem prefere menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .stagger > *,
+  .page-enter,
+  .modal-backdrop,
+  .modal-panel,
+  .sheet-panel,
+  .skeleton::after,
+  .progress-fill {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
 

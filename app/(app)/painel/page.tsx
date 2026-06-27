@@ -7,6 +7,7 @@ import { usePlano } from "@/lib/usePlano";
 import { fmtLimite } from "@/lib/plans";
 import Guard from "@/components/Guard";
 import Reporte from "@/components/Reporte";
+import CountUp from "@/components/CountUp";
 import Link from "next/link";
 // recharts é pesado: carrega só quando o painel monta, fora do bundle inicial.
 const VendasArea = dynamic(() => import("@/components/charts/VendasArea"), {
@@ -68,19 +69,31 @@ function Painel() {
             <h1 className="text-2xl font-bold truncate">{config.nomeLoja || "Minha Loja"}</h1>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Link href="/recebimentos" className="relative text-muted hover:opacity-70 p-1" title="Recebimentos">
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Link
+            href="/recebimentos"
+            className="relative grid place-items-center h-10 w-10 rounded-xl text-muted hover:text-strong hover:bg-[var(--hover)] active:scale-90 transition"
+            title="Recebimentos"
+          >
             <Inbox size={22} />
             {recebimentosPendentes > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">
+              <span className="absolute top-1 right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">
                 {recebimentosPendentes > 9 ? "9+" : recebimentosPendentes}
               </span>
             )}
           </Link>
-          <Link href="/relatorios" className="text-muted hover:opacity-70 p-1" title="Relatórios">
+          <Link
+            href="/relatorios"
+            className="grid place-items-center h-10 w-10 rounded-xl text-muted hover:text-strong hover:bg-[var(--hover)] active:scale-90 transition"
+            title="Relatórios"
+          >
             <BarChart3 size={22} />
           </Link>
-          <Link href="/configuracoes" className="text-muted hover:opacity-70 p-1" title="Configurações">
+          <Link
+            href="/configuracoes"
+            className="grid place-items-center h-10 w-10 rounded-xl text-muted hover:text-strong hover:bg-[var(--hover)] active:scale-90 transition"
+            title="Configurações"
+          >
             <Settings size={22} />
           </Link>
         </div>
@@ -90,40 +103,47 @@ function Painel() {
       <PlanoCard />
 
       {/* cards principais */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 stagger">
         <div className="card">
           <div className="flex items-center gap-2 text-muted text-xs">
             <Wallet size={14} /> Faturamento do mês
           </div>
-          <div className="text-xl font-bold mt-1">{brl(m.faturamentoMes)}</div>
-          {variacao !== null && (
-            <div
-              className={`text-xs mt-1 flex items-center gap-1 ${
-                variacao >= 0 ? "text-green-600" : "text-red-500"
-              }`}
-            >
-              {variacao >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              {Math.abs(variacao).toFixed(0)}% vs mês anterior
-            </div>
-          )}
+          <CountUp value={m.faturamentoMes} format={brl} className="block text-xl font-bold mt-1" />
+          <div className="text-xs mt-1 h-4 flex items-center gap-1">
+            {variacao !== null ? (
+              <span
+                className={`flex items-center gap-1 ${
+                  variacao >= 0 ? "text-green-600" : "text-red-500"
+                }`}
+              >
+                {variacao >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {Math.abs(variacao).toFixed(0)}% vs mês anterior
+              </span>
+            ) : (
+              <span className="text-muted">no mês atual</span>
+            )}
+          </div>
         </div>
         <div className="card">
           <div className="flex items-center gap-2 text-muted text-xs">
             <TrendingUp size={14} /> Lucro estimado
           </div>
-          <div className="text-xl font-bold mt-1 text-green-600">{brl(m.lucroMes)}</div>
+          <CountUp value={m.lucroMes} format={brl} className="block text-xl font-bold mt-1 text-green-600" />
+          <div className="text-xs mt-1 h-4 text-muted">margem no mês</div>
         </div>
         <div className="card">
           <div className="flex items-center gap-2 text-muted text-xs">
             <Wallet size={14} /> Comissão pendente
           </div>
-          <div className="text-xl font-bold mt-1 text-brand-600">{brl(m.comissaoPendente)}</div>
+          <CountUp value={m.comissaoPendente} format={brl} className="block text-xl font-bold mt-1 text-brand-600" />
+          <div className="text-xs mt-1 h-4 text-muted">a repassar</div>
         </div>
         <div className="card">
           <div className="flex items-center gap-2 text-muted text-xs">
             <Package size={14} /> Valor em estoque
           </div>
-          <div className="text-xl font-bold mt-1">{brl(m.valorEstoque)}</div>
+          <CountUp value={m.valorEstoque} format={brl} className="block text-xl font-bold mt-1" />
+          <div className="text-xs mt-1 h-4 text-muted">a preço de custo</div>
         </div>
       </div>
 
@@ -138,7 +158,7 @@ function Painel() {
               repor →
             </Link>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 stagger">
             {criticos.slice(0, 6).map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
                 <span className="truncate pr-2">{p.nome}</span>
@@ -183,7 +203,7 @@ function Painel() {
           <div className="flex items-center gap-2 text-sm font-semibold mb-3">
             <Trophy size={16} className="text-amber-500" /> Ranking de revendedoras
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 stagger">
             {m.rankingRevendedoras.map((r, i) => (
               <div key={r.nome} className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -201,7 +221,7 @@ function Painel() {
       {m.topProdutos.length > 0 && (
         <div className="card">
           <div className="text-sm font-semibold mb-3">🔥 Mais vendidos</div>
-          <div className="space-y-2">
+          <div className="space-y-2 stagger">
             {m.topProdutos.map((p) => (
               <div key={p.nome} className="flex items-center justify-between text-sm">
                 <span className="font-medium">{p.nome}</span>
@@ -248,7 +268,10 @@ function PlanoCard() {
       </div>
       {limRev !== Infinity && (
         <div className="h-1.5 rounded-full surface-alt overflow-hidden mt-1">
-          <div className={`h-full rounded-full ${pctRev >= 100 ? "bg-red-500" : "bg-brand-600"}`} style={{ width: pctRev + "%" }} />
+          <div
+            className={`h-full rounded-full progress-fill ${pctRev >= 100 ? "bg-red-500" : "bg-brand-600"}`}
+            style={{ width: pctRev + "%" }}
+          />
         </div>
       )}
     </Link>
