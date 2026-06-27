@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePlano } from "@/lib/usePlano";
-import { ORDEM_PLANOS, PLANOS, brlPreco, type PlanoId } from "@/lib/plans";
+import { ORDEM_PLANOS, PLANOS, PLANO_PERSONALIZADO, brlPreco, type PlanoId } from "@/lib/plans";
+import { linkWhatsappSuporte } from "@/lib/admin";
 import Guard from "@/components/Guard";
 import { useDialog } from "@/components/Dialog";
-import { Check, Sparkles, Star, Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Check, Sparkles, Star, Loader2, ArrowLeft, ShieldCheck, MessageCircle } from "lucide-react";
 
 export default function PlanosPage() {
   return (
@@ -143,6 +144,34 @@ function Planos() {
             </div>
           );
         })}
+      </div>
+
+      {/* plano personalizado — sob consulta, fora do checkout (contato direto) */}
+      <div className="card border-brand-500/30 bg-brand-500/5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Sparkles size={18} className="text-brand-500" />
+          <span className="font-bold text-lg">{PLANO_PERSONALIZADO.nome}</span>
+          <span className="rounded-full border border-brand-500/40 px-2.5 py-0.5 text-xs font-bold text-brand-500">
+            {PLANO_PERSONALIZADO.preco}
+          </span>
+        </div>
+        <p className="mt-1 text-sm font-semibold">{PLANO_PERSONALIZADO.chamada}</p>
+        <p className="mt-1.5 text-sm text-muted">{PLANO_PERSONALIZADO.descricao}</p>
+        <ul className="mt-3 space-y-2">
+          {PLANO_PERSONALIZADO.beneficios.map((b) => (
+            <li key={b} className="flex items-start gap-2 text-sm">
+              <Check size={16} className="text-green-500 shrink-0 mt-0.5" /> {b}
+            </li>
+          ))}
+        </ul>
+        <a
+          href={linkWhatsappSuporte(PLANO_PERSONALIZADO.whatsappTexto)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary w-full mt-4"
+        >
+          <MessageCircle size={16} /> {PLANO_PERSONALIZADO.cta}
+        </a>
       </div>
 
       <div className="card flex items-start gap-3 text-sm text-muted">

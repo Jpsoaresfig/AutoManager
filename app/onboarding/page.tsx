@@ -9,10 +9,12 @@ import {
   fmtLimite,
   planoDef,
   PLANOS,
+  PLANO_PERSONALIZADO,
   ORDEM_PLANOS,
   brlPreco,
   type PlanoId,
 } from "@/lib/plans";
+import { linkWhatsappSuporte } from "@/lib/admin";
 import {
   Check,
   ChevronRight,
@@ -311,6 +313,25 @@ export default function Onboarding() {
                   );
                 })}
               </div>
+
+              {/* plano personalizado — sob consulta, falar direto comigo */}
+              <a
+                href={linkWhatsappSuporte(PLANO_PERSONALIZADO.whatsappTexto)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="card block border-brand-500/30 bg-brand-500/5 transition active:scale-[.99]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{PLANO_PERSONALIZADO.nome}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-brand-500/40 text-brand-500">
+                    {PLANO_PERSONALIZADO.preco}
+                  </span>
+                  <MessageCircle size={16} className="text-brand-500 ml-auto" />
+                </div>
+                <p className="text-xs text-muted mt-1">
+                  Precisa de um sistema 100% do zero, sob medida? Fale comigo no WhatsApp — orçamento à parte.
+                </p>
+              </a>
             </div>
           )}
 

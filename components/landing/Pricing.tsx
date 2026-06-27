@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Check, X, ArrowRight, Star } from "lucide-react";
+import { Check, X, ArrowRight, Star, MessageCircle, Sparkles } from "lucide-react";
+import { PLANO_PERSONALIZADO } from "@/lib/plans";
+import { linkWhatsappSuporte } from "@/lib/admin";
 
 const COMECAR = "/login";
 
@@ -114,6 +116,32 @@ export default function Pricing() {
             </div>
           );
         })}
+      </div>
+
+      {/* plano personalizado — destaque logo abaixo dos cards (sob consulta) */}
+      <div className="relative mt-6 overflow-hidden rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-600/15 via-brand-500/10 to-transparent p-6 shadow-pop sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/20 blur-3xl" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-3 py-1 text-xs font-bold text-white">
+              <Sparkles size={13} /> NOVO · SOB MEDIDA
+            </span>
+            <h3 className="mt-3 text-2xl font-extrabold text-strong">
+              {PLANO_PERSONALIZADO.nome}{" "}
+              <span className="text-brand-500">— {PLANO_PERSONALIZADO.preco}</span>
+            </h3>
+            <p className="mt-1 text-base font-semibold text-strong">{PLANO_PERSONALIZADO.chamada}</p>
+            <p className="mt-2 max-w-xl text-sm text-muted">{PLANO_PERSONALIZADO.descricao}</p>
+          </div>
+          <a
+            href={linkWhatsappSuporte(PLANO_PERSONALIZADO.whatsappTexto)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary shrink-0 self-start px-6 py-4 text-base shadow-lg shadow-brand-600/30 sm:self-center"
+          >
+            <MessageCircle size={18} /> {PLANO_PERSONALIZADO.cta}
+          </a>
+        </div>
       </div>
 
       {/* tabela de comparação */}
