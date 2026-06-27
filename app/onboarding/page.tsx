@@ -2,14 +2,31 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { SEGMENTOS, CATEGORIAS_POR_SEGMENTO, produtosExemplo } from "@/lib/seed";
+import { SEGMENTOS } from "@/lib/seed";
 import type { Canal } from "@/lib/types";
 import { usePlano } from "@/lib/usePlano";
-import { fmtLimite } from "@/lib/plans";
-import { Check, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import {
+  fmtLimite,
+  planoDef,
+  PLANOS,
+  ORDEM_PLANOS,
+  brlPreco,
+  type PlanoId,
+} from "@/lib/plans";
+import {
+  Check,
+  ChevronRight,
+  Sparkles,
+  Loader2,
+  MessageCircle,
+  Instagram,
+  Facebook,
+  Music2,
+  Mail,
+} from "lucide-react";
 
 // Quantidade de revendedoras oferecida no onboarding, limitada ao que o
-// plano contratado permite (ambulante nem chega aqui).
+// plano escolhido permite (ambulante nem chega a perguntar).
 const REV_BUCKETS: Record<string, string[]> = {
   solo: ["0", "1-3"],
   equipe: ["0", "1-5", "6-15"],
@@ -20,53 +37,58 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Passo = { emoji: string; title: string; sub: string; ms: number };
 
-const CANAIS: { id: Canal; label: string }[] = [
-  { id: "loja", label: "Loja física" },
-  { id: "whatsapp", label: "WhatsApp" },
-  { id: "instagram", label: "Instagram" },
-];
-
 export default function Onboarding() {
   const router = useRouter();
-  const { setConfig, addProduto, addRevendedora, completarOnboarding, hydrate } = useStore();
+  const { setConfig, completarOnboarding, hydrate } = useStore();
   const ready = useStore((s) => s.ready);
   const completo = useStore((s) => s.config.onboardingCompleto);
+  const { planoContratado } = usePlano();
   const [gerando, setGerando] = useState(false);
 
   useEffect(() => {
     if (!ready) hydrate();
   }, [ready, hydrate]);
 
-  // onboarding já concluído: sai daqui (evita re-rodar o seed / sobrescrever a config)
+  // onboarding já concluído: sai daqui (evita re-rodar / sobrescrever a config).
+  // Durante a geração NÃO redireciona aqui — a tela de carregamento controla o
+  // momento de ir pro painel; senão o redirect cortava a animação no meio.
   useEffect(() => {
-    if (ready && completo) router.replace("/painel");
-  }, [ready, completo, router]);
+    if (ready && completo && !gerando) router.replace("/painel");
+  }, [ready, completo, gerando, router]);
 
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState<"fwd" | "back">("fwd");
+
+  // respostas
   const [nomeLoja, setNomeLoja] = useState("");
+  const [descricao, setDescricao] = useState("");
   const [segmento, setSegmento] = useState("semijoias");
-  const [canais, setCanais] = useState<Canal[]>(["whatsapp"]);
-  const [qtdRev, setQtdRev] = useState("6-20");
+  const [planoEscolhido, setPlanoEscolhido] = useState<PlanoId>(planoContratado || "solo");
+  const [qtdRev, setQtdRev] = useState("1-3");
   const [margem, setMargem] = useState(100);
   const [comissao, setComissao] = useState(30);
-  const [comExemplos, setComExemplos] = useState(true);
+  const [whatsapp, setWhatsapp] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [facebook, setFacebook] = useState("");
+  const [tiktok, setTiktok] = useState("");
+  const [email, setEmail] = useState("");
 
-  // Plano CONTRATADO define o escopo das perguntas (no trial, o efetivo vira
-  // Expansão — mas as perguntas seguem o que o cliente realmente assinou).
-  const { defContratado: plano } = usePlano();
+  // escopo de perguntas conforme o PLANO ESCOLHIDO no onboarding
+  const plano = planoDef(planoEscolhido);
   const temRevendedoras = plano.maxRevendedoras > 0;
   const temEquipe = plano.allowVendedores;
   const temEntregas = plano.allowEntregas;
   const revBuckets = REV_BUCKETS[plano.id] ?? ["0", "1-5", "6-20", "20+"];
 
-  // Sequência de passos montada conforme o plano.
+  // Sequência de passos (a etapa de revendedoras só entra se o plano tiver).
   const steps = [
     "nome",
-    "segmento",
+    "descricao",
+    "conteudo",
+    "plano",
     ...(temRevendedoras ? ["revendedoras"] : []),
-    "numeros",
-    "inicio",
+    "lucro",
+    "contato",
   ];
   const totalSteps = steps.length;
   const stepKey = steps[Math.min(step, totalSteps - 1)];
@@ -79,56 +101,53 @@ export default function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plano.id]);
 
-  function toggleCanal(c: Canal) {
-    setCanais((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
-  }
-
-  // Trabalho real (gravação no store). Desacoplado da animação: a tela de
-  // geração toca os passos no seu ritmo e só redireciona quando isto terminar.
+  // Trabalho real (gravação no store + plano). Desacoplado da animação.
   async function executar() {
-    // trava de segurança: nunca re-roda o seed nem sobrescreve a config se já concluiu
+    // trava de segurança: nunca sobrescreve a config se já concluiu
     if (useStore.getState().config.onboardingCompleto) return;
+
+    const canais: Canal[] = ["whatsapp"];
+    if (instagram.trim()) canais.push("instagram");
+
     await setConfig({
       nomeLoja: nomeLoja || "Minha Loja",
+      lojaDescricao: descricao.trim() || null,
       segmento,
-      canais: canais.length ? canais : ["whatsapp"],
+      canais,
       usaRevendedoras,
       margemPadrao: margem,
       comissaoPadrao: comissao,
+      lojaWhatsapp: whatsapp.trim() || null,
+      lojaInstagram: instagram.trim() || null,
+      lojaFacebook: facebook.trim() || null,
+      lojaTiktok: tiktok.trim() || null,
+      lojaEmail: email.trim() || null,
     });
 
-    if (comExemplos) {
-      const cats = CATEGORIAS_POR_SEGMENTO[segmento] || ["Geral"];
-      for (const p of produtosExemplo(cats)) {
-        await addProduto({
-          nome: p.nome,
-          categoria: p.categoria,
-          custo: p.custo,
-          precoVenda: p.precoVenda,
-          estoqueAtual: p.estoqueAtual,
-          estoqueMinimo: 5,
-        });
-      }
-      if (usaRevendedoras) {
-        for (const nome of ["Ana", "Bruna", "Carla"]) {
-          await addRevendedora({ nome, comissaoPercent: comissao, metaMensal: 0 });
-        }
-      }
+    // define o plano escolhido como trial de 1 mês (grátis)
+    try {
+      await fetch("/api/onboarding/plano", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plano: planoEscolhido }),
+      });
+      await hydrate(); // recarrega a assinatura pro painel já refletir o trial
+    } catch {
+      /* segue mesmo se falhar — o plano pode ser ajustado depois */
     }
 
     await completarOnboarding();
   }
 
-  // Passos exibidos na geração — personalizados pelas respostas do usuário.
+  // Passos da tela de carregamento — personalizados pelas respostas.
   function montarPassos(): Passo[] {
     const segLabel = (SEGMENTOS.find((s) => s.id === segmento)?.label || "loja").toLowerCase();
     const loja = nomeLoja.trim() || "sua loja";
     const passos: Passo[] = [
       { emoji: "🔍", title: "Analisando seu perfil", sub: `Entendendo sua ${segLabel}`, ms: 1100 },
       { emoji: "🏪", title: "Criando sua loja", sub: `Montando a vitrine de ${loja}`, ms: 1200 },
+      { emoji: "🎁", title: "Ativando seu mês grátis", sub: `Plano ${plano.nome} — 30 dias por nossa conta`, ms: 1100 },
     ];
-    if (comExemplos)
-      passos.push({ emoji: "📦", title: "Organizando seu estoque", sub: "Adicionando produtos de exemplo", ms: 1100 });
     if (usaRevendedoras)
       passos.push({ emoji: "💸", title: "Configurando comissões", sub: "Cálculo automático das revendedoras", ms: 1050 });
     if (temEquipe)
@@ -182,15 +201,11 @@ export default function Onboarding() {
 
       <div className="flex-1 overflow-x-clip">
         <div key={step} className={dir === "fwd" ? "ob-in-right" : "ob-in-left"}>
+          {/* ---------- nome ---------- */}
           {stepKey === "nome" && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2">
-                <div className="inline-grid place-items-center h-14 w-14 rounded-2xl bg-brand-600/10 text-brand-500 ob-anim-bob">
-                  <Sparkles size={28} />
-                </div>
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-600/10 text-brand-500">
-                  Plano {plano.nome}
-                </span>
+              <div className="inline-grid place-items-center h-14 w-14 rounded-2xl bg-brand-600/10 text-brand-500 ob-anim-bob">
+                <Sparkles size={28} />
               </div>
               <h1 className="text-2xl font-bold leading-tight">
                 Vamos dar vida ao seu negócio 🚀
@@ -213,11 +228,33 @@ export default function Onboarding() {
             </div>
           )}
 
-          {stepKey === "segmento" && (
+          {/* ---------- descrição ---------- */}
+          {stepKey === "descricao" && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-bold">O que você vende por aí?</h2>
-                <p className="text-sm text-muted mt-1">Escolha o que mais combina com o seu negócio.</p>
+                <h2 className="text-xl font-bold">Resuma sua loja em uma frase ✍️</h2>
+                <p className="text-sm text-muted mt-1">
+                  Aparece logo abaixo do nome, pra cliente entender na hora o que você vende.
+                </p>
+              </div>
+              <textarea
+                className="input"
+                rows={3}
+                placeholder="Ex.: Semijoias folheadas com garantia e entrega rápida."
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                autoFocus
+              />
+              <p className="text-xs text-muted">Pode deixar em branco e preencher depois.</p>
+            </div>
+          )}
+
+          {/* ---------- tipo de conteúdo / segmento ---------- */}
+          {stepKey === "conteudo" && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold">Qual o tipo do seu negócio?</h2>
+                <p className="text-sm text-muted mt-1">Isso ajusta as categorias e os relatórios pra você.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {SEGMENTOS.map((s) => (
@@ -232,32 +269,58 @@ export default function Onboarding() {
                   </button>
                 ))}
               </div>
-              <h2 className="text-xl font-bold pt-2">E onde você faz suas vendas?</h2>
-              <div className="flex flex-wrap gap-2">
-                {CANAIS.map((c) => {
-                  const on = canais.includes(c.id);
+            </div>
+          )}
+
+          {/* ---------- plano (1 mês grátis) ---------- */}
+          {stepKey === "plano" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold">Escolha seu plano 🎁</h2>
+                <p className="text-sm text-muted mt-1">
+                  O <b>1º mês é grátis</b>. Só depois começa a cobrar, e você cancela quando quiser.
+                </p>
+              </div>
+              <div className="space-y-2.5">
+                {ORDEM_PLANOS.map((id) => {
+                  const def = PLANOS[id];
+                  const sel = planoEscolhido === id;
                   return (
-                    <span
-                      key={c.id}
-                      onClick={() => toggleCanal(c.id)}
-                      className={`chip transition active:scale-95 ${
-                        on ? "bg-brand-600 text-white border-brand-600" : "border-default"
+                    <button
+                      key={id}
+                      onClick={() => setPlanoEscolhido(id)}
+                      className={`card w-full text-left transition active:scale-[.99] ${
+                        sel ? "ring-2 ring-brand-500 bg-brand-500/5" : "hover:surface-alt"
                       }`}
                     >
-                      {c.label}
-                    </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{def.nome}</span>
+                        {def.destaque && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-600 text-white">
+                            Mais vendido
+                          </span>
+                        )}
+                        {sel && <Check size={18} className="text-brand-600 ml-auto" />}
+                      </div>
+                      <div className="text-sm mt-0.5">
+                        <span className="text-brand-500 font-bold">1º mês grátis</span>
+                        <span className="text-muted"> · depois {brlPreco(def.precoCentavos)}/mês</span>
+                      </div>
+                      <p className="text-xs text-muted mt-1">{def.publico}</p>
+                    </button>
                   );
                 })}
               </div>
             </div>
           )}
 
+          {/* ---------- revendedoras ---------- */}
           {stepKey === "revendedoras" && (
             <div className="space-y-5">
               <div>
                 <h2 className="text-xl font-bold">Quem vende junto com você?</h2>
                 <p className="text-sm text-muted mt-1">
-                  Sua rede de revendedoras — seu plano {plano.nome} inclui até{" "}
+                  Sua rede de revendedoras — o plano {plano.nome} inclui até{" "}
                   <b>{fmtLimite(plano.maxRevendedoras)}</b>.
                 </p>
               </div>
@@ -284,7 +347,8 @@ export default function Onboarding() {
             </div>
           )}
 
-          {stepKey === "numeros" && (
+          {/* ---------- lucro ---------- */}
+          {stepKey === "lucro" && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-bold mb-1">Quanto você quer lucrar?</h2>
@@ -327,42 +391,47 @@ export default function Onboarding() {
             </div>
           )}
 
-          {stepKey === "inicio" && (
-            <div className="space-y-5">
+          {/* ---------- contato + redes ---------- */}
+          {stepKey === "contato" && (
+            <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-bold">Por onde a gente começa?</h2>
-                <p className="text-sm text-muted mt-1">Você decide o ponto de partida.</p>
+                <h2 className="text-xl font-bold">Como te encontram? 📲</h2>
+                <p className="text-sm text-muted mt-1">
+                  Suas redes e contato aparecem na sua loja online. Tudo opcional.
+                </p>
               </div>
-              <button
-                onClick={() => setComExemplos(true)}
-                className={`card w-full text-left transition active:scale-[.98] ${
-                  comExemplos ? "ring-2 ring-brand-500 bg-brand-500/5" : "hover:surface-alt"
-                }`}
-              >
-                <div className="font-semibold flex items-center gap-2">
-                  🚀 Já quero ver funcionando
-                  {comExemplos && <Check size={18} className="text-brand-600 ml-auto" />}
-                </div>
-                <p className="text-sm text-muted mt-1">
-                  {temRevendedoras
-                    ? "Catálogo, categorias e 3 revendedoras de exemplo prontos pra você testar agora."
-                    : "Catálogo e categorias de exemplo prontos pra você testar agora."}
-                </p>
-              </button>
-              <button
-                onClick={() => setComExemplos(false)}
-                className={`card w-full text-left transition active:scale-[.98] ${
-                  !comExemplos ? "ring-2 ring-brand-500 bg-brand-500/5" : "hover:surface-alt"
-                }`}
-              >
-                <div className="font-semibold flex items-center gap-2">
-                  ✏️ Começar do zero
-                  {!comExemplos && <Check size={18} className="text-brand-600 ml-auto" />}
-                </div>
-                <p className="text-sm text-muted mt-1">
-                  Quero cadastrar os meus próprios produtos.
-                </p>
-              </button>
+              <div>
+                <label className="label flex items-center gap-1"><MessageCircle size={13} /> WhatsApp</label>
+                <input
+                  className="input"
+                  inputMode="tel"
+                  placeholder="Ex.: 11 99999-9999"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1"><Instagram size={13} /> Instagram</label>
+                <input className="input" placeholder="@sualoja" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1"><Facebook size={13} /> Facebook</label>
+                <input className="input" placeholder="sualoja" value={facebook} onChange={(e) => setFacebook(e.target.value)} />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1"><Music2 size={13} /> TikTok</label>
+                <input className="input" placeholder="@sualoja" value={tiktok} onChange={(e) => setTiktok(e.target.value)} />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1"><Mail size={13} /> E-mail da loja <span className="text-muted font-normal">(opcional)</span></label>
+                <input
+                  className="input"
+                  type="email"
+                  placeholder="contato@sualoja.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -383,10 +452,7 @@ export default function Onboarding() {
           </button>
         )}
         {step > 0 && (
-          <button
-            onClick={back}
-            className="w-full text-center text-sm text-muted mt-3"
-          >
+          <button onClick={back} className="w-full text-center text-sm text-muted mt-3">
             Voltar
           </button>
         )}
@@ -397,8 +463,8 @@ export default function Onboarding() {
 
 // ============================================================================
 // Tela de carregamento — toca após "Concluir". Minimalista e mobile-first:
-// um ícone de carregamento + uma barra de progresso, com o texto do passo
-// atual trocando enquanto o store grava de verdade.
+// um ícone de carregamento girando + uma barra de progresso, com o texto do
+// passo atual trocando enquanto o store grava de verdade.
 // ============================================================================
 function GeneratingScreen({
   passos,
@@ -417,6 +483,22 @@ function GeneratingScreen({
   const [pronto, setPronto] = useState(false);
   const iniciado = useRef(false); // evita rodar 2x (StrictMode em dev)
 
+  // confete da comemoração final (gerado uma vez, renderizado só quando pronto).
+  // Delay NEGATIVO faz cada peça já começar no meio da queda → a tela inteira
+  // (de cima a baixo) fica coberta de confete no instante em que conclui.
+  const [confete] = useState(() =>
+    Array.from({ length: 90 }).map((_, i) => {
+      const dur = 2.6 + Math.random() * 2.6;
+      return {
+        e: ["🎉", "✨", "🎊", "⭐", "💫", "🥳", "🎈", "🌟"][i % 8],
+        left: Math.round(Math.random() * 100),
+        size: 12 + Math.round(Math.random() * 18),
+        dur,
+        delay: -Math.random() * dur,
+      };
+    })
+  );
+
   useEffect(() => {
     if (iniciado.current) return; // roda exatamente uma vez
     iniciado.current = true;
@@ -429,7 +511,7 @@ function GeneratingScreen({
       }
       await trabalho; // garante que o backend terminou antes de seguir
       setPronto(true);
-      await sleep(1400);
+      await sleep(2200); // deixa o confete aparecer antes de ir pro painel
       onConcluir();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -439,14 +521,35 @@ function GeneratingScreen({
   const passoAtual = passos[Math.min(atual, total - 1)];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[var(--bg)] text-[var(--text)] flex items-center justify-center px-6">
-      <div className="w-full max-w-xs flex flex-col items-center text-center">
+    <div className="fixed inset-0 z-50 bg-[var(--bg)] text-[var(--text)] flex items-center justify-center px-6 overflow-hidden">
+      {/* confete na comemoração final */}
+      {pronto && (
+        <div className="pointer-events-none absolute inset-0">
+          {confete.map((c, i) => (
+            <span
+              key={i}
+              className="absolute top-0 ob-anim-fall select-none"
+              style={{
+                left: `${c.left}%`,
+                fontSize: c.size,
+                animationDuration: `${c.dur}s`,
+                animationDelay: `${c.delay}s`,
+                animationIterationCount: "infinite",
+              }}
+            >
+              {c.e}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="relative w-full max-w-xs flex flex-col items-center text-center">
         {/* ícone de carregamento */}
         <div className="relative grid place-items-center h-16 w-16 mb-6">
           {pronto ? (
             <Check size={40} className="text-brand-500 ob-anim-pop" strokeWidth={3} />
           ) : (
-            <Loader2 size={44} className="text-brand-500 ob-anim-spin" />
+            <Loader2 size={44} className="text-brand-500 animate-spin" />
           )}
         </div>
 
