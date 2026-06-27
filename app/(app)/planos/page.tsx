@@ -78,7 +78,7 @@ function Planos() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-4 items-start">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
         {ORDEM_PLANOS.map((id) => {
           const p = PLANOS[id];
           const atual = id === planoContratado && !emTrial;

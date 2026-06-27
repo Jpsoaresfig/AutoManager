@@ -35,7 +35,7 @@ export function montarRef(orgId: string, plano: PlanoId): string {
 export function lerRef(ref: string | null | undefined): { orgId: string; plano: PlanoId } | null {
   if (!ref) return null;
   const [orgId, plano] = ref.split(":");
-  if (!orgId || !["solo", "equipe", "expansao"].includes(plano)) return null;
+  if (!orgId || !["ambulante", "solo", "equipe", "expansao"].includes(plano)) return null;
   return { orgId, plano: plano as PlanoId };
 }
 

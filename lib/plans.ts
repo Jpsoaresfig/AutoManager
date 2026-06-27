@@ -4,7 +4,7 @@
 // (supabase/migrations/0013) espelham estes limites para enforcement real.
 // ============================================================================
 
-export type PlanoId = "solo" | "equipe" | "expansao";
+export type PlanoId = "ambulante" | "solo" | "equipe" | "expansao";
 export type StatusAssinatura = "trialing" | "active" | "past_due" | "canceled";
 
 export interface Assinatura {
@@ -37,6 +37,27 @@ export interface PlanoDef {
 }
 
 export const PLANOS: Record<PlanoId, PlanoDef> = {
+  ambulante: {
+    id: "ambulante",
+    nome: "Ambulante",
+    precoCentavos: 2000,
+    publico: "Vendedor ambulante / na rua",
+    maxRevendedoras: 0,
+    allowVendedores: false,
+    allowMotoboys: false,
+    allowEntregas: false,
+    allowChat: true,
+    allowRanking: false,
+    allowAnalytics: false,
+    allowAdvancedAnalytics: false,
+    beneficios: [
+      "Controle de estoque",
+      "Vendas em 1 toque",
+      "Lojinha virtual + chat",
+      "Relatórios básicos",
+    ],
+    bloqueios: ["Sem revendedoras", "Sem vendedores internos", "Sem motoboys/entregas", "Sem analytics/ranking"],
+  },
   solo: {
     id: "solo",
     nome: "Solo",
@@ -107,7 +128,7 @@ export const PLANOS: Record<PlanoId, PlanoDef> = {
   },
 };
 
-export const ORDEM_PLANOS: PlanoId[] = ["solo", "equipe", "expansao"];
+export const ORDEM_PLANOS: PlanoId[] = ["ambulante", "solo", "equipe", "expansao"];
 
 export function planoDef(id: PlanoId | string | null | undefined): PlanoDef {
   return PLANOS[(id as PlanoId) ?? "solo"] ?? PLANOS.solo;

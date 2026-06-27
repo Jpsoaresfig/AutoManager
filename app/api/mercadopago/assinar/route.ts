@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   if (!dono) return NextResponse.json({ erro: "Sem permissão" }, { status: 403 });
 
   const { plano } = (await req.json().catch(() => ({}))) as { plano?: PlanoId };
-  if (!plano || !["solo", "equipe", "expansao"].includes(plano))
+  if (!plano || !["ambulante", "solo", "equipe", "expansao"].includes(plano))
     return NextResponse.json({ erro: "Plano inválido" }, { status: 400 });
 
   if (!dono.email)

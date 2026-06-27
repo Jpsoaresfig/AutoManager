@@ -39,6 +39,7 @@ const TIPO_LABEL: Record<string, string> = {
 };
 
 const PLANO_CLS: Record<PlanoId, string> = {
+  ambulante: "bg-teal-500/15 text-teal-600",
   solo: "bg-slate-500/15 text-slate-500",
   equipe: "bg-brand-500/15 text-brand-600",
   expansao: "bg-amber-500/15 text-amber-600",

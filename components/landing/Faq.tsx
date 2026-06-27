@@ -37,8 +37,8 @@ const PERGUNTAS: { q: string; a: string }[] = [
     a: "Esse é justamente o diferencial. Cada revendedora ganha um acesso próprio, vê o catálogo, registra a própria venda pelo celular e a comissão é calculada automaticamente. Você acompanha quem vende, quanto deve e o ranking.",
   },
   {
-    q: "E se eu não tenho revendedora, só vendo sozinha?",
-    a: "Funciona igual. Você usa o plano SOLO, controla estoque e vendas, vê seu lucro e ativa a vitrine online. Quando crescer e contratar alguém, é só mudar de plano.",
+    q: "E se eu não tenho revendedora, só vendo sozinha ou na rua?",
+    a: "Funciona igual. Quem vende na rua usa o plano AMBULANTE (R$20/mês): controle de estoque, lojinha virtual, chat e relatórios, sem revendedoras nem entregas. Quer crescer com equipe? Sobe para SOLO ou EQUIPE em um clique.",
   },
   {
     q: "A comissão é calculada sozinha mesmo?",
@@ -58,7 +58,7 @@ const PERGUNTAS: { q: string; a: string }[] = [
   },
   {
     q: "Quantos produtos posso cadastrar?",
-    a: "Você cadastra o seu catálogo completo nos três planos. A diferença entre os planos está na equipe (vendedores, motoboys e revendedoras), não no tamanho do estoque.",
+    a: "Você cadastra o seu catálogo completo em qualquer plano. A diferença entre os planos está na equipe (vendedores, motoboys e revendedoras), não no tamanho do estoque.",
   },
   {
     q: "Funciona para mais de uma pessoa usando ao mesmo tempo?",
@@ -70,7 +70,7 @@ const PERGUNTAS: { q: string; a: string }[] = [
   },
   {
     q: "Quanto custa? Tem taxa escondida?",
-    a: "Os planos são SOLO R$49, EQUIPE R$99 e EXPANSÃO R$199 por mês. Preço fechado, sem taxa por venda e sem surpresa na fatura. Você começa com teste grátis antes de pagar qualquer coisa.",
+    a: "Os planos são AMBULANTE R$20, SOLO R$49, EQUIPE R$99 e EXPANSÃO R$199 por mês. Preço fechado, sem taxa por venda e sem surpresa na fatura. Você começa com teste grátis antes de pagar qualquer coisa.",
   },
   {
     q: "Preciso colocar cartão para testar?",
@@ -94,11 +94,11 @@ const PERGUNTAS: { q: string; a: string }[] = [
   },
   {
     q: "É caro? Cabe no bolso de quem está começando?",
-    a: "Foi pensado justamente para quem não pode pagar caro por um sistema. Começa grátis e o plano de entrada é R$49/mês - bem menos do que você perde por mês com erro de comissão, produto parado e venda esquecida.",
+    a: "Foi pensado justamente para quem não pode pagar caro por um sistema. Começa grátis e o plano de entrada é R$20/mês (AMBULANTE) - bem menos do que você perde por mês com produto parado e venda esquecida.",
   },
   {
     q: "E se eu crescer? O sistema acompanha?",
-    a: "Acompanha. Começou sozinha no SOLO, contratou ajuda? Sobe para EQUIPE. Virou várias revendedoras e entregas? EXPANSÃO. Você muda de plano em um clique, sem perder nada do que já cadastrou.",
+    a: "Acompanha. Começou vendendo na rua no AMBULANTE? Sobe para SOLO. Contratou ajuda e revendedoras? EQUIPE. Virou várias revendedoras e entregas? EXPANSÃO. Você muda de plano em um clique, sem perder nada do que já cadastrou.",
   },
 ];
 

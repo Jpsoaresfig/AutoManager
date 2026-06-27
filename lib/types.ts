@@ -1,6 +1,6 @@
 export type Canal = "loja" | "whatsapp" | "instagram";
 export type Role = "owner" | "vendedor" | "motoboy";
-export type Plano = "solo" | "equipe" | "expansao";
+export type Plano = "ambulante" | "solo" | "equipe" | "expansao";
 export type StatusEntrega = "pendente" | "a_caminho" | "entregue";
 export type StatusComissao = "pendente" | "paga";
 export type TipoMovimento = "entrada" | "saida" | "ajuste";

@@ -26,7 +26,7 @@ async function exigirSuperadmin() {
   return user;
 }
 
-const PLANOS_IDS: PlanoId[] = ["solo", "equipe", "expansao"];
+const PLANOS_IDS: PlanoId[] = ["ambulante", "solo", "equipe", "expansao"];
 
 export async function GET() {
   const su = await exigirSuperadmin();
@@ -76,6 +76,7 @@ export async function GET() {
   let trial = 0;
   let canceladas = 0;
   const porPlano: Record<PlanoId, { ativas: number; mrrCentavos: number }> = {
+    ambulante: { ativas: 0, mrrCentavos: 0 },
     solo: { ativas: 0, mrrCentavos: 0 },
     equipe: { ativas: 0, mrrCentavos: 0 },
     expansao: { ativas: 0, mrrCentavos: 0 },

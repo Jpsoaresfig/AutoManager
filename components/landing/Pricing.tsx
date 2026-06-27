@@ -18,6 +18,13 @@ type Plano = {
 
 const PLANOS: Plano[] = [
   {
+    nome: "AMBULANTE",
+    preco: 20,
+    resumo: "Para quem vende na rua e quer controlar estoque e vendas no bolso.",
+    para: "Vendedor ambulante",
+    cta: "Começar no AMBULANTE",
+  },
+  {
     nome: "SOLO",
     preco: 49,
     resumo: "Para quem vende sozinha e quer parar com o caderno.",
@@ -42,19 +49,20 @@ const PLANOS: Plano[] = [
   },
 ];
 
-// linha de comparação: [recurso, solo, equipe, expansao]
-const COMPARACAO: [string, boolean | string, boolean | string, boolean | string][] = [
-  ["Estoque ilimitado em tempo real", true, true, true],
-  ["Venda rápida (balcão + WhatsApp)", true, true, true],
-  ["Relatório de lucro real por produto", true, true, true],
-  ["Vitrine online com link próprio", true, true, true],
-  ["Chat com o cliente final", true, true, true],
-  ["Vendedores internos", "-", "Até 3", "Ilimitado"],
-  ["Revendedoras com login próprio", "-", "Até 5", "Ilimitado"],
-  ["Comissão automática + ranking", "-", true, true],
-  ["Controle de entregas / motoboy", "-", true, true],
-  ["Metas e bônus por revendedora", "-", "-", true],
-  ["Suporte prioritário no WhatsApp", "-", true, true],
+// linha de comparação: [recurso, ambulante, solo, equipe, expansao]
+type Cel = boolean | string;
+const COMPARACAO: [string, Cel, Cel, Cel, Cel][] = [
+  ["Estoque ilimitado em tempo real", true, true, true, true],
+  ["Venda rápida (balcão + WhatsApp)", true, true, true, true],
+  ["Relatório de lucro real por produto", true, true, true, true],
+  ["Vitrine online com link próprio", true, true, true, true],
+  ["Chat com o cliente final", true, true, true, true],
+  ["Revendedoras com login próprio", "-", "Até 3", "Até 15", "Ilimitado"],
+  ["Vendedores internos", "-", "-", "Até 3", "Ilimitado"],
+  ["Comissão automática + ranking", "-", "-", true, true],
+  ["Controle de entregas / motoboy", "-", "-", true, true],
+  ["Metas e bônus por revendedora", "-", "-", "-", true],
+  ["Suporte prioritário no WhatsApp", "-", "-", true, true],
 ];
 
 function Celula({ v }: { v: boolean | string }) {
@@ -89,7 +97,7 @@ export default function Pricing() {
       </div>
 
       {/* cards de plano */}
-      <div className="mt-10 grid items-start gap-5 lg:grid-cols-3">
+      <div className="mt-10 grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {PLANOS.map((p) => {
           const mensal = anual ? Math.round(p.preco * 10 / 12) : p.preco;
           return (
@@ -142,6 +150,7 @@ export default function Pricing() {
           <thead>
             <tr className="border-b border-default">
               <th className="py-3 pr-4 text-sm font-semibold text-muted">O que está incluso</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-strong">AMBULANTE</th>
               <th className="px-4 py-3 text-center text-sm font-bold text-strong">SOLO</th>
               <th className="px-4 py-3 text-center text-sm font-bold text-brand-600">
                 <span className="inline-flex items-center gap-1">
@@ -158,11 +167,14 @@ export default function Pricing() {
                 <td className="px-4 py-3 text-center">
                   <Celula v={linha[1]} />
                 </td>
-                <td className="bg-brand-500/[0.04] px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center">
                   <Celula v={linha[2]} />
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="bg-brand-500/[0.04] px-4 py-3 text-center">
                   <Celula v={linha[3]} />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Celula v={linha[4]} />
                 </td>
               </tr>
             ))}

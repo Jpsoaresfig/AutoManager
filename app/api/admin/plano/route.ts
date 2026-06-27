@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     orgId?: string;
     plano?: PlanoId;
   };
-  if (!orgId || !plano || !["solo", "equipe", "expansao"].includes(plano))
+  if (!orgId || !plano || !["ambulante", "solo", "equipe", "expansao"].includes(plano))
     return NextResponse.json({ erro: "Dados inválidos" }, { status: 400 });
 
   const inicio = new Date();
